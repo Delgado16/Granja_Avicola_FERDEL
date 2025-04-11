@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block title %}Huevos En Inventario{% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">GRANJA AVÍCOLA FERDEL</h1>
+    <div class="row justify-content-center">
+        <!-- Huevo Blanco -->
+        <div class="col-md-4 mb-4">
+            <div class="card bg-dark text-white border-light">
+                <img src="{{ url_for('static', filename='Huevos/HuevoBlanco.JPG') }}" class="card-img-top" alt="Huevos Blanco">
+                <div class="card-body">
+                    <h5 class="card-title">Huevos Blancos</h5>
+                    <p class="card-text">Tamaño: Jumbo, Grande, Mediano, Pequeño</p>
+                    <a href="#" class="btn btn-primary">Ver Detalles</a>
+                </div>
+            </div>
+        </div>
+        <!-- Huevo Rojo -->
+        <div class="col-md-4 mb-4">
+            <div class="card bg-dark text-white border-light">
+                <img src="{{ url_for('static', filename='Huevos/HuevoRojo.JPG') }}" class="card-img-top" alt="Huevos Rojo">
+                <div class="card-body">
+                    <h5 class="card-title">Huevos Rojos</h5>
+                    <p class="card-text">Tamaño: Jumbo, Grande, Mediano, Pequeño</p>
+                    <a href="#" class="btn btn-primary">Ver Detalles</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
