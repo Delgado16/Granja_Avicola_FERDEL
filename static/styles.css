@@ -1,8 +1,8 @@
 body {
     margin: 0;
     font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #0f0f0f, #1a1a1a, #333);
-    color: white;
+    background: #F7E6D6; /* ← Fondo claro */
+    color: #1a1a1a; /* ← Texto oscuro para contraste */
     overflow-x: hidden;
 }
 
@@ -10,17 +10,17 @@ nav {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(90deg, #0f2027, #203a43, #2c5364);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    background: #EFD4BC; /* Un tono más oscuro para diferenciar */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     padding: 10px 0;
     position: sticky;
     top: 0;
     z-index: 1000;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.1);
 }
 
 nav a {
-    color: #fff;
+    color: #1a1a1a;
     text-transform: uppercase;
     text-decoration: none;
     margin: 0 15px;
@@ -41,7 +41,7 @@ nav a::before {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, rgba(0, 212, 255, 0.5), rgba(0, 212, 255, 0.1));
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0));
     transition: all 0.4s ease-in-out;
     z-index: -1;
 }
@@ -51,41 +51,18 @@ nav a:hover::before {
 }
 
 nav a:hover {
-    color: #00d4ff;
-    border-color: #00d4ff;
-    box-shadow: 0 0 10px #00d4ff, 0 0 40px #00d4ff;
-}
-
-nav a:hover::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 10px;
-    height: 10px;
-    background: #00d4ff;
-    border-radius: 50%;
-    transform: translate(-50%, -50%) scale(1);
-    animation: ripple 0.6s ease-out;
-}
-
-@keyframes ripple {
-    0% {
-        transform: translate(-50%, -50%) scale(1);
-        opacity: 1;
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(10);
-        opacity: 0;
-    }
+    color: #fff;
+    border-color: #1a1a1a;
+    background-color: #1a1a1a;
+    box-shadow: 0 0 10px #1a1a1a44;
 }
 
 footer {
     text-align: center;
     padding: 20px 0;
-    background: #0f2027;
-    color: #fff;
+    background: #EFD4BC;
+    color: #1a1a1a;
     font-size: 12px;
-    border-top: 2px solid rgba(255, 255, 255, 0.1);
+    border-top: 2px solid rgba(0, 0, 0, 0.1);
     margin-top: 20px;
 }
