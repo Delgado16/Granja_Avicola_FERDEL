@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block title %}Registro de Usuario{% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Crear una Cuenta</h2>
+    <form action="{{ url_for('register') }}" method="POST" class="register-form mx-auto" style="max-width: 400px;">
+        <div class="form-group mb-3">
+            <label for="username" class="form-label">Nombre de Usuario:</label>
+            <input type="text" id="username" name="username" class="form-control" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="password" class="form-label">Contraseña:</label>
+            <input type="password" id="password" name="password" class="form-control" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="confirm_password" class="form-label">Confirmar Contraseña:</label>
+            <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Registrarse</button>
+    </form>
+</div>
+<script>
+    // Validación de formulario
+    (function () {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
+{% endblock %}
