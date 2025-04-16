@@ -1,0 +1,245 @@
+-- Tabla Clientes
+CREATE TABLE IF NOT EXISTS Clientes (
+    ID_Cliente INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT NOT NULL,
+    Telefono TEXT,
+    Direccion TEXT,
+    RUC_CEDULA TEXT
+);
+
+-- Tabla Proveedores
+CREATE TABLE IF NOT EXISTS Proveedores (
+    ID_Proveedor INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT NOT NULL,
+    Telefono TEXT,
+    Direccion TEXT,
+    RUC_CEDULA TEXT
+);
+
+-- Tabla Empresa
+CREATE TABLE IF NOT EXISTS Empresa (
+    ID_Empresa INTEGER PRIMARY KEY AUTOINCREMENT,
+    Descripcion TEXT
+);
+
+-- Catálogo de Movimientos
+CREATE TABLE IF NOT EXISTS Catalogo_Movimientos (
+    ID_TipoMovimiento INTEGER PRIMARY KEY AUTOINCREMENT,
+    Descripcion TEXT,
+    Adicion TEXT,
+    Letra TEXT
+);
+
+-- Productos
+CREATE TABLE IF NOT EXISTS Productos (
+    ID_Producto INTEGER PRIMARY KEY AUTOINCREMENT,
+    COD_Producto TEXT,
+    Descripcion TEXT,
+    Unidad_Medida INTEGER,
+    Existencias NUMERIC,
+    Estado INTEGER,
+    Familia INTEGER,
+    Costo_Promedio NUMERIC,
+    IVA INTEGER,
+    Tipo INTEGER,
+    Precio_Venta NUMERIC,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (Unidad_Medida) REFERENCES Unidades_Medida(ID_Unidad),
+    FOREIGN KEY (Familia) REFERENCES Familia(ID_Familia),
+    FOREIGN KEY (Tipo) REFERENCES Tipo_Producto(ID_TipoProducto),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+-- Unidad de Medida
+CREATE TABLE IF NOT EXISTS Unidades_Medida (
+    ID_Unidad INTEGER PRIMARY KEY AUTOINCREMENT,
+    Descripcion TEXT NOT NULL,
+    Abreviatura TEXT
+);
+
+-- Familia
+CREATE TABLE IF NOT EXISTS Familia (
+    ID_Familia INTEGER PRIMARY KEY AUTOINCREMENT,
+    Descripcion TEXT NOT NULL
+);
+
+-- Tipo de Producto
+CREATE TABLE IF NOT EXISTS Tipo_Producto (
+    ID_TipoProducto INTEGER PRIMARY KEY AUTOINCREMENT,
+    Descripcion TEXT NOT NULL
+);
+
+-- Facturación
+CREATE TABLE IF NOT EXISTS Facturacion (
+    ID_Movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
+    Fecha DATE,
+    IDCliente INTEGER,
+    Cliente TEXT NOT NULL,
+    Credito_Contado INTEGER,
+    Observacion TEXT,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (IDCliente) REFERENCES Clientes(ID_Cliente),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+CREATE TABLE IF NOT EXISTS Detalle_Facturacion (
+    ID_Detalle INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Factura INTEGER,
+    ID_Producto INTEGER,
+    Cantidad NUMERIC,
+    Costo NUMERIC,
+    Descuento NUMERIC,
+    IVA NUMERIC,
+    Total NUMERIC,
+    FOREIGN KEY (ID_Factura) REFERENCES Facturacion(ID_Movimiento),
+    FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
+);
+
+-- Movimientos de Inventario
+CREATE TABLE IF NOT EXISTS Movimientos_Inventario (
+    ID_Movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_TipoMovimiento INTEGER,
+    N_Factura TEXT,
+    Contado_Credito INTEGER,
+    Fecha DATE,
+    ID_Proveedor INTEGER,
+    Observacion TEXT,
+    IVA NUMERIC,
+    Retencion NUMERIC,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_TipoMovimiento) REFERENCES Catalogo_Movimientos(ID_TipoMovimiento),
+    FOREIGN KEY (ID_Proveedor) REFERENCES Proveedores(ID_Proveedor),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+CREATE TABLE IF NOT EXISTS Detalle_Movimiento_Inventario (
+    ID_Detalle INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Movimiento INTEGER,
+    ID_TipoMovimiento INTEGER,
+    ID_Producto INTEGER,
+    Cantidad INTEGER,
+    Costo NUMERIC,
+    IVA NUMERIC,
+    Descuento NUMERIC,
+    Costo_Total NUMERIC,
+    Saldo NUMERIC,
+    FOREIGN KEY (ID_Movimiento) REFERENCES Movimientos_Inventario(ID_Movimiento),
+    FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
+);
+
+-- Cuentas por Pagar
+CREATE TABLE IF NOT EXISTS Cuentas_Por_Pagar (
+    ID_Movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
+    Fecha DATE,
+    ID_Proveedor INTEGER,
+    Num_Documento TEXT,
+    Observacion TEXT,
+    Fecha_Vencimiento DATE,
+    Tipo_Movimiento INTEGER,
+    Monto_Movimiento NUMERIC,
+    IVA NUMERIC,
+    Retencion NUMERIC,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_Proveedor) REFERENCES Proveedores(ID_Proveedor),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+-- Cuentas por Cobrar
+CREATE TABLE IF NOT EXISTS Detalle_Cuentas_Por_Cobrar (
+    ID_Movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
+    Fecha DATE,
+    ID_Cliente INTEGER,
+    Num_Documento TEXT,
+    Observacion TEXT,
+    Fecha_Vencimiento DATE,
+    Tipo_Movimiento INTEGER,
+    Monto_Movimiento NUMERIC,
+    IVA NUMERIC,
+    Retencion NUMERIC,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_Cliente) REFERENCES Clientes(ID_Cliente),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+-- Registro de Gastos
+CREATE TABLE IF NOT EXISTS Gastos (
+    ID_Movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
+    Fecha DATE,
+    Observacion TEXT,
+    Monto NUMERIC,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+
+-- Tabla de Usuarios
+CREATE TABLE IF NOT EXISTS Roles (
+    ID_Rol INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre_Rol TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Usuarios (
+    ID_Usuario INTEGER PRIMARY KEY AUTOINCREMENT,
+    NombreUsuario TEXT UNIQUE NOT NULL,
+    ContrasenaHash TEXT NOT NULL,
+    Rol_ID INTEGER,
+    Estado INTEGER,
+    Fecha_Creacion DATE,
+    FOREIGN KEY (Rol_ID) REFERENCES Roles(ID_Rol)
+);
+
+-- Bitácora
+CREATE TABLE IF NOT EXISTS Bitacora (
+    ID_Bitacora INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Usuario INTEGER,
+    Fecha DATETIME,
+    Modulo TEXT,
+    Accion TEXT,
+    IP_Acceso TEXT,
+    FOREIGN KEY (ID_Usuario) REFERENCES Usuarios(ID_Usuario)
+);
+
+-- Métodos de pago
+CREATE TABLE IF NOT EXISTS Metodos_Pago (
+    ID_MetodoPago INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT NOT NULL
+);
+
+-- Pagos a cuentas por cobrar
+CREATE TABLE IF NOT EXISTS Pagos_CuentasCobrar (
+    ID_Pago INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Movimiento INTEGER,
+    Fecha DATETIME,
+    Monto NUMERIC(12,2),
+    ID_MetodoPago INTEGER,
+    FOREIGN KEY (ID_Movimiento) REFERENCES Detalle_Cuentas_Por_Cobrar(ID_MOVIMIENTO),
+    FOREIGN KEY (ID_MetodoPago) REFERENCES Metodos_Pago(ID_MetodoPago)
+);
+
+-- Pagos a cuentas por pagar
+CREATE TABLE IF NOT EXISTS Pagos_CuentasPagar (
+    ID_Pago INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Movimiento INTEGER,
+    Fecha DATETIME,
+    Monto NUMERIC(12,2),
+    ID_MetodoPago INTEGER,
+    FOREIGN KEY (ID_Movimiento) REFERENCES Cuentas_Por_Pagar(ID_MOVIMIENTO),
+    FOREIGN KEY (ID_MetodoPago) REFERENCES Metodos_Pago(ID_MetodoPago)
+);
+
+-- Bancos
+CREATE TABLE IF NOT EXISTS Bancos (
+    ID_Banco INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT,
+    Cuenta TEXT
+);
+
+-- Configuración general
+CREATE TABLE IF NOT EXISTS Configuracion (
+    ID_Config INTEGER PRIMARY KEY AUTOINCREMENT,
+    NombreParametro TEXT,
+    ValorParametro TEXT
+);
+
+
+lo que se lleva de tablas en la base de datos al momento, cualquier sugerencia seria bueno hpts
