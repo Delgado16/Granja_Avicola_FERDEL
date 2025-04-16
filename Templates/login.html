@@ -2,17 +2,77 @@
 
 {% block title %}Iniciar Sesión{% endblock %}
 
-{% block content %}
-<h2>Iniciar Sesión</h2>
-<form action="/login" method="post">
-    <div>
-        <label for="username">Nombre de usuario:</label>
-        <input type="text" id="username" name="username" required>
-    </div>
-    <div>
-        <label for="password">Contraseña:</label>
-        <input type="password" id="password" name="password" required>
-    </div>
-    <button type="submit">Iniciar Sesión</button>
-</form>
+{% block main %}
+<div class="container mt-5" style="max-width: 450px;">
+    <h2 class="text-center mb-4">Iniciar Sesión</h2>
+
+    <!-- Mensajes Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Formulario -->
+    <form action="{{ url_for('login') }}" method="POST" class="needs-validation" novalidate>
+        <!-- Usuario -->
+        <div class="mb-3">
+            <label for="username" class="form-label">Nombre de usuario:</label>
+            <input type="text" id="username" name="username" class="form-control" placeholder="Ingrese su usuario" required>
+            <div class="invalid-feedback">
+                Por favor, ingrese su nombre de usuario.
+            </div>
+        </div>
+
+        <!-- Contraseña -->
+        <div class="mb-3 position-relative">
+            <label for="password" class="form-label">Contraseña:</label>
+            <div class="input-group">
+                <input type="password" id="password" name="password" class="form-control" placeholder="Ingrese su contraseña" required>
+                <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password">👁</button>
+            </div>
+            <div class="invalid-feedback">
+                Por favor, ingrese su contraseña.
+            </div>
+        </div>
+
+        <!-- Botón -->
+        <div class="d-grid">
+            <button type="submit" class="btn btn-primary text-white">Iniciar Sesión</button>
+        </div>
+    </form>
+</div>
+
+<!-- Scripts -->
+<script>
+    // Mostrar/Ocultar contraseña
+    document.querySelectorAll('.toggle-password').forEach(button => {
+        button.addEventListener('click', () => {
+            const input = document.getElementById(button.dataset.target);
+            const isPassword = input.type === "password";
+            input.type = isPassword ? "text" : "password";
+            button.innerHTML = isPassword ? '🙈' : '👁';
+        });
+    });
+
+    // Validación con Bootstrap
+    (function () {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
 {% endblock %}
