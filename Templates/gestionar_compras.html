@@ -1,0 +1,46 @@
+{% extends 'layout.html' %}
+
+{% block title %} Gestionar Compras {% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Historial de Compras</h2>
+
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Fecha</th>
+                <th>Proveedor</th>
+                <th>Factura</th>
+                <th>Tipo de Pago</th>
+                <th>Observaciones</th>
+                <th>Total</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for compra in compras %}
+            <tr>
+                <td>{{ compra.id }}</td>
+                <td>{{ compra.fecha }}</td>
+                <td>{{ compra.proveedor }}</td>
+                <td>{{ compra.factura }}</td>
+                <td>{{ 'Contado' if compra.tipo_pago == 0 else 'Crédito' }}</td>
+                <td>{{ compra.observacion }}</td>
+                <td>{{ 'C$ ' ~ (compra.total | round(2)) }}</td>
+                <td>
+                    <a href="/compras/{{ compra.id }}" class="btn btn-sm btn-info">Ver</a>
+                    <a href="/compras/{{ compra.id }}/editar" class="btn btn-sm btn-warning">Editar</a>
+                    <a href="/compras/{{ compra.id }}/eliminar" class="btn btn-sm btn-danger" onclick="return confirm('¿Seguro que deseas eliminar esta compra?');">Eliminar</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8" class="text-center">No hay compras registradas.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
