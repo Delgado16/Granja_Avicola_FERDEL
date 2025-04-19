@@ -1,10 +1,10 @@
-{% extends 'layout.html' %}
+{% extends "layout.html" %}
 
-{% block title %} Registrar Compra {% endblock %}
+{% block title %}Registrar Venta{% endblock %}
 
 {% block main %}
 <div class="container mt-5" style="max-width: 800px;">
-    <h2 class="text-center mb-4">Registrar Compra</h2>
+    <h2 class="text-center mb-4">Registrar Venta</h2>
 
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -19,19 +19,19 @@
     {% endwith %}
 
     <!-- Formulario -->
-    <form action="{{ url_for('compras') }}" method="POST" class="needs-validation" novalidate>
+    <form action="{{ url_for('ventas') }}" method="POST" class="needs-validation" novalidate>
         <!-- Fecha -->
         <div class="mb-3">
             <label for="fecha" class="form-label">Fecha:</label>
             <input type="date" id="fecha" name="fecha" class="form-control" required>
         </div>
 
-        <!-- Proveedor -->
+        <!-- Cliente -->
         <div class="mb-3">
-            <label for="proveedor" class="form-label">Proveedor:</label>
-            <select id="proveedor" name="proveedor" class="form-select" required>
-                {% for proveedor in proveedores %}
-                    <option value="{{ proveedor.id }}">{{ proveedor.nombre }}</option>
+            <label for="cliente" class="form-label">Cliente:</label>
+            <select id="cliente" name="cliente" class="form-select" required>
+                {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -45,11 +45,18 @@
         <!-- Tipo de pago -->
         <div class="mb-3">
             <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
-            <select id="tipo_pago" name="tipo_pago" class="form-select">
+            <select id="tipo_pago" name="tipo_pago" class="form-select" onchange="toggleFechaVencimiento()">
                 <option value="0">Contado</option>
                 <option value="1">Crédito</option>
             </select>
         </div>
+
+        <!-- Fecha de vencimiento (solo si es a crédito) -->
+        <div id="fecha_vencimiento_div" class="mb-3" style="display: none;">
+            <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento:</label>
+            <input type="date" id="fecha_vencimiento" name="fecha_vencimiento" class="form-control">
+        </div>
+
         <!-- Observación -->
         <div class="mb-3">
             <label for="observacion" class="form-label">Observaciones:</label>
@@ -88,7 +95,7 @@
         </div>
 
         <div class="text-center">
-            <button type="submit" class="btn btn-primary">Guardar Compra</button>
+            <button type="submit" class="btn btn-primary">Guardar Venta</button>
         </div>
     </form>
 </div>
@@ -104,5 +111,5 @@
         }
     }
 </script>
+
 {% endblock %}
-  

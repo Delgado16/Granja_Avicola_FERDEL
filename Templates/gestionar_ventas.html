@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block title %}Gestionar Ventas{% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Ventas Realizadas</h2>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Fecha</th>
+                <th>No. Factura</th>
+                <th>Cliente</th>
+                <th>Tipo de Pago</th>
+                <th>Productos</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for venta in ventas %}
+            <tr>
+                <td>{{ venta.Fecha }}</td>
+                <td>{{ venta.ID_Movimiento }}</td>
+                <td>{{ venta.Cliente }}</td>
+                <td>{{ 'Crédito' if venta.Credito_Contado == 1 else 'Contado' }}</td>
+                <td>
+                    <ul class="mb-0">
+                        {% for producto in venta.Productos %}
+                            <li>{{ producto }}</li>
+                        {% endfor %}
+                    </ul>
+                    <a href="/ventas/{{ venta.ID_Movimiento }}" class="btn btn-sm btn-info">Ver</a>
+                    <a href="/ventas/{{ venta.ID_Movimiento }}/editar" class="btn btn-sm btn-warning">Editar</a>
+                </td>
+
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="text-center">No hay ventas registradas.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -41,21 +41,22 @@
                             Ventas
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="ventasDropdown">
-                            <li><a class="dropdown-item" href="#">Agregar Ventas</a></li>
-                            <li><a class="dropdown-item" href="#">Editar Ventas</a></li>
+                            <li><a class="dropdown-item" href="/ventas">Agregar Ventas</a></li>
+                            <li><a class="dropdown-item" href="/gestionar_ventas">Editar Ventas</a></li>
                         </ul>
                     </li>
 
-                    <!-- Ventas Dropdown -->
+                    <!-- Cobros Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="ventasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" id="cobrosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Cobros
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="ventasDropdown">
-                            <li><a class="dropdown-item" href="#">Ver Cobros</a></li>
-                            <li><a class="dropdown-item" href="#">Registrar Cobro</a></li>
+                        <ul class="dropdown-menu" aria-labelledby="cobrosDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('cobros') }}">Ver Cobros</a></li>
+                            <!-- Registrar Cobro se hace desde el botón de cada fila en la tabla -->
                         </ul>
                     </li>
+
 
                     <!-- Factura Dropdown -->
                     <li class="nav-item dropdown">

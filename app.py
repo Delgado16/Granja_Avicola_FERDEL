@@ -114,24 +114,28 @@ def register():
     return render_template("register.html")
 
 #Ruta de Compra
+from flask import request, redirect, url_for, flash, render_template
+from datetime import datetime
+
+# Registrar Compra
 @app.route("/compras", methods=["GET", "POST"])
 def compras():
     if request.method == "POST":
         try:
-            # 🟡 1. Obtener y validar datos principales
+            # 🟡 1. Obtener datos del formulario
             fecha = request.form.get("fecha")
             proveedor_id = request.form.get("proveedor")
             n_factura = request.form.get("n_factura") or ""
             tipo_pago = int(request.form.get("tipo_pago") or 0)
             observacion = request.form.get("observacion") or ""
-            id_empresa = 1  # reemplazar según el usuario logueado
-            tipo_movimiento = 1  # 1 = Compra
+            id_empresa = 1  # Asignar según login
+            tipo_movimiento = 1  # Compra
 
             if not fecha or not proveedor_id:
                 flash("Fecha y proveedor son obligatorios", "warning")
                 return redirect(url_for("compras"))
 
-            # 🟡 2. Insertar movimiento (encabezado)
+            # 🟡 2. Insertar encabezado de compra
             db.execute("""
                 INSERT INTO Movimientos_Inventario (
                     ID_TipoMovimiento, N_Factura, Contado_Credito, Fecha,
@@ -139,6 +143,169 @@ def compras():
                 ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)
             """, tipo_movimiento, n_factura, tipo_pago, fecha,
                  proveedor_id, observacion, id_empresa)
+
+            movimiento_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
+
+            # 🟡 3. Detalle de productos
+            productos = request.form.getlist("productos[]")
+            cantidades = request.form.getlist("cantidades[]")
+            costos = request.form.getlist("costos[]")
+            ivas = request.form.getlist("ivas[]")
+            descuentos = request.form.getlist("descuentos[]")
+
+            if not productos:
+                flash("Debe ingresar al menos un producto en la compra", "warning")
+                return redirect(url_for("compras"))
+
+            total_compra = 0
+
+            for i in range(len(productos)):
+                try:
+                    id_producto = int(productos[i])
+                    cantidad = float(cantidades[i])
+                    costo = float(costos[i])
+                    iva = float(ivas[i])
+                    descuento = float(descuentos[i])
+                    costo_total = (cantidad * costo) - descuento + iva
+                    total_compra += costo_total
+
+                    db.execute("""
+                        INSERT INTO Detalle_Movimiento_Inventario (
+                            ID_Movimiento, ID_TipoMovimiento, ID_Producto,
+                            Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, movimiento_id, tipo_movimiento, id_producto,
+                         cantidad, costo, iva, descuento, costo_total, cantidad)
+
+                    # 🟢 Actualizar inventario
+                    db.execute("""
+                        UPDATE Productos
+                        SET Existencias = Existencias + ?
+                        WHERE ID_Producto = ?
+                    """, cantidad, id_producto)
+
+                except Exception as e:
+                    flash(f"Error en producto #{i+1}: {e}", "danger")
+                    return redirect(url_for("compras"))
+
+            # 🟡 4. Si es a crédito, insertar en Cuentas_Por_Pagar
+            if tipo_pago == 1:  # Si es a crédito
+                # Calculamos la fecha de vencimiento (por ejemplo, 30 días después de la fecha actual)
+                fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
+
+                db.execute("""
+                    INSERT INTO Cuentas_Por_Pagar (
+                        Fecha, ID_Proveedor, Num_Documento,
+                        Observacion, Fecha_Vencimiento, Tipo_Movimiento,
+                        Monto_Movimiento, IVA, Retencion, ID_Empresa
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
+                """, fecha, proveedor_id, n_factura, observacion,
+                     vencimiento.strftime("%Y-%m-%d"), tipo_movimiento,
+                     total_compra, id_empresa)
+
+            flash("✅ Compra registrada correctamente", "success")
+            return redirect(url_for("gestionar_compras"))
+
+        except Exception as e:
+            flash(f"❌ Error al registrar la compra: {e}", "danger")
+            return redirect(url_for("compras"))
+
+    # GET: formulario
+    proveedores = db.execute("SELECT ID_Proveedor AS id, Nombre FROM Proveedores")
+    productos = db.execute("SELECT ID_Producto AS id, Descripcion FROM Productos")
+    return render_template("compras.html", proveedores=proveedores, productos=productos)
+
+
+# Gestionar compras
+@app.route("/gestionar_compras")
+def gestionar_compras():
+    compras = db.execute("""
+        SELECT
+            mi.ID_Movimiento AS id,
+            mi.Fecha AS fecha,
+            p.Nombre AS proveedor,
+            mi.N_Factura AS factura,
+            mi.Contado_Credito AS tipo_pago,
+            mi.Observacion AS observacion,
+            IFNULL(SUM(dmi.Costo_Total), 0) AS total
+        FROM Movimientos_Inventario mi
+        JOIN Proveedores p ON mi.ID_Proveedor = p.ID_Proveedor
+        LEFT JOIN Detalle_Movimiento_Inventario dmi ON mi.ID_Movimiento = dmi.ID_Movimiento
+        WHERE mi.ID_TipoMovimiento = 1
+        GROUP BY mi.ID_Movimiento
+        ORDER BY mi.Fecha DESC
+    """)
+    return render_template("gestionar_compras.html", compras=compras)
+
+
+# Editar compra
+@app.route("/compras/<int:id>/editar", methods=["GET", "POST"])
+def editar_compra(id):
+    if request.method == "POST":
+        fecha = request.form.get("fecha")
+        proveedor = request.form.get("proveedor")
+        factura = request.form.get("n_factura")
+        tipo_pago = request.form.get("tipo_pago")
+        observacion = request.form.get("observacion")
+
+        db.execute("""
+            UPDATE Movimientos_Inventario
+            SET Fecha = ?, ID_Proveedor = ?, N_Factura = ?, Contado_Credito = ?, Observacion = ?
+            WHERE ID_Movimiento = ?
+        """, fecha, proveedor, factura, tipo_pago, observacion, id)
+
+        flash("Compra actualizada correctamente", "success")
+        return redirect(url_for("gestionar_compras"))
+
+    compra = db.execute("""
+        SELECT mi.*, p.Nombre as proveedor_nombre
+        FROM Movimientos_Inventario mi
+        JOIN Proveedores p ON mi.ID_Proveedor = p.ID_Proveedor
+        WHERE mi.ID_Movimiento = ?
+    """, id)[0]
+
+    proveedores = db.execute("SELECT ID_Proveedor as id, Nombre FROM Proveedores")
+    return render_template("editar_compra.html", compra=compra, proveedores=proveedores)
+
+
+# Eliminar compra
+@app.route("/compras/<int:id>/eliminar")
+def eliminar_compra(id):
+    db.execute("DELETE FROM Detalle_Movimiento_Inventario WHERE ID_Movimiento = ?", id)
+    db.execute("DELETE FROM Movimientos_Inventario WHERE ID_Movimiento = ?", id)
+    db.execute("DELETE FROM Cuentas_Por_Pagar WHERE Num_Documento IN ( SELECT N_Factura FROM Movimientos_Inventario WHERE ID_Movimiento = ?)", id)
+
+    flash("Compra eliminada correctamente", "success")
+    return redirect(url_for("gestionar_compras"))
+
+#fin de gestionar compras
+
+# Ruta de ventas
+@app.route("/ventas", methods=["GET", "POST"])
+def ventas():
+    if request.method == "POST":
+        try:
+            # 🟡 1. Obtener y validar los datos principales
+            fecha = request.form.get("fecha")
+            cliente_id = request.form.get("cliente")  # El cliente es obligatorio para ventas
+            n_factura = request.form.get("n_factura") or ""
+            tipo_pago = int(request.form.get("tipo_pago") or 0)
+            observacion = request.form.get("observacion") or ""
+            id_empresa = 1  # reemplazar según el usuario logueado
+            tipo_movimiento = 2  # 2 = Venta
+
+            if not fecha or not cliente_id:
+                flash("Fecha y cliente son obligatorios", "warning")
+                return redirect(url_for("ventas"))
+
+            # 🟡 2. Insertar movimiento (encabezado)
+            db.execute("""
+                INSERT INTO Movimientos_Inventario (
+                    ID_TipoMovimiento, N_Factura, Contado_Credito, Fecha,
+                    ID_Cliente, Observacion, IVA, Retencion, ID_Empresa
+                ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)
+            """, tipo_movimiento, n_factura, tipo_pago, fecha,
+                 cliente_id, observacion, id_empresa)
 
             movimiento_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
 
@@ -150,8 +317,8 @@ def compras():
             descuentos = request.form.getlist("descuentos[]")
 
             if not productos:
-                flash("Debe ingresar al menos un producto en la compra", "warning")
-                return redirect(url_for("compras"))
+                flash("Debe ingresar al menos un producto en la venta", "warning")
+                return redirect(url_for("ventas"))
 
             # 🟡 4. Insertar cada línea de producto
             for i in range(len(productos)):
@@ -173,98 +340,210 @@ def compras():
 
                     db.execute("""
                         UPDATE Productos
-                        SET Existencias = Existencias + ?
+                        SET Existencias = Existencias - ?
                         WHERE ID_Producto = ?
                     """, cantidad, id_producto)
 
                 except Exception as e:
                     flash(f"Error en producto #{i+1}: {e}", "danger")
-                    return redirect(url_for("compras"))
+                    return redirect(url_for("ventas"))
 
-            flash("✅ Compra registrada correctamente", "success")
-            return redirect(url_for("gestionar_compras"))
+            # 🟡 5. Si es crédito, crear entrada en Cuentas_Por_Cobrar
+            if tipo_pago == 1:  # Si es crédito
+                total_venta = sum([(float(cantidades[i]) * float(costos[i])) - float(descuentos[i]) + float(ivas[i]) for i in range(len(productos))])
+                fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
+
+                
+                # Crear la cuenta por cobrar
+                db.execute("""
+                    INSERT INTO Cuentas_Por_Cobrar (ID_Cliente, ID_Movimiento, Monto, Fecha_Vencimiento)
+                    VALUES (?, ?, ?, ?)
+                """, cliente_id, movimiento_id, total_venta, fecha_vencimiento)
+
+            flash("✅ Venta registrada correctamente", "success")
+            return redirect(url_for("gestionar_ventas"))
 
         except Exception as e:
-            flash(f"❌ Error general al registrar la compra: {e}", "danger")
-            return redirect(url_for("compras"))
+            flash(f"❌ Error general al registrar la venta: {e}", "danger")
+            return redirect(url_for("ventas"))
 
     # GET: mostrar formulario
-    proveedores = db.execute("SELECT ID_Proveedor AS id, Nombre FROM Proveedores")
+    clientes = db.execute("SELECT ID_Cliente AS id, Nombre FROM Clientes")
     productos = db.execute("SELECT ID_Producto AS id, Descripcion FROM Productos")
 
-    return render_template("compras.html", proveedores=proveedores, productos=productos)
+    return render_template("ventas.html", clientes=clientes, productos=productos)
 
-#fin de compras
 
-#gestionar compras
-@app.route("/gestionar_compras")
-def gestionar_compras():
-    # Consultar todas las compras con total calculado
-    compras = db.execute("""
-        SELECT
-            mi.ID_Movimiento AS id,
-            mi.Fecha AS fecha,
-            p.Nombre AS proveedor,
-            mi.N_Factura AS factura,
-            mi.Contado_Credito AS tipo_pago,
-            mi.Observacion AS observacion,
-            IFNULL(SUM(dmi.Costo_Total), 0) AS total
-        FROM Movimientos_Inventario mi
-        JOIN Proveedores p ON mi.ID_Proveedor = p.ID_Proveedor
-        LEFT JOIN Detalle_Movimiento_Inventario dmi ON mi.ID_Movimiento = dmi.ID_Movimiento
-        WHERE mi.ID_TipoMovimiento = 1
-        GROUP BY mi.ID_Movimiento
-        ORDER BY mi.Fecha DESC
-    """)
-    
-    return render_template("gestionar_compras.html", compras=compras)
+@app.route("/gestionar_ventas", methods=["GET"])
+def gestionar_ventas():
+    try:
+        # Obtener ventas con cliente
+        ventas = db.execute("""
+            SELECT f.ID_Movimiento, f.Fecha, f.Credito_Contado, f.IDCliente, c.Nombre AS Cliente
+            FROM Facturacion f
+            JOIN Clientes c ON f.IDCliente = c.ID_Cliente
+        """)
 
-    #editar compra
-@app.route("/compras/<int:id>/editar", methods=["GET", "POST"])
-def editar_compra(id):
+        # Obtener productos por venta
+        detalles = db.execute("""
+            SELECT df.ID_Factura, p.Descripcion, df.Cantidad
+            FROM Detalle_Facturacion df
+            JOIN Productos p ON df.ID_Producto = p.ID_Producto
+        """)
+
+        # Agrupar productos por ID de factura
+        productos_por_venta = {}
+        for d in detalles:
+            productos_por_venta.setdefault(d["ID_Factura"], []).append(
+                f"{d['Cantidad']} x {d['Descripcion']}"
+            )
+
+        # Agregar productos a cada venta
+        for venta in ventas:
+            venta["Productos"] = productos_por_venta.get(venta["ID_Movimiento"], [])
+
+        return render_template("gestionar_ventas.html", ventas=ventas)
+
+    except Exception as e:
+        flash(f"❌ Error al cargar las ventas: {e}", "danger")
+        return redirect(url_for("ventas"))
+
+
+@app.route("/editar_venta/<int:id_venta>", methods=["GET", "POST"])
+def editar_venta(id_venta):
     if request.method == "POST":
-        # Actualizar los datos del encabezado
-        fecha = request.form.get("fecha")
-        proveedor = request.form.get("proveedor")
-        factura = request.form.get("n_factura")
-        tipo_pago = request.form.get("tipo_pago")
-        observacion = request.form.get("observacion")
+        nuevo_cliente = request.form["cliente"]
+        nueva_fecha = request.form["fecha"]
+        tipo_pago = request.form["contado_credito"]
 
-        db.execute("""
-            UPDATE Movimientos_Inventario
-            SET Fecha = ?, ID_Proveedor = ?, N_Factura = ?, Contado_Credito = ?, Observacion = ?
+        try:
+            db.execute("""
+                UPDATE Facturacion
+                SET IDCliente = ?, Fecha = ?, Credito_Contado = ?
+                WHERE ID_Movimiento = ?
+            """, nuevo_cliente, nueva_fecha, tipo_pago, id_venta)
+
+            flash("✅ Venta actualizada correctamente", "success")
+            return redirect(url_for("gestionar_ventas"))
+        except Exception as e:
+            flash(f"❌ Error al actualizar la venta: {e}", "danger")
+            return redirect(url_for("gestionar_ventas"))
+
+    else:
+        venta = db.execute("""
+            SELECT f.ID_Movimiento, f.Fecha, f.Credito_Contado, f.IDCliente, c.Nombre AS Cliente
+            FROM Facturacion f
+            JOIN Clientes c ON f.IDCliente = c.ID_Cliente
+            WHERE f.ID_Movimiento = ?
+        """, id_venta)[0]
+
+        clientes = db.execute("SELECT ID_Cliente, Nombre FROM Clientes")
+
+        return render_template("editar_venta.html", venta=venta, clientes=clientes)
+#fin de ruta de ventas
+
+# ruta de cobros
+@app.route("/cobros", methods=["GET"])
+def cobros():
+    try:
+        cuentas = db.execute("""
+            SELECT dcc.ID_Movimiento, dcc.Num_Documento AS Factura,
+                   c.Nombre AS Cliente,
+                   dcc.Monto_Movimiento AS Saldo,
+                   dcc.Fecha_Vencimiento
+            FROM Detalle_Cuentas_Por_Cobrar dcc
+            JOIN Clientes c ON dcc.ID_Cliente = c.ID_Cliente
+        """)
+        return render_template("cobros.html", cuentas=cuentas)
+    except Exception as e:
+        flash(f"❌ Error al cargar los cobros: {e}", "danger")
+        return redirect(url_for("index"))
+    
+@app.route("/historial_pagos/<int:id_venta>")
+def historial_pagos(id_venta):
+    try:
+        pagos = db.execute("""
+            SELECT Fecha, Monto, mp.Nombre AS Metodo
+            FROM Pagos_CuentasCobrar p
+            JOIN Metodos_Pago mp ON p.ID_MetodoPago = mp.ID_MetodoPago
+            WHERE p.ID_Movimiento = ?
+            ORDER BY Fecha DESC
+        """, id_venta)
+
+        factura = db.execute("""
+            SELECT Num_Documento, Monto_Movimiento
+            FROM Detalle_Cuentas_Por_Cobrar
             WHERE ID_Movimiento = ?
-        """, fecha, proveedor, factura, tipo_pago, observacion, id)
+        """, id_venta)[0]
 
-        flash("Compra actualizada correctamente", "success")
-        return redirect(url_for("gestionar_compras"))
+        return render_template("historial_pagos.html", pagos=pagos, factura=factura)
+    except Exception as e:
+        flash(f"❌ Error al cargar el historial: {e}", "danger")
+        return redirect(url_for("cobros"))
 
-    # Obtener datos actuales de la compra
-    compra = db.execute("""
-        SELECT mi.*, p.Nombre as proveedor_nombre
-        FROM Movimientos_Inventario mi
-        JOIN Proveedores p ON mi.ID_Proveedor = p.ID_Proveedor
-        WHERE mi.ID_Movimiento = ?
-    """, id)[0]
+# Cancelar manualmente una deuda (deja el saldo en 0)
+@app.route("/cancelar_deuda/<int:id_venta>")
+def cancelar_deuda(id_venta):
+    try:
+        db.execute("""
+            UPDATE Detalle_Cuentas_Por_Cobrar
+            SET Monto_Movimiento = 0
+            WHERE ID_Movimiento = ?
+        """, id_venta)
 
-    proveedores = db.execute("SELECT ID_Proveedor as id, Nombre FROM Proveedores")
+        flash("✅ Deuda marcada como cancelada manualmente.", "success")
+        return redirect(url_for("cobros"))
+    except Exception as e:
+        flash(f"❌ Error al cancelar la deuda: {e}", "danger")
+        return redirect(url_for("cobros"))
 
-    return render_template("editar_compra.html", compra=compra, proveedores=proveedores)
+# Registrar un nuevo abono/cobro
+@app.route("/registrar_cobro/<int:id_venta>", methods=["GET", "POST"])
+def registrar_cobro(id_venta):
+    if request.method == "POST":
+        monto = request.form["monto"]
+        metodo = request.form["metodo_pago"]
+        fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    #fin de editar compra
-    #eliminar compra
-@app.route("/compras/<int:id>/eliminar")
-def eliminar_compra(id):
-    # Primero eliminamos los detalles relacionados
-    db.execute("DELETE FROM Detalle_Movimiento_Inventario WHERE ID_Movimiento = ?", id)
-    # Luego el encabezado
-    db.execute("DELETE FROM Movimientos_Inventario WHERE ID_Movimiento = ?", id)
+        try:
+            # Insertar nuevo pago
+            db.execute("""
+                INSERT INTO Pagos_CuentasCobrar (ID_Movimiento, Fecha, Monto, ID_MetodoPago)
+                VALUES (?, ?, ?, ?)
+            """, id_venta, fecha, monto, metodo)
 
-    flash("Compra eliminada correctamente", "success")
-    return redirect(url_for("gestionar_compras"))
+            # Actualizar saldo pendiente
+            db.execute("""
+                UPDATE Detalle_Cuentas_Por_Cobrar
+                SET Monto_Movimiento = Monto_Movimiento - ?
+                WHERE ID_Movimiento = ?
+            """, monto, id_venta)
 
+            flash("✅ Cobro registrado correctamente", "success")
+            return redirect(url_for("cobros"))
+        except Exception as e:
+            flash(f"❌ Error al registrar el cobro: {e}", "danger")
+            return redirect(url_for("cobros"))
 
-#fin de gestionar compras
+    else:
+        try:
+            factura = db.execute("""
+                SELECT dcc.ID_Movimiento, dcc.Num_Documento, dcc.Monto_Movimiento,
+                       c.Nombre AS Cliente
+                FROM Detalle_Cuentas_Por_Cobrar dcc
+                JOIN Clientes c ON dcc.ID_Cliente = c.ID_Cliente
+                WHERE dcc.ID_Movimiento = ?
+            """, id_venta)[0]
+
+            metodos = db.execute("SELECT ID_MetodoPago, Nombre FROM Metodos_Pago")
+
+            return render_template("registrar_cobro.html", factura=factura, metodos=metodos)
+
+        except Exception as e:
+            flash(f"❌ Error al cargar el formulario de cobro: {e}", "danger")
+            return redirect(url_for("cobros"))
+
+#fin de rutas de cobros
 
 
 if __name__ == '__main__':
