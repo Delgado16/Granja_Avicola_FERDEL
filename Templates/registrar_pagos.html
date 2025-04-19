@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}Registrar Pago{% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <h2 class="mb-4">Registrar Pago</h2>
+
+    <p><strong>Proveedor:</strong> {{ factura.Proveedor }}</p>
+    <p><strong>Factura:</strong> {{ factura.Num_Documento }}</p>
+    <p><strong>Saldo Pendiente:</strong> ${{ "%.2f"|format(factura.Monto_Movimiento) }}</p>
+
+    <form method="POST">
+        <div class="mb-3">
+            <label for="monto" class="form-label">Monto a pagar</label>
+            <input type="number" name="monto" class="form-control" step="0.01" min="0.01"
+                   max="{{ factura.Monto_Movimiento }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="metodo_pago" class="form-label">Método de pago</label>
+            <select name="metodo_pago" class="form-select" required>
+                {% for metodo in metodos %}
+                    <option value="{{ metodo.ID_MetodoPago }}">{{ metodo.Nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-success">Registrar Pago</button>
+        <a href="{{ url_for('pagos') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

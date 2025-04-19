@@ -58,16 +58,17 @@
                     </li>
 
 
-                    <!-- Factura Dropdown -->
+                    <!-- Pagos Dropdown -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="pagosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Pagos
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="pagosDropdown">
-                            <li><a class="dropdown-item" href="#">Ver Pagos</a></li>
-                            <li><a class="dropdown-item" href="#">Registrar Pagos</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('pagos') }}">Ver Pagos</a></li>
+                            <!-- Registrar Pago se hace desde botón en tabla -->
                         </ul>
                     </li>
+
 
                     <!-- Gastos Operativos Dropdown -->
                     <li class="nav-item dropdown">

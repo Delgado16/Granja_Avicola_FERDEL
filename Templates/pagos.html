@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block title %}Cuentas por Pagar{% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Cuentas por Pagar</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Proveedor</th>
+                <th>N° Factura</th>
+                <th>Fecha de Vencimiento</th>
+                <th>Saldo Pendiente</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cuenta in cuentas %}
+            <tr>
+                <td>{{ cuenta.Proveedor }}</td>
+                <td>{{ cuenta.Factura }}</td>
+                <td>{{ cuenta.Fecha_Vencimiento }}</td>
+                <td>${{ "%.2f"|format(cuenta.Saldo) }}</td>
+                <td>
+                    {% if cuenta.Saldo > 0 %}
+                        <span class="badge bg-warning text-dark">Pendiente</span>
+                    {% else %}
+                        <span class="badge bg-success">Cancelado</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if cuenta.Saldo > 0 %}
+                        <a href="{{ url_for('registrar_pago', id_pago=cuenta.ID_Movimiento) }}" class="btn btn-success btn-sm">Registrar Pago</a>
+                    {% else %}
+                        <span class="text-muted">Pagado</span>
+                    {% endif %}
+                    <br>
+                    <a href="{{ url_for('historial_pagos_pagar', id_pago=cuenta.ID_Movimiento) }}" class="btn btn-info btn-sm mt-1">Ver Historial</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -545,6 +545,86 @@ def registrar_cobro(id_venta):
 
 #fin de rutas de cobros
 
+# ruta de pagos
+@app.route("/pagos", methods=["GET"])
+def pagos():
+    try:
+        cuentas = db.execute("""
+            SELECT cpp.ID_Movimiento, cpp.Num_Documento AS Factura,
+                   p.Nombre AS Proveedor,
+                   cpp.Monto_Movimiento AS Saldo,
+                   cpp.Fecha_Vencimiento
+            FROM Cuentas_Por_Pagar cpp
+            JOIN Proveedores p ON cpp.ID_Proveedor = p.ID_Proveedor
+        """)
+        return render_template("pagos.html", cuentas=cuentas)
+    except Exception as e:
+        flash(f"❌ Error al cargar los pagos: {e}", "danger")
+        return redirect(url_for("index"))
+
+@app.route("/registrar_pago/<int:id_pago>", methods=["GET", "POST"])
+def registrar_pago(id_pago):
+    if request.method == "POST":
+        monto = request.form["monto"]
+        metodo = request.form["metodo_pago"]
+        fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        try:
+            db.execute("""
+                INSERT INTO Pagos_CuentasPagar (ID_Movimiento, Fecha, Monto, ID_MetodoPago)
+                VALUES (?, ?, ?, ?)
+            """, id_pago, fecha, monto, metodo)
+
+            db.execute("""
+                UPDATE Cuentas_Por_Pagar
+                SET Monto_Movimiento = Monto_Movimiento - ?
+                WHERE ID_Movimiento = ?
+            """, monto, id_pago)
+
+            flash("✅ Pago registrado correctamente", "success")
+            return redirect(url_for("pagos"))
+        except Exception as e:
+            flash(f"❌ Error al registrar el pago: {e}", "danger")
+            return redirect(url_for("pagos"))
+
+    else:
+        factura = db.execute("""
+            SELECT cpp.ID_Movimiento, cpp.Num_Documento, cpp.Monto_Movimiento,
+                   p.Nombre AS Proveedor
+            FROM Cuentas_Por_Pagar cpp
+            JOIN Proveedores p ON cpp.ID_Proveedor = p.ID_Proveedor
+            WHERE cpp.ID_Movimiento = ?
+        """, id_pago)[0]
+
+        metodos = db.execute("SELECT ID_MetodoPago, Nombre FROM Metodos_Pago")
+
+        return render_template("registrar_pago.html", factura=factura, metodos=metodos)
+
+@app.route("/historial_pagos_pagar/<int:id_pago>")
+def historial_pagos_pagar(id_pago):
+    try:
+        pagos = db.execute("""
+            SELECT Fecha, Monto, mp.Nombre AS Metodo
+            FROM Pagos_CuentasPagar p
+            JOIN Metodos_Pago mp ON p.ID_MetodoPago = mp.ID_MetodoPago
+            WHERE p.ID_Movimiento = ?
+            ORDER BY Fecha DESC
+        """, id_pago)
+
+        factura = db.execute("""
+            SELECT Num_Documento, Monto_Movimiento
+            FROM Cuentas_Por_Pagar
+            WHERE ID_Movimiento = ?
+        """, id_pago)[0]
+
+        return render_template("historial_pagos_pagar.html", pagos=pagos, factura=factura)
+
+    except Exception as e:
+        flash(f"❌ Error al cargar historial de pagos: {e}", "danger")
+        return redirect(url_for("pagos"))
+
+
+#fin de ruta de pagos
 
 if __name__ == '__main__':
     app.run(debug=True)
