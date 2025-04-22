@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+
+{% block title %}Facturas Emitidas{% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Facturas Emitidas</h2>
+
+    <!-- Filtros -->
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-4">
+            <input type="text" name="cliente" class="form-control" placeholder="Buscar por cliente" value="{{ cliente }}">
+        </div>
+        <div class="col-md-3">
+            <input type="date" name="fecha" class="form-control" value="{{ fecha }}">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+        </div>
+        <div class="col-md-2">
+            <a href="{{ url_for('visualizar_facturas') }}" class="btn btn-secondary">Limpiar</a>
+        </div>
+    </form>
+
+    <!-- Tabla -->
+    <table class="table table-bordered table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>N° Factura</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Tipo de Pago</th>
+                <th>Observación</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for factura in facturas %}
+            <tr>
+                <td>{{ factura.N_Factura }}</td>
+                <td>{{ factura.Fecha }}</td>
+                <td>{{ factura.Cliente }}</td>
+                <td>{{ 'Crédito' if factura.Credito_Contado == 1 else 'Contado' }}</td>
+                <td>{{ factura.Observacion or '' }}</td>
+                <td>
+                    <a href="{{ url_for('generar_factura_pdf', venta_id=factura.ID_Movimiento) }}" class="btn btn-sm btn-secondary" target="_blank">
+                        Ver PDF
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center">No se encontraron facturas.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

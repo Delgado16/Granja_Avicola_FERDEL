@@ -3,6 +3,8 @@ from cs50 import SQL
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
+from weasyprint import HTML
+
 
 app = Flask(__name__)
 
@@ -285,93 +287,93 @@ def eliminar_compra(id):
 def ventas():
     if request.method == "POST":
         try:
-            # 🟡 1. Obtener y validar los datos principales
+            accion = request.form.get("accion", "guardar")
             fecha = request.form.get("fecha")
-            cliente_id = request.form.get("cliente")  # El cliente es obligatorio para ventas
-            n_factura = request.form.get("n_factura") or ""
+            cliente_id = request.form.get("cliente")
             tipo_pago = int(request.form.get("tipo_pago") or 0)
             observacion = request.form.get("observacion") or ""
-            id_empresa = 1  # reemplazar según el usuario logueado
-            tipo_movimiento = 2  # 2 = Venta
+            id_empresa = 1
+            tipo_movimiento = 2
 
-            if not fecha or not cliente_id:
-                flash("Fecha y cliente son obligatorios", "warning")
-                return redirect(url_for("ventas"))
-
-            # 🟡 2. Insertar movimiento (encabezado)
+            # Insertar movimiento sin número aún
             db.execute("""
                 INSERT INTO Movimientos_Inventario (
                     ID_TipoMovimiento, N_Factura, Contado_Credito, Fecha,
-                    ID_Cliente, Observacion, IVA, Retencion, ID_Empresa
-                ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)
-            """, tipo_movimiento, n_factura, tipo_pago, fecha,
-                 cliente_id, observacion, id_empresa)
+                    ID_Proveedor, Observacion, IVA, Retencion, ID_Empresa
+                ) VALUES (?, ?, ?, ?, NULL, ?, 0, 0, ?)
+            """, tipo_movimiento, "", tipo_pago, fecha, observacion, id_empresa)
 
             movimiento_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
+            n_factura = f"F-{movimiento_id:05d}"
 
-            # 🟡 3. Obtener productos del formulario
+            db.execute("UPDATE Movimientos_Inventario SET N_Factura = ? WHERE ID_Movimiento = ?", n_factura, movimiento_id)
+
+            cliente_nombre = db.execute("SELECT Nombre FROM Clientes WHERE ID_Cliente = ?", cliente_id)[0]["Nombre"]
+            db.execute("""
+                INSERT INTO Facturacion (
+                    ID_Movimiento, Fecha, IDCliente, Cliente, Credito_Contado, Observacion, ID_Empresa
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, movimiento_id, fecha, cliente_id, cliente_nombre, tipo_pago, observacion, id_empresa)
+
+            id_factura = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
+
             productos = request.form.getlist("productos[]")
             cantidades = request.form.getlist("cantidades[]")
             costos = request.form.getlist("costos[]")
             ivas = request.form.getlist("ivas[]")
             descuentos = request.form.getlist("descuentos[]")
 
-            if not productos:
-                flash("Debe ingresar al menos un producto en la venta", "warning")
-                return redirect(url_for("ventas"))
-
-            # 🟡 4. Insertar cada línea de producto
             for i in range(len(productos)):
-                try:
-                    id_producto = int(productos[i])
-                    cantidad = float(cantidades[i])
-                    costo = float(costos[i])
-                    iva = float(ivas[i])
-                    descuento = float(descuentos[i])
-                    costo_total = (cantidad * costo) - descuento + iva
+                id_producto = int(productos[i])
+                cantidad = float(cantidades[i])
+                costo = float(costos[i])
+                iva = float(ivas[i])
+                descuento = float(descuentos[i])
+                total = (cantidad * costo) - descuento + iva
 
-                    db.execute("""
-                        INSERT INTO Detalle_Movimiento_Inventario (
-                            ID_Movimiento, ID_TipoMovimiento, ID_Producto,
-                            Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, movimiento_id, tipo_movimiento, id_producto,
-                         cantidad, costo, iva, descuento, costo_total, cantidad)
+                db.execute("""
+                    INSERT INTO Detalle_Movimiento_Inventario (
+                        ID_Movimiento, ID_TipoMovimiento, ID_Producto,
+                        Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, movimiento_id, tipo_movimiento, id_producto,
+                     cantidad, costo, iva, descuento, total, cantidad)
 
-                    db.execute("""
-                        UPDATE Productos
-                        SET Existencias = Existencias - ?
-                        WHERE ID_Producto = ?
-                    """, cantidad, id_producto)
+                db.execute("""
+                    INSERT INTO Detalle_Facturacion (
+                        ID_Factura, ID_Producto, Cantidad, Costo, Descuento, IVA, Total
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, id_factura, id_producto, cantidad, costo, descuento, iva, total)
 
-                except Exception as e:
-                    flash(f"Error en producto #{i+1}: {e}", "danger")
-                    return redirect(url_for("ventas"))
+                db.execute("UPDATE Productos SET Existencias = Existencias - ? WHERE ID_Producto = ?", cantidad, id_producto)
 
-            # 🟡 5. Si es crédito, crear entrada en Cuentas_Por_Cobrar
-            if tipo_pago == 1:  # Si es crédito
+            if tipo_pago == 1:
                 total_venta = sum([(float(cantidades[i]) * float(costos[i])) - float(descuentos[i]) + float(ivas[i]) for i in range(len(productos))])
                 fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
-
-                
-                # Crear la cuenta por cobrar
                 db.execute("""
-                    INSERT INTO Cuentas_Por_Cobrar (ID_Cliente, ID_Movimiento, Monto, Fecha_Vencimiento)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO Cuentas_Por_Cobrar (
+                        ID_Cliente, ID_Movimiento, Monto, Fecha_Vencimiento
+                    ) VALUES (?, ?, ?, ?)
                 """, cliente_id, movimiento_id, total_venta, fecha_vencimiento)
 
             flash("✅ Venta registrada correctamente", "success")
+            if accion == "imprimir":
+                return redirect(url_for("generar_factura_pdf", venta_id=movimiento_id))
             return redirect(url_for("gestionar_ventas"))
 
         except Exception as e:
-            flash(f"❌ Error general al registrar la venta: {e}", "danger")
+            flash(f"❌ Error al registrar venta: {e}", "danger")
             return redirect(url_for("ventas"))
 
-    # GET: mostrar formulario
+    # GET
     clientes = db.execute("SELECT ID_Cliente AS id, Nombre FROM Clientes")
     productos = db.execute("SELECT ID_Producto AS id, Descripcion FROM Productos")
+    ultimo = db.execute("SELECT MAX(ID_Movimiento) AS max_id FROM Movimientos_Inventario")
+    siguiente_id = (ultimo[0]["max_id"] or 0) + 1
+    n_factura_sugerido = f"F-{siguiente_id:05d}"
+    return render_template("ventas.html", clientes=clientes, productos=productos, n_factura=n_factura_sugerido)
 
-    return render_template("ventas.html", clientes=clientes, productos=productos)
+
 
 
 @app.route("/gestionar_ventas", methods=["GET"])
@@ -622,9 +624,66 @@ def historial_pagos_pagar(id_pago):
     except Exception as e:
         flash(f"❌ Error al cargar historial de pagos: {e}", "danger")
         return redirect(url_for("pagos"))
-
-
 #fin de ruta de pagos
+
+# Ruta Factura impresion
+@app.route("/factura/pdf/<int:venta_id>")
+def generar_factura_pdf(venta_id):
+    # Encabezado de la factura
+    venta = db.execute("""
+        SELECT M.ID_Movimiento, M.Fecha, M.N_Factura, C.Nombre AS Cliente,
+               M.Contado_Credito, M.Observacion
+        FROM Movimientos_Inventario M
+        JOIN Clientes C ON C.ID_Cliente = M.ID_Cliente
+        WHERE M.ID_Movimiento = ?
+    """, venta_id)
+
+    if not venta:
+        flash("Factura no encontrada", "danger")
+        return redirect(url_for("gestionar_ventas"))
+
+    venta = venta[0]
+
+    # Detalles de productos vendidos
+    detalles = db.execute("""
+        SELECT P.Descripcion, D.Cantidad, D.Costo, D.IVA, D.Descuento, D.Costo_Total
+        FROM Detalle_Movimiento_Inventario D
+        JOIN Productos P ON P.ID_Producto = D.ID_Producto
+        WHERE D.ID_Movimiento = ?
+    """, venta_id)
+
+    # Renderizar y generar PDF
+    rendered = render_template("factura_pdf.html", venta=venta, detalles=detalles)
+    pdf = HTML(string=rendered).write_pdf()
+    return Response(pdf, mimetype='application/pdf')
+
+
+@app.route("/facturas", methods=["GET", "POST"])
+def visualizar_facturas():
+    cliente = request.args.get("cliente", "").strip()
+    fecha = request.args.get("fecha", "").strip()
+
+    query = """
+        SELECT F.ID_Movimiento, F.Fecha, F.Cliente, F.Credito_Contado, F.Observacion,
+               M.N_Factura
+        FROM Facturacion F
+        JOIN Movimientos_Inventario M ON M.ID_Movimiento = F.ID_Movimiento
+        WHERE 1=1
+    """
+    params = []
+
+    if cliente:
+        query += " AND F.Cliente LIKE ?"
+        params.append(f"%{cliente}%")
+    if fecha:
+        query += " AND F.Fecha = ?"
+        params.append(fecha)
+
+    query += " ORDER BY F.ID_Movimiento DESC"
+
+    facturas = db.execute(query, *params)
+    return render_template("facturas.html", facturas=facturas, cliente=cliente, fecha=fecha)
+#fin de ruta de factura
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -242,4 +242,35 @@ CREATE TABLE IF NOT EXISTS Configuracion (
 );
 
 
-lo que se lleva de tablas en la base de datos al momento, cualquier sugerencia seria bueno hpts
+--- TABLAS FALTANTES ---
+
+CREATE TABLE IF NOT EXISTS Compras (
+    ID_Compra INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Proveedor INTEGER,
+    Fecha DATE,
+    Total NUMERIC,
+    Observacion TEXT,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_Proveedor) REFERENCES Proveedores(ID_Proveedor),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+CREATE TABLE IF NOT EXISTS Detalle_Compra (
+    ID_Detalle INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Compra INTEGER,
+    ID_Producto INTEGER,
+    Cantidad NUMERIC,
+    Costo_Unitario NUMERIC,
+    Total NUMERIC,
+    FOREIGN KEY (ID_Compra) REFERENCES Compras(ID_Compra),
+    FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
+);
+
+CREATE TABLE IF NOT EXISTS Historial_Precios (
+    ID_Historial INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Producto INTEGER,
+    Precio_Anterior NUMERIC,
+    Precio_Nuevo NUMERIC,
+    Fecha DATETIME,
+    FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
+);

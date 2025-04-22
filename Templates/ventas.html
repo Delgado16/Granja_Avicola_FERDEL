@@ -8,14 +8,15 @@
 
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show"
+        role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
     {% endwith %}
 
     <!-- Formulario -->
@@ -31,15 +32,15 @@
             <label for="cliente" class="form-label">Cliente:</label>
             <select id="cliente" name="cliente" class="form-select" required>
                 {% for cliente in clientes %}
-                    <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
                 {% endfor %}
             </select>
         </div>
 
-        <!-- Número de factura -->
+        <!-- Número de factura autonumérico -->
         <div class="mb-3">
             <label for="n_factura" class="form-label">Nº de Factura:</label>
-            <input type="text" id="n_factura" name="n_factura" class="form-control">
+            <input type="text" id="n_factura" name="n_factura" class="form-control" value="{{ n_factura }}" readonly>
         </div>
 
         <!-- Tipo de pago -->
@@ -51,7 +52,7 @@
             </select>
         </div>
 
-        <!-- Fecha de vencimiento (solo si es a crédito) -->
+        <!-- Fecha de vencimiento -->
         <div id="fecha_vencimiento_div" class="mb-3" style="display: none;">
             <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento:</label>
             <input type="date" id="fecha_vencimiento" name="fecha_vencimiento" class="form-control">
@@ -71,7 +72,7 @@
                     <label class="form-label">Producto:</label>
                     <select name="productos[]" class="form-select">
                         {% for producto in productos %}
-                            <option value="{{ producto.id }}">{{ producto.descripcion }}</option>
+                        <option value="{{ producto.id }}">{{ producto.descripcion }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -94,8 +95,10 @@
             </div>
         </div>
 
+        <!-- Botones -->
         <div class="text-center">
-            <button type="submit" class="btn btn-primary">Guardar Venta</button>
+            <button type="submit" name="accion" value="guardar" class="btn btn-primary">Guardar Venta</button>
+            <button type="submit" name="accion" value="imprimir" class="btn btn-success">Imprimir Factura</button>
         </div>
     </form>
 </div>
@@ -104,12 +107,7 @@
     function toggleFechaVencimiento() {
         const tipoPago = document.getElementById('tipo_pago').value;
         const vencimientoDiv = document.getElementById('fecha_vencimiento_div');
-        if (tipoPago == "1") {
-            vencimientoDiv.style.display = "block";
-        } else {
-            vencimientoDiv.style.display = "none";
-        }
+        vencimientoDiv.style.display = tipoPago == "1" ? "block" : "none";
     }
 </script>
-
 {% endblock %}

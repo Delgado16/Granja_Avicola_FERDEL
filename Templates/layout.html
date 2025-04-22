@@ -70,13 +70,13 @@
                     </li>
 
 
-                    <!-- Gastos Operativos Dropdown -->
+                    <!-- Factura Dropdown -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="facturaDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Factura
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="facturaDropdown">
-                            <li><a class="dropdown-item" href="#">Visualizar Factura</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('visualizar_facturas') }}">Visualizar Factura</a></li>
                             <li><a class="dropdown-item" href="#">Generar nueva Factura</a></li>
                         </ul>
                     </li>
@@ -146,7 +146,7 @@
     {% endif %}
 
     <!-- Contenido principal -->
-    <main class="container py-5">
+    <main class="container" style="padding-top: 20px;">
         {% block main %}
         <!-- Aquí va el contenido de la página -->
         {% endblock %}
@@ -157,8 +157,6 @@
         <form action="https://validator.w3.org/check" enctype="multipart/form-data" method="post" target="_blank">
             <input name="doctype" type="hidden" value="HTML5">
             <input name="fragment" type="hidden">
-            <input alt="Validate" src="{{ url_for('static', filename='LogoFerdel_web.png') }}" type="image" height="50"
-                width="50" value="Validate">
         </form>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
