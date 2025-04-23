@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block title %}Inventario de Bodega{% endblock %}
+
+{% block main %}
+<div class="container mt-3">
+    <h2 class="text-center mb-4">Inventario de Bodega</h2>
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Descripción</th>
+                <th>Existencias</th>
+                <th>Unidad</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prod in productos %}
+            <tr>
+                <td>{{ prod.COD_Producto }}</td>
+                <td>{{ prod.Descripcion }}</td>
+                <td>{{ prod.Existencias }}</td>
+                <td>{{ prod.Abreviatura or '' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="text-center">No hay productos registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

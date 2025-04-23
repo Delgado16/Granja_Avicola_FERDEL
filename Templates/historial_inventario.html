@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% block title %}Historial de Movimientos de Inventario{% endblock %}
+
+{% block main %}
+<div class="container mt-3">
+    <h2 class="text-center mb-4">Historial de Movimientos de Inventario</h2>
+
+    <!-- Filtros -->
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-5">
+            <select name="producto" class="form-select">
+                <option value="">Todos los productos</option>
+                {% for p in productos %}
+                <option value="{{ p.Descripcion }}" {% if producto == p.Descripcion %}selected{% endif %}>{{ p.Descripcion }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <input type="date" name="fecha" class="form-control" value="{{ fecha }}">
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{{ url_for('historial_inventario') }}" class="btn btn-secondary">Limpiar</a>
+        </div>
+    </form>
+
+    <table class="table table-bordered table-hover table-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>Fecha</th>
+                <th>Producto</th>
+                <th>Tipo Movimiento</th>
+                <th>Cantidad</th>
+                <th>Costo</th>
+                <th>IVA</th>
+                <th>Descuento</th>
+                <th>Total</th>
+                <th>Motivo/Observación</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in movimientos %}
+            <tr>
+                <td>{{ m.Fecha }}</td>
+                <td>{{ m.Producto }}</td>
+                <td>{{ m.TipoMovimiento }}</td>
+                <td>{{ m.Cantidad }}</td>
+                <td>{{ "%.2f"|format(m.Costo) }}</td>
+                <td>{{ "%.2f"|format(m.IVA) }}</td>
+                <td>{{ "%.2f"|format(m.Descuento) }}</td>
+                <td>{{ "%.2f"|format(m.Costo_Total) }}</td>
+                <td>{{ m.Observacion or "" }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="9" class="text-center">No hay movimientos para los filtros seleccionados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

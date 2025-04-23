@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Factura {{ venta.N_Factura }}</title>
@@ -9,105 +10,118 @@
             font-size: 12px;
             margin: 40px;
         }
+
         .encabezado {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+
         .empresa {
             font-size: 16px;
             font-weight: bold;
         }
+
         .factura-numero {
             font-size: 14px;
             font-weight: bold;
             border: 1px solid #000;
             padding: 8px;
         }
+
         .datos {
             margin-top: 20px;
         }
+
         .datos p {
             margin: 2px 0;
         }
+
         table {
             width: 100%;
             margin-top: 20px;
             border-collapse: collapse;
         }
-        th, td {
+
+        th,
+        td {
             border: 1px solid #333;
             padding: 6px;
             text-align: center;
         }
+
         th {
             background-color: #f2f2f2;
         }
+
         .totales {
             margin-top: 20px;
             text-align: right;
         }
+
         .observaciones {
             margin-top: 20px;
             font-size: 11px;
         }
     </style>
 </head>
+
 <body>
 
-<div class="encabezado">
-    <div class="empresa">
-        <img src="{{ url_for('static', filename='img/logoFerdel_web.png') }}" height="80"><br>
-        AVICOLA FERDEL S.A.<br>
-        RUC 2031407850000U<br>
-        Rastro Municipal 150 mts, Norte, Diriomo<br>
-        Tel: 8100-6837
+    <div class="encabezado">
+        <div class="empresa">
+            <img src="{{ url_for('static', filename='img/logoFerdel_web.png') }}" height="80"><br>
+            AVICOLA FERDEL S.A.<br>
+            RUC 2031407850000U<br>
+            Rastro Municipal 150 mts, Norte, Diriomo<br>
+            Tel: 8100-6837
+        </div>
+        <div class="factura-numero">
+            FACTURA Nº {{ venta.N_Factura }}
+        </div>
     </div>
-    <div class="factura-numero">
-        FACTURA Nº {{ venta.N_Factura }}
+
+    <div class="datos">
+        <p><strong>Fecha:</strong> {{ venta.Fecha }}</p>
+        <p><strong>Cliente:</strong> {{ venta.Cliente }}</p>
+        <p><strong>Tipo de pago:</strong> {{ 'Crédito' if venta.Contado_Credito == 1 else 'Contado' }}</p>
     </div>
-</div>
 
-<div class="datos">
-    <p><strong>Fecha:</strong> {{ venta.Fecha }}</p>
-    <p><strong>Cliente:</strong> {{ venta.Cliente }}</p>
-    <p><strong>Tipo de pago:</strong> {{ 'Crédito' if venta.Contado_Credito == 1 else 'Contado' }}</p>
-</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Costo</th>
+                <th>IVA</th>
+                <th>Descuento</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set total_general = 0 %}
+            {% for item in detalles %}
+            {% set total_general = total_general + item.Costo_Total %}
+            <tr>
+                <td>{{ item.Descripcion }}</td>
+                <td>{{ "%.2f"|format(item.Cantidad) }}</td>
+                <td>{{ "%.2f"|format(item.Costo) }}</td>
+                <td>{{ "%.2f"|format(item.IVA) }}</td>
+                <td>{{ "%.2f"|format(item.Descuento) }}</td>
+                <td>{{ "%.2f"|format(item.Costo_Total) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
-<table>
-    <thead>
-        <tr>
-            <th>Producto</th>
-            <th>Cantidad</th>
-            <th>Costo</th>
-            <th>IVA</th>
-            <th>Descuento</th>
-            <th>Total</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% set total_general = 0 %}
-        {% for item in detalles %}
-        {% set total_general = total_general + item.Costo_Total %}
-        <tr>
-            <td>{{ item.Descripcion }}</td>
-            <td>{{ "%.2f"|format(item.Cantidad) }}</td>
-            <td>{{ "%.2f"|format(item.Costo) }}</td>
-            <td>{{ "%.2f"|format(item.IVA) }}</td>
-            <td>{{ "%.2f"|format(item.Descuento) }}</td>
-            <td>{{ "%.2f"|format(item.Costo_Total) }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <div class="totales">
+        <p><strong>Total a pagar: ${{ "%.2f"|format(total_general) }}</strong></p>
+    </div>
 
-<div class="totales">
-    <p><strong>Total a pagar: ${{ "%.2f"|format(total_general) }}</strong></p>
-</div>
-
-<div class="observaciones">
-    <p><strong>Observaciones:</strong> {{ venta.Observacion or "Ninguna." }}</p>
-</div>
+    <div class="observaciones">
+        <p><strong>Observaciones:</strong> {{ venta.Observacion or "Ninguna." }}</p>
+    </div>
 
 </body>
+
 </html>

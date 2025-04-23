@@ -97,11 +97,7 @@
     function toggleFechaVencimiento() {
         const tipoPago = document.getElementById('tipo_pago').value;
         const vencimientoDiv = document.getElementById('fecha_vencimiento_div');
-        if (tipoPago == "1") {
-            vencimientoDiv.style.display = "block";
-        } else {
-            vencimientoDiv.style.display = "none";
-        }
+        vencimientoDiv.style.display = tipoPago == "1" ? "block" : "none";
     }
 </script>
 {% endblock %}

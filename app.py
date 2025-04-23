@@ -191,19 +191,18 @@ def compras():
                     return redirect(url_for("compras"))
 
             # 🟡 4. Si es a crédito, insertar en Cuentas_Por_Pagar
-            if tipo_pago == 1:  # Si es a crédito
-                # Calculamos la fecha de vencimiento (por ejemplo, 30 días después de la fecha actual)
-                fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
+                if tipo_pago == 1:  # Si es a crédito
+                    fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
 
-                db.execute("""
-                    INSERT INTO Cuentas_Por_Pagar (
-                        Fecha, ID_Proveedor, Num_Documento,
-                        Observacion, Fecha_Vencimiento, Tipo_Movimiento,
-                        Monto_Movimiento, IVA, Retencion, ID_Empresa
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
-                """, fecha, proveedor_id, n_factura, observacion,
-                     vencimiento.strftime("%Y-%m-%d"), tipo_movimiento,
-                     total_compra, id_empresa)
+                    db.execute("""
+                        INSERT INTO Cuentas_Por_Pagar (
+                            Fecha, ID_Proveedor, Num_Documento,
+                            Observacion, Fecha_Vencimiento, Tipo_Movimiento,
+                            Monto_Movimiento, IVA, Retencion, ID_Empresa
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
+                    """, fecha, proveedor_id, n_factura, observacion,
+                        fecha_vencimiento.strftime("%Y-%m-%d"), tipo_movimiento,
+                        total_compra, id_empresa)
 
             flash("✅ Compra registrada correctamente", "success")
             return redirect(url_for("gestionar_compras"))
@@ -684,6 +683,63 @@ def visualizar_facturas():
     facturas = db.execute(query, *params)
     return render_template("facturas.html", facturas=facturas, cliente=cliente, fecha=fecha)
 #fin de ruta de factura
+
+#ruta de bodega e inventario
+@app.route("/bodega")
+def ver_bodega():
+    productos = db.execute("""
+        SELECT P.COD_Producto, P.Descripcion, P.Existencias, U.Abreviatura
+        FROM Productos P
+        LEFT JOIN Unidades_Medida U ON U.ID_Unidad = P.Unidad_Medida
+        ORDER BY P.Descripcion
+    """)
+    return render_template("bodega.html", productos=productos)
+
+@app.route("/inventario", methods=["GET", "POST"])
+def gestionar_inventario():
+    productos = db.execute("SELECT ID_Producto, Descripcion, Existencias FROM Productos ORDER BY Descripcion")
+    if request.method == "POST":
+        tipo = request.form.get("tipo")
+        id_producto = int(request.form.get("producto"))
+        cantidad = float(request.form.get("cantidad"))
+        motivo = request.form.get("motivo", "")
+        if tipo == "entrada":
+            db.execute("UPDATE Productos SET Existencias = Existencias + ? WHERE ID_Producto = ?", cantidad, id_producto)
+        else:
+            db.execute("UPDATE Productos SET Existencias = Existencias - ? WHERE ID_Producto = ?", cantidad, id_producto)
+        flash("Ajuste realizado correctamente.", "success")
+        return redirect(url_for("gestionar_inventario"))
+    return render_template("inventario.html", productos=productos)
+
+@app.route("/historial_inventario")
+def historial_inventario():
+    producto = request.args.get("producto", "").strip()
+    fecha = request.args.get("fecha", "").strip()
+    query = """
+        SELECT M.Fecha, P.Descripcion AS Producto, C.Descripcion AS TipoMovimiento,
+               D.Cantidad, M.Observacion, M.ID_Movimiento, D.Costo, D.IVA, D.Descuento, D.Costo_Total
+        FROM Detalle_Movimiento_Inventario D
+        JOIN Productos P ON P.ID_Producto = D.ID_Producto
+        JOIN Movimientos_Inventario M ON M.ID_Movimiento = D.ID_Movimiento
+        JOIN Catalogo_Movimientos C ON C.ID_TipoMovimiento = M.ID_TipoMovimiento
+        WHERE 1=1
+    """
+    params = []
+    if producto:
+        query += " AND P.Descripcion LIKE ?"
+        params.append(f"%{producto}%")
+    if fecha:
+        query += " AND M.Fecha = ?"
+        params.append(fecha)
+    query += " ORDER BY M.Fecha DESC, M.ID_Movimiento DESC"
+
+    movimientos = db.execute(query, *params) if params else db.execute(query)
+    productos = db.execute("SELECT DISTINCT Descripcion FROM Productos ORDER BY Descripcion")
+    return render_template("historial_inventario.html", movimientos=movimientos, productos=productos, producto=producto, fecha=fecha)
+
+
+
+#fin de ruta de bodega e inventario
 
 if __name__ == '__main__':
     app.run(debug=True)
