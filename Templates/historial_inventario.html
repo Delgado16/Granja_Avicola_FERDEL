@@ -1,41 +1,44 @@
 {% extends "layout.html" %}
 {% block title %}Historial de Movimientos de Inventario{% endblock %}
-
 {% block main %}
+
 <div class="container mt-3">
     <h2 class="text-center mb-4">Historial de Movimientos de Inventario</h2>
-
     <!-- Filtros -->
     <form method="get" class="row g-3 mb-4">
-        <div class="col-md-5">
+        <div class="col-md-4">
             <select name="producto" class="form-select">
                 <option value="">Todos los productos</option>
                 {% for p in productos %}
-                <option value="{{ p.Descripcion }}" {% if producto == p.Descripcion %}selected{% endif %}>{{ p.Descripcion }}</option>
+                <option value="{{ p.ID_Producto }}" {% if producto_id == p.ID_Producto|string %}selected{% endif %}>{{ p.Descripcion }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="col-md-4">
-            <input type="date" name="fecha" class="form-control" value="{{ fecha }}">
+            <select name="tipo" class="form-select">
+                <option value="">Todos los movimientos</option>
+                {% for t in tipos %}
+                <option value="{{ t.ID_TipoMovimiento }}" {% if tipo_id == t.ID_TipoMovimiento|string %}selected{% endif %}>{{ t.Descripcion }}</option>
+                {% endfor %}
+            </select>
         </div>
         <div class="col-md-3">
+            <input type="date" name="fecha" class="form-control" value="{{ fecha }}">
+        </div>
+        <div class="col-md-1">
             <button type="submit" class="btn btn-primary">Filtrar</button>
-            <a href="{{ url_for('historial_inventario') }}" class="btn btn-secondary">Limpiar</a>
         </div>
     </form>
 
     <table class="table table-bordered table-hover table-sm">
-        <thead class="table-dark">
+        <thead>
             <tr>
                 <th>Fecha</th>
                 <th>Producto</th>
-                <th>Tipo Movimiento</th>
+                <th>Tipo de Movimiento</th>
                 <th>Cantidad</th>
                 <th>Costo</th>
-                <th>IVA</th>
-                <th>Descuento</th>
-                <th>Total</th>
-                <th>Motivo/Observación</th>
+                <th>Observación</th>
             </tr>
         </thead>
         <tbody>
@@ -45,15 +48,12 @@
                 <td>{{ m.Producto }}</td>
                 <td>{{ m.TipoMovimiento }}</td>
                 <td>{{ m.Cantidad }}</td>
-                <td>{{ "%.2f"|format(m.Costo) }}</td>
-                <td>{{ "%.2f"|format(m.IVA) }}</td>
-                <td>{{ "%.2f"|format(m.Descuento) }}</td>
-                <td>{{ "%.2f"|format(m.Costo_Total) }}</td>
-                <td>{{ m.Observacion or "" }}</td>
+                <td>{{ m.Costo }}</td>
+                <td>{{ m.Observacion }}</td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="9" class="text-center">No hay movimientos para los filtros seleccionados.</td>
+                <td colspan="6" class="text-center">No se encontraron movimientos.</td>
             </tr>
             {% endfor %}
         </tbody>

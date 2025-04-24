@@ -3,104 +3,97 @@
 {% block title %}Registrar Venta{% endblock %}
 
 {% block main %}
-<div class="container mt-5" style="max-width: 800px;">
-    <h2 class="text-center mb-4">Registrar Venta</h2>
+<div class="container" style="max-width: 700px; margin-top: 18px;">
+    <div class="card shadow-sm p-3">
+        <h2 class="text-center mb-3 text-primary" style="font-weight: 700;">Registrar Venta</h2>
 
-    <!-- Flash messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for category, message in messages %}
-    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show"
-        role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-    </div>
-    {% endfor %}
-    {% endif %}
-    {% endwith %}
-
-    <!-- Formulario -->
-    <form action="{{ url_for('ventas') }}" method="POST" class="needs-validation" novalidate>
-        <!-- Fecha -->
-        <div class="mb-3">
-            <label for="fecha" class="form-label">Fecha:</label>
-            <input type="date" id="fecha" name="fecha" class="form-control" required>
-        </div>
-
-        <!-- Cliente -->
-        <div class="mb-3">
-            <label for="cliente" class="form-label">Cliente:</label>
-            <select id="cliente" name="cliente" class="form-select" required>
-                {% for cliente in clientes %}
-                <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
                 {% endfor %}
-            </select>
-        </div>
+            {% endif %}
+        {% endwith %}
 
-        <!-- Número de factura autonumérico -->
-        <div class="mb-3">
-            <label for="n_factura" class="form-label">Nº de Factura:</label>
-            <input type="text" id="n_factura" name="n_factura" class="form-control" value="{{ n_factura }}" readonly>
-        </div>
-
-        <!-- Tipo de pago -->
-        <div class="mb-3">
-            <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
-            <select id="tipo_pago" name="tipo_pago" class="form-select" onchange="toggleFechaVencimiento()">
-                <option value="0">Contado</option>
-                <option value="1">Crédito</option>
-            </select>
-        </div>
-
-        <!-- Fecha de vencimiento -->
-        <div id="fecha_vencimiento_div" class="mb-3" style="display: none;">
-            <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento:</label>
-            <input type="date" id="fecha_vencimiento" name="fecha_vencimiento" class="form-control">
-        </div>
-
-        <!-- Observación -->
-        <div class="mb-3">
-            <label for="observacion" class="form-label">Observaciones:</label>
-            <textarea id="observacion" name="observacion" class="form-control"></textarea>
-        </div>
-
-        <!-- Productos -->
-        <h4>Productos</h4>
-        <div id="productos">
-            <div class="row mb-3 producto">
-                <div class="col-md-4">
-                    <label class="form-label">Producto:</label>
-                    <select name="productos[]" class="form-select">
-                        {% for producto in productos %}
-                        <option value="{{ producto.id }}">{{ producto.descripcion }}</option>
+        <!-- Formulario -->
+        <form action="{{ url_for('ventas') }}" method="POST" class="needs-validation" novalidate>
+            <div class="row g-2">
+                <div class="col-12 col-md-6">
+                    <label for="fecha" class="form-label">Fecha:</label>
+                    <input type="date" id="fecha" name="fecha" class="form-control" required>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="cliente" class="form-label">Cliente:</label>
+                    <select id="cliente" name="cliente" class="form-select" required>
+                        {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Cantidad:</label>
-                    <input type="number" name="cantidades[]" class="form-control" step="1" min="1">
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-12 col-md-6">
+                    <label for="n_factura" class="form-label">Nº de Factura:</label>
+                    <input type="text" id="n_factura" name="n_factura" class="form-control" value="{{ n_factura }}" readonly>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Costo:</label>
-                    <input type="number" name="costos[]" class="form-control" step="0.01">
+                <div class="col-6 col-md-3">
+                    <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
+                    <select id="tipo_pago" name="tipo_pago" class="form-select" onchange="toggleFechaVencimiento()">
+                        <option value="0">Contado</option>
+                        <option value="1">Crédito</option>
+                    </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">IVA:</label>
-                    <input type="number" name="ivas[]" class="form-control" step="0.01">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Descuento:</label>
-                    <input type="number" name="descuentos[]" class="form-control" step="0.01">
+                <div class="col-6 col-md-3" id="fecha_vencimiento_div" style="display:none;">
+                    <label for="fecha_vencimiento" class="form-label">Vence:</label>
+                    <input type="date" id="fecha_vencimiento" name="fecha_vencimiento" class="form-control">
                 </div>
             </div>
-        </div>
-
-        <!-- Botones -->
-        <div class="text-center">
-            <button type="submit" name="accion" value="guardar" class="btn btn-primary">Guardar Venta</button>
-            <button type="submit" name="accion" value="imprimir" class="btn btn-success">Imprimir Factura</button>
-        </div>
-    </form>
+            <div class="row g-2 mt-1">
+                <div class="col-12">
+                    <label for="observacion" class="form-label">Observaciones:</label>
+                    <input type="text" id="observacion" name="observacion" class="form-control">
+                </div>
+            </div>
+            <hr class="my-3">
+            <h5 class="text-secondary mb-2">Productos</h5>
+            <div id="productos">
+                <div class="row g-2 align-items-end mb-2 producto">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Producto:</label>
+                        <select name="productos[]" class="form-select">
+                            {% for producto in productos %}
+                                <option value="{{ producto.id }}">{{ producto.descripcion }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <label class="form-label">Cantidad:</label>
+                        <input type="number" name="cantidades[]" class="form-control" step="1" min="1">
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <label class="form-label">Costo:</label>
+                        <input type="number" name="costos[]" class="form-control" step="0.01">
+                    </div>
+                    <div class="col-2 col-md-2">
+                        <label class="form-label">IVA:</label>
+                        <input type="number" name="ivas[]" class="form-control" step="0.01">
+                    </div>
+                    <div class="col-2 col-md-2">
+                        <label class="form-label">Desc.:</label>
+                        <input type="number" name="descuentos[]" class="form-control" step="0.01">
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <button type="submit" class="btn btn-success fw-bold px-4 py-2">Guardar Venta</button>
+                <button type="submit" class="btn btn-primary fw-bold px-4 py-2 ms-2">Imprimir Factura</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>

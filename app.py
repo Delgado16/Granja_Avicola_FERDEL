@@ -123,98 +123,63 @@ from datetime import datetime
 @app.route("/compras", methods=["GET", "POST"])
 def compras():
     if request.method == "POST":
-        try:
-            # 🟡 1. Obtener datos del formulario
-            fecha = request.form.get("fecha")
-            proveedor_id = request.form.get("proveedor")
-            n_factura = request.form.get("n_factura") or ""
-            tipo_pago = int(request.form.get("tipo_pago") or 0)
-            observacion = request.form.get("observacion") or ""
-            id_empresa = 1  # Asignar según login
-            tipo_movimiento = 1  # Compra
+        fecha = request.form.get("fecha")
+        proveedor_id = request.form.get("proveedor")
+        bodega_id = int(request.form.get("bodega"))
+        observacion = request.form.get("observacion", "")
+        id_empresa = 1  # O según usuario logueado
 
-            if not fecha or not proveedor_id:
-                flash("Fecha y proveedor son obligatorios", "warning")
-                return redirect(url_for("compras"))
+        # Insertar encabezado de movimiento de compra
+        db.execute("""
+            INSERT INTO Movimientos_Inventario (
+                ID_TipoMovimiento, N_Factura, Contado_Credito, Fecha,
+                ID_Proveedor, Observacion, IVA, Retencion, ID_Empresa, ID_Bodega
+            ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
+        """, 1, "", 0, fecha, proveedor_id, observacion, id_empresa, bodega_id)
 
-            # 🟡 2. Insertar encabezado de compra
+        movimiento_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
+
+        productos = request.form.getlist("productos[]")
+        cantidades = request.form.getlist("cantidades[]")
+        costos = request.form.getlist("costos[]")
+
+        for i in range(len(productos)):
+            id_producto = int(productos[i])
+            cantidad = float(cantidades[i])
+            costo = float(costos[i])
+
             db.execute("""
-                INSERT INTO Movimientos_Inventario (
-                    ID_TipoMovimiento, N_Factura, Contado_Credito, Fecha,
-                    ID_Proveedor, Observacion, IVA, Retencion, ID_Empresa
-                ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)
-            """, tipo_movimiento, n_factura, tipo_pago, fecha,
-                 proveedor_id, observacion, id_empresa)
+                INSERT INTO Detalle_Movimiento_Inventario (
+                    ID_Movimiento, ID_TipoMovimiento, ID_Producto,
+                    Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
+                ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?)
+            """, movimiento_id, 1, id_producto,
+                 cantidad, costo, cantidad * costo, cantidad)
 
-            movimiento_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
+            # Actualizar inventario de la bodega seleccionada
+            existe = db.execute("""
+                SELECT Existencias FROM Inventario_Bodega WHERE ID_Bodega = ? AND ID_Producto = ?
+            """, bodega_id, id_producto)
+            if existe:
+                db.execute("""
+                    UPDATE Inventario_Bodega SET Existencias = Existencias + ? 
+                    WHERE ID_Bodega = ? AND ID_Producto = ?
+                """, cantidad, bodega_id, id_producto)
+            else:
+                db.execute("""
+                    INSERT INTO Inventario_Bodega (ID_Bodega, ID_Producto, Existencias)
+                    VALUES (?, ?, ?)
+                """, bodega_id, id_producto, cantidad)
 
-            # 🟡 3. Detalle de productos
-            productos = request.form.getlist("productos[]")
-            cantidades = request.form.getlist("cantidades[]")
-            costos = request.form.getlist("costos[]")
-            ivas = request.form.getlist("ivas[]")
-            descuentos = request.form.getlist("descuentos[]")
+        flash("Compra registrada correctamente", "success")
+        return redirect(url_for("compras"))
 
-            if not productos:
-                flash("Debe ingresar al menos un producto en la compra", "warning")
-                return redirect(url_for("compras"))
-
-            total_compra = 0
-
-            for i in range(len(productos)):
-                try:
-                    id_producto = int(productos[i])
-                    cantidad = float(cantidades[i])
-                    costo = float(costos[i])
-                    iva = float(ivas[i])
-                    descuento = float(descuentos[i])
-                    costo_total = (cantidad * costo) - descuento + iva
-                    total_compra += costo_total
-
-                    db.execute("""
-                        INSERT INTO Detalle_Movimiento_Inventario (
-                            ID_Movimiento, ID_TipoMovimiento, ID_Producto,
-                            Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, movimiento_id, tipo_movimiento, id_producto,
-                         cantidad, costo, iva, descuento, costo_total, cantidad)
-
-                    # 🟢 Actualizar inventario
-                    db.execute("""
-                        UPDATE Productos
-                        SET Existencias = Existencias + ?
-                        WHERE ID_Producto = ?
-                    """, cantidad, id_producto)
-
-                except Exception as e:
-                    flash(f"Error en producto #{i+1}: {e}", "danger")
-                    return redirect(url_for("compras"))
-
-            # 🟡 4. Si es a crédito, insertar en Cuentas_Por_Pagar
-                if tipo_pago == 1:  # Si es a crédito
-                    fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
-
-                    db.execute("""
-                        INSERT INTO Cuentas_Por_Pagar (
-                            Fecha, ID_Proveedor, Num_Documento,
-                            Observacion, Fecha_Vencimiento, Tipo_Movimiento,
-                            Monto_Movimiento, IVA, Retencion, ID_Empresa
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
-                    """, fecha, proveedor_id, n_factura, observacion,
-                        fecha_vencimiento.strftime("%Y-%m-%d"), tipo_movimiento,
-                        total_compra, id_empresa)
-
-            flash("✅ Compra registrada correctamente", "success")
-            return redirect(url_for("gestionar_compras"))
-
-        except Exception as e:
-            flash(f"❌ Error al registrar la compra: {e}", "danger")
-            return redirect(url_for("compras"))
-
-    # GET: formulario
+    # GET: cargar proveedores, productos, bodegas
     proveedores = db.execute("SELECT ID_Proveedor AS id, Nombre FROM Proveedores")
     productos = db.execute("SELECT ID_Producto AS id, Descripcion FROM Productos")
-    return render_template("compras.html", proveedores=proveedores, productos=productos)
+    bodegas = db.execute("SELECT ID_Bodega AS id, Nombre FROM Bodegas")
+    return render_template("compras.html", proveedores=proveedores, productos=productos, bodegas=bodegas)
+
 
 
 # Gestionar compras
@@ -685,15 +650,40 @@ def visualizar_facturas():
 #fin de ruta de factura
 
 #ruta de bodega e inventario
-@app.route("/bodega")
+@app.route("/bodega", methods=["GET", "POST"])
 def ver_bodega():
-    productos = db.execute("""
-        SELECT P.COD_Producto, P.Descripcion, P.Existencias, U.Abreviatura
-        FROM Productos P
-        LEFT JOIN Unidades_Medida U ON U.ID_Unidad = P.Unidad_Medida
-        ORDER BY P.Descripcion
-    """)
-    return render_template("bodega.html", productos=productos)
+    # Manejar el alta de nueva bodega
+    if request.method == "POST":
+        nombre = request.form.get("nombre", "").strip()
+        ubicacion = request.form.get("ubicacion", "").strip()
+        if nombre:
+            db.execute("INSERT INTO Bodegas (Nombre, Ubicacion) VALUES (?, ?)", nombre, ubicacion)
+            flash("Bodega agregada correctamente", "success")
+            return redirect(url_for("ver_bodega"))
+        else:
+            flash("El nombre de la bodega es obligatorio.", "danger")
+
+    # Obtener bodegas para el selector
+    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
+    # Selección de bodega
+    bodega_id = request.args.get("bodega_id", type=int)
+    if not bodega_id and bodegas:
+        bodega_id = bodegas[0]["ID_Bodega"]  # Por defecto la primera
+
+    # Obtener inventario de la bodega seleccionada
+    inventario = []
+    if bodega_id:
+        inventario = db.execute("""
+            SELECT P.COD_Producto, P.Descripcion, I.Existencias, U.Abreviatura
+            FROM Inventario_Bodega I
+            JOIN Productos P ON P.ID_Producto = I.ID_Producto
+            LEFT JOIN Unidades_Medida U ON U.ID_Unidad = P.Unidad_Medida
+            WHERE I.ID_Bodega = ?
+            ORDER BY P.Descripcion
+        """, bodega_id)
+
+    return render_template("bodega.html", bodegas=bodegas, inventario=inventario, bodega_id=bodega_id)
+
 
 @app.route("/inventario", methods=["GET", "POST"])
 def gestionar_inventario():
@@ -713,30 +703,39 @@ def gestionar_inventario():
 
 @app.route("/historial_inventario")
 def historial_inventario():
-    producto = request.args.get("producto", "").strip()
-    fecha = request.args.get("fecha", "").strip()
+    productos = db.execute("SELECT ID_Producto, Descripcion FROM Productos ORDER BY Descripcion")
+    tipos = db.execute("SELECT ID_TipoMovimiento, Descripcion FROM Catalogo_Movimientos ORDER BY Descripcion")
+
+    # Filtros opcionales GET
+    producto_id = request.args.get("producto", "")
+    tipo_id = request.args.get("tipo", "")
+    fecha = request.args.get("fecha", "")
+
     query = """
-        SELECT M.Fecha, P.Descripcion AS Producto, C.Descripcion AS TipoMovimiento,
-               D.Cantidad, M.Observacion, M.ID_Movimiento, D.Costo, D.IVA, D.Descuento, D.Costo_Total
-        FROM Detalle_Movimiento_Inventario D
-        JOIN Productos P ON P.ID_Producto = D.ID_Producto
-        JOIN Movimientos_Inventario M ON M.ID_Movimiento = D.ID_Movimiento
-        JOIN Catalogo_Movimientos C ON C.ID_TipoMovimiento = M.ID_TipoMovimiento
+        SELECT MI.Fecha, P.Descripcion AS Producto, CM.Descripcion AS TipoMovimiento,
+               DMI.Cantidad, DMI.Costo, MI.Observacion, MI.ID_Movimiento, DMI.ID_Producto
+        FROM Detalle_Movimiento_Inventario DMI
+        JOIN Movimientos_Inventario MI ON MI.ID_Movimiento = DMI.ID_Movimiento
+        JOIN Productos P ON P.ID_Producto = DMI.ID_Producto
+        JOIN Catalogo_Movimientos CM ON CM.ID_TipoMovimiento = MI.ID_TipoMovimiento
         WHERE 1=1
     """
     params = []
-    if producto:
-        query += " AND P.Descripcion LIKE ?"
-        params.append(f"%{producto}%")
+
+    if producto_id:
+        query += " AND DMI.ID_Producto = ?"
+        params.append(producto_id)
+    if tipo_id:
+        query += " AND MI.ID_TipoMovimiento = ?"
+        params.append(tipo_id)
     if fecha:
-        query += " AND M.Fecha = ?"
+        query += " AND MI.Fecha = ?"
         params.append(fecha)
-    query += " ORDER BY M.Fecha DESC, M.ID_Movimiento DESC"
 
-    movimientos = db.execute(query, *params) if params else db.execute(query)
-    productos = db.execute("SELECT DISTINCT Descripcion FROM Productos ORDER BY Descripcion")
-    return render_template("historial_inventario.html", movimientos=movimientos, productos=productos, producto=producto, fecha=fecha)
+    query += " ORDER BY MI.Fecha DESC, MI.ID_Movimiento DESC"
 
+    movimientos = db.execute(query, *params)
+    return render_template("historial_inventario.html", movimientos=movimientos, productos=productos, tipos=tipos, producto_id=producto_id, tipo_id=tipo_id, fecha=fecha)
 
 
 #fin de ruta de bodega e inventario

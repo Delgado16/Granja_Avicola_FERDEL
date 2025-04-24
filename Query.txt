@@ -274,3 +274,30 @@ CREATE TABLE IF NOT EXISTS Historial_Precios (
     Fecha DATETIME,
     FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
 );
+
+-- 1. Crear la tabla de Bodegas
+CREATE TABLE IF NOT EXISTS Bodegas (
+    ID_Bodega INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT NOT NULL,
+    Ubicacion TEXT
+);
+
+-- 2. Crear la tabla de Inventario por Bodega
+CREATE TABLE IF NOT EXISTS Inventario_Bodega (
+    ID_Bodega INTEGER,
+    ID_Producto INTEGER,
+    Existencias NUMERIC DEFAULT 0,
+    PRIMARY KEY (ID_Bodega, ID_Producto),
+    FOREIGN KEY (ID_Bodega) REFERENCES Bodegas(ID_Bodega),
+    FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
+);
+
+-- TABLA KARDEX
+Fecha
+Detalle
+Entrada
+entrada_costo_unitario
+salida
+salida_costo_unitario
+Lotes
+
