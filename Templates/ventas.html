@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% extends 'layout.html' %}
 
 {% block title %}Registrar Venta{% endblock %}
 
@@ -37,7 +37,15 @@
             </div>
             <div class="row g-2 mt-1">
                 <div class="col-12 col-md-6">
-                    <label for="n_factura" class="form-label">Nº de Factura:</label>
+                    <label for="id_bodega" class="form-label">Bodega:</label>
+                    <select id="id_bodega" name="id_bodega" class="form-select" required>
+                        {% for bodega in bodegas %}
+                            <option value="{{ bodega.ID_Bodega }}">{{ bodega.Nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label for="n_factura" class="form-label">N° Factura:</label>
                     <input type="text" id="n_factura" name="n_factura" class="form-control" value="{{ n_factura }}" readonly>
                 </div>
                 <div class="col-6 col-md-3">
@@ -47,8 +55,10 @@
                         <option value="1">Crédito</option>
                     </select>
                 </div>
-                <div class="col-6 col-md-3" id="fecha_vencimiento_div" style="display:none;">
-                    <label for="fecha_vencimiento" class="form-label">Vence:</label>
+            </div>
+            <div class="row g-2 mt-1" id="fecha_vencimiento_row" style="display: none;">
+                <div class="col-12 col-md-6">
+                    <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento:</label>
                     <input type="date" id="fecha_vencimiento" name="fecha_vencimiento" class="form-control">
                 </div>
             </div>
@@ -59,10 +69,11 @@
                 </div>
             </div>
             <hr class="my-3">
+            <!-- Productos -->
             <h5 class="text-secondary mb-2">Productos</h5>
             <div id="productos">
                 <div class="row g-2 align-items-end mb-2 producto">
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-5">
                         <label class="form-label">Producto:</label>
                         <select name="productos[]" class="form-select">
                             {% for producto in productos %}
@@ -78,7 +89,7 @@
                         <label class="form-label">Costo:</label>
                         <input type="number" name="costos[]" class="form-control" step="0.01">
                     </div>
-                    <div class="col-2 col-md-2">
+                    <div class="col-2 col-md-1">
                         <label class="form-label">IVA:</label>
                         <input type="number" name="ivas[]" class="form-control" step="0.01">
                     </div>
@@ -89,8 +100,8 @@
                 </div>
             </div>
             <div class="text-center mt-3">
-                <button type="submit" class="btn btn-success fw-bold px-4 py-2">Guardar Venta</button>
-                <button type="submit" class="btn btn-primary fw-bold px-4 py-2 ms-2">Imprimir Factura</button>
+                <button type="submit" name="accion" value="guardar" class="btn btn-primary fw-bold px-4 py-2">Guardar Venta</button>
+                <button type="submit" name="accion" value="imprimir" class="btn btn-success fw-bold px-4 py-2 ms-2">Imprimir Factura</button>
             </div>
         </form>
     </div>
@@ -99,8 +110,8 @@
 <script>
     function toggleFechaVencimiento() {
         const tipoPago = document.getElementById('tipo_pago').value;
-        const vencimientoDiv = document.getElementById('fecha_vencimiento_div');
-        vencimientoDiv.style.display = tipoPago == "1" ? "block" : "none";
+        const fechaVencimientoRow = document.getElementById('fecha_vencimiento_row');
+        fechaVencimientoRow.style.display = tipoPago == "1" ? "flex" : "none";
     }
 </script>
 {% endblock %}

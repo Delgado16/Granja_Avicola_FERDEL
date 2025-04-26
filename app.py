@@ -1,9 +1,10 @@
-from flask import Flask, flash, render_template, redirect, url_for, request, session, make_response
+from flask import Flask, flash, render_template, redirect, url_for, request, session, make_response,Response
 from cs50 import SQL
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 from weasyprint import HTML
+from datetime import datetime, timedelta
 
 
 app = Flask(__name__)
@@ -31,10 +32,11 @@ class User(UserMixin):
 # Cargar usuario para mantener sesión
 @login_manager.user_loader
 def load_user(user_id):
-    user_data = db.execute("SELECT * FROM users WHERE id = ?", user_id)
+    user_data = db.execute("SELECT * FROM Usuarios WHERE ID_Usuario = ?", user_id)
     if len(user_data) == 1:
-        return User(user_data[0]["id"], user_data[0]["username"])
+        return User(user_data[0]["ID_Usuario"], user_data[0]["NombreUsuario"])
     return None
+
 
 # Prevención de caché
 @app.after_request
@@ -55,7 +57,6 @@ def home():
 def login():
     session.clear()
     if request.method == "POST":
-
         if not request.form.get("username"):
             flash("El nombre de usuario es obligatorio", "error")
             return render_template("login.html")
@@ -63,20 +64,21 @@ def login():
             flash("La contraseña es obligatoria", "error")
             return render_template("login.html")
         
-        user = db.execute("SELECT * FROM users WHERE username = ?", 
+        user = db.execute("SELECT * FROM Usuarios WHERE NombreUsuario = ?", 
                           request.form.get("username"))
         
-        if len(user) != 1 or not check_password_hash(user[0]["hash"],
+        if len(user) != 1 or not check_password_hash(user[0]["ContrasenaHash"],
                                                       request.form.get("password")):
             flash("Nombre de usuario o contraseña incorrectos", "error")
             return render_template("login.html")
         
-        user_obj = User(user[0]["id"], user[0]["username"])
+        user_obj = User(user[0]["ID_Usuario"], user[0]["NombreUsuario"])
         login_user(user_obj)
         flash("Inicio de sesión exitoso", "success")
         return redirect("/")
     else:
         return render_template("login.html")
+
 
 # Ruta logout
 @app.route("/logout")
@@ -106,7 +108,7 @@ def register():
 
         try:
             db.execute(
-                "INSERT INTO users (username, hash) VALUES (?, ?)", username, hash_password)
+                "INSERT INTO Usuarios (NombreUsuario, ContrasenaHash) VALUES (?, ?)", username, hash_password)
             flash("Registro exitoso. Ahora puede iniciar sesión", "success")
             return redirect("/login")
         except:
@@ -115,71 +117,127 @@ def register():
 
     return render_template("register.html")
 
+
 #Ruta de Compra
-from flask import request, redirect, url_for, flash, render_template
-from datetime import datetime
+
 
 # Registrar Compra
+from datetime import datetime, timedelta
+
 @app.route("/compras", methods=["GET", "POST"])
 def compras():
     if request.method == "POST":
-        fecha = request.form.get("fecha")
-        proveedor_id = request.form.get("proveedor")
-        bodega_id = int(request.form.get("bodega"))
-        observacion = request.form.get("observacion", "")
-        id_empresa = 1  # O según usuario logueado
+        try:
+            # 🟡 1. Obtener datos del formulario
+            id_bodega = int(request.form.get("id_bodega"))
+            fecha = request.form.get("fecha")
+            proveedor_id = request.form.get("proveedor")
+            n_factura = request.form.get("n_factura") or ""
+            tipo_pago = int(request.form.get("tipo_pago") or 0)
+            observacion = request.form.get("observacion") or ""
+            id_empresa = 1  # Asignar según login
+            tipo_movimiento = 1  # Compra
 
-        # Insertar encabezado de movimiento de compra
-        db.execute("""
-            INSERT INTO Movimientos_Inventario (
-                ID_TipoMovimiento, N_Factura, Contado_Credito, Fecha,
-                ID_Proveedor, Observacion, IVA, Retencion, ID_Empresa, ID_Bodega
-            ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
-        """, 1, "", 0, fecha, proveedor_id, observacion, id_empresa, bodega_id)
+            if not fecha or not proveedor_id:
+                flash("Fecha y proveedor son obligatorios", "warning")
+                return redirect(url_for("compras"))
 
-        movimiento_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
-
-        productos = request.form.getlist("productos[]")
-        cantidades = request.form.getlist("cantidades[]")
-        costos = request.form.getlist("costos[]")
-
-        for i in range(len(productos)):
-            id_producto = int(productos[i])
-            cantidad = float(cantidades[i])
-            costo = float(costos[i])
-
+            # 🟡 2. Insertar encabezado de compra
             db.execute("""
-                INSERT INTO Detalle_Movimiento_Inventario (
-                    ID_Movimiento, ID_TipoMovimiento, ID_Producto,
-                    Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
-                ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?)
-            """, movimiento_id, 1, id_producto,
-                 cantidad, costo, cantidad * costo, cantidad)
+                INSERT INTO Movimientos_Inventario (
+                    ID_TipoMovimiento, N_Factura, Contado_Credito, Fecha,
+                    ID_Proveedor, Observacion, IVA, Retencion, ID_Empresa
+                ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)
+            """, tipo_movimiento, n_factura, tipo_pago, fecha,
+                 proveedor_id, observacion, id_empresa)
 
-            # Actualizar inventario de la bodega seleccionada
-            existe = db.execute("""
-                SELECT Existencias FROM Inventario_Bodega WHERE ID_Bodega = ? AND ID_Producto = ?
-            """, bodega_id, id_producto)
-            if existe:
+            movimiento_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
+
+            # 🟡 3. Detalle de productos
+            productos = request.form.getlist("productos[]")
+            cantidades = request.form.getlist("cantidades[]")
+            costos = request.form.getlist("costos[]")
+            ivas = request.form.getlist("ivas[]")
+            descuentos = request.form.getlist("descuentos[]")
+
+            if not productos:
+                flash("Debe ingresar al menos un producto en la compra", "warning")
+                return redirect(url_for("compras"))
+
+            total_compra = 0
+
+            for i in range(len(productos)):
+                try:
+                    id_producto = int(productos[i])
+                    cantidad = float(cantidades[i])
+                    costo = float(costos[i])
+                    iva = float(ivas[i])
+                    descuento = float(descuentos[i])
+                    costo_total = (cantidad * costo) - descuento + iva
+                    total_compra += costo_total
+
+                    db.execute("""
+                        INSERT INTO Detalle_Movimiento_Inventario (
+                            ID_Movimiento, ID_TipoMovimiento, ID_Producto,
+                            Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, movimiento_id, tipo_movimiento, id_producto,
+                         cantidad, costo, iva, descuento, costo_total, cantidad)
+
+                    # 🟢 Actualizar inventario general
+                    db.execute("""
+                        UPDATE Productos
+                        SET Existencias = Existencias + ?
+                        WHERE ID_Producto = ?
+                    """, cantidad, id_producto)
+
+                    # 🟢 ACTUALIZAR INVENTARIO EN LA BODEGA SELECCIONADA
+                    existe = db.execute("""
+                        SELECT 1 FROM Inventario_Bodega WHERE ID_Bodega = ? AND ID_Producto = ?
+                    """, id_bodega, id_producto)
+
+                    if existe:
+                        db.execute("""
+                            UPDATE Inventario_Bodega
+                            SET Existencias = Existencias + ?
+                            WHERE ID_Bodega = ? AND ID_Producto = ?
+                        """, cantidad, id_bodega, id_producto)
+                    else:
+                        db.execute("""
+                            INSERT INTO Inventario_Bodega (ID_Bodega, ID_Producto, Existencias)
+                            VALUES (?, ?, ?)
+                        """, id_bodega, id_producto, cantidad)
+
+                except Exception as e:
+                    flash(f"Error en producto #{i+1}: {e}", "danger")
+                    return redirect(url_for("compras"))
+
+            # 🟡 4. Si es a crédito, insertar en Cuentas_Por_Pagar
+            if tipo_pago == 1:  # Si es a crédito
+                fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
+
                 db.execute("""
-                    UPDATE Inventario_Bodega SET Existencias = Existencias + ? 
-                    WHERE ID_Bodega = ? AND ID_Producto = ?
-                """, cantidad, bodega_id, id_producto)
-            else:
-                db.execute("""
-                    INSERT INTO Inventario_Bodega (ID_Bodega, ID_Producto, Existencias)
-                    VALUES (?, ?, ?)
-                """, bodega_id, id_producto, cantidad)
+                    INSERT INTO Cuentas_Por_Pagar (
+                        Fecha, ID_Proveedor, Num_Documento,
+                        Observacion, Fecha_Vencimiento, Tipo_Movimiento,
+                        Monto_Movimiento, IVA, Retencion, ID_Empresa
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
+                """, fecha, proveedor_id, n_factura, observacion,
+                    fecha_vencimiento.strftime("%Y-%m-%d"), tipo_movimiento,
+                    total_compra, id_empresa)
 
-        flash("Compra registrada correctamente", "success")
-        return redirect(url_for("compras"))
+            flash("✅ Compra registrada correctamente", "success")
+            return redirect(url_for("gestionar_compras"))
 
-    # GET: cargar proveedores, productos, bodegas
+        except Exception as e:
+            flash(f"❌ Error al registrar la compra: {e}", "danger")
+            return redirect(url_for("compras"))
+
+    # GET: formulario
     proveedores = db.execute("SELECT ID_Proveedor AS id, Nombre FROM Proveedores")
     productos = db.execute("SELECT ID_Producto AS id, Descripcion FROM Productos")
-    bodegas = db.execute("SELECT ID_Bodega AS id, Nombre FROM Bodegas")
+    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")  # <--- ¡Lista de bodegas!
     return render_template("compras.html", proveedores=proveedores, productos=productos, bodegas=bodegas)
-
 
 
 # Gestionar compras
@@ -237,9 +295,12 @@ def editar_compra(id):
 # Eliminar compra
 @app.route("/compras/<int:id>/eliminar")
 def eliminar_compra(id):
+    # 1. Borrar cuenta por pagar
+    db.execute("DELETE FROM Cuentas_Por_Pagar WHERE ID_Movimiento = ?", id)
+    # 2. Borrar detalle del movimiento
     db.execute("DELETE FROM Detalle_Movimiento_Inventario WHERE ID_Movimiento = ?", id)
+    # 3. Borrar encabezado del movimiento
     db.execute("DELETE FROM Movimientos_Inventario WHERE ID_Movimiento = ?", id)
-    db.execute("DELETE FROM Cuentas_Por_Pagar WHERE Num_Documento IN ( SELECT N_Factura FROM Movimientos_Inventario WHERE ID_Movimiento = ?)", id)
 
     flash("Compra eliminada correctamente", "success")
     return redirect(url_for("gestionar_compras"))
@@ -259,6 +320,8 @@ def ventas():
             id_empresa = 1
             tipo_movimiento = 2
 
+            id_bodega = int(request.form.get("id_bodega"))  # <-- ¡NUEVO!
+            
             # Insertar movimiento sin número aún
             db.execute("""
                 INSERT INTO Movimientos_Inventario (
@@ -287,6 +350,21 @@ def ventas():
             ivas = request.form.getlist("ivas[]")
             descuentos = request.form.getlist("descuentos[]")
 
+            # ---- Validar stock por bodega antes de procesar la venta ----
+            for i in range(len(productos)):
+                id_producto = int(productos[i])
+                cantidad = float(cantidades[i])
+
+                stock_bodega = db.execute("""
+                    SELECT Existencias FROM Inventario_Bodega
+                    WHERE ID_Bodega = ? AND ID_Producto = ?
+                """, id_bodega, id_producto)
+
+                if not stock_bodega or stock_bodega[0]['Existencias'] < cantidad:
+                    flash(f"No hay suficiente stock del producto ID {id_producto} en la bodega seleccionada.", "danger")
+                    return redirect(url_for("ventas"))
+
+            # ---- Procesar la venta ----
             for i in range(len(productos)):
                 id_producto = int(productos[i])
                 cantidad = float(cantidades[i])
@@ -309,16 +387,27 @@ def ventas():
                     ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, id_factura, id_producto, cantidad, costo, descuento, iva, total)
 
+                # Restar existencias generales
                 db.execute("UPDATE Productos SET Existencias = Existencias - ? WHERE ID_Producto = ?", cantidad, id_producto)
 
+                # ---- Restar existencias en la bodega seleccionada ----
+                db.execute("""
+                    UPDATE Inventario_Bodega
+                    SET Existencias = Existencias - ?
+                    WHERE ID_Bodega = ? AND ID_Producto = ?
+                """, cantidad, id_bodega, id_producto)
+
+            # Registro de cuenta por cobrar si es a crédito
             if tipo_pago == 1:
                 total_venta = sum([(float(cantidades[i]) * float(costos[i])) - float(descuentos[i]) + float(ivas[i]) for i in range(len(productos))])
                 fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
                 db.execute("""
-                    INSERT INTO Cuentas_Por_Cobrar (
-                        ID_Cliente, ID_Movimiento, Monto, Fecha_Vencimiento
-                    ) VALUES (?, ?, ?, ?)
-                """, cliente_id, movimiento_id, total_venta, fecha_vencimiento)
+                    INSERT INTO Detalle_Cuentas_Por_Cobrar (
+                        Fecha, ID_Cliente, Num_Documento, Observacion, Fecha_Vencimiento, 
+                        Tipo_Movimiento, Monto_Movimiento, IVA, Retencion, ID_Empresa
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
+                """, fecha, cliente_id, n_factura, observacion,
+                    fecha_vencimiento.strftime("%Y-%m-%d"), tipo_movimiento, total_venta, id_empresa)
 
             flash("✅ Venta registrada correctamente", "success")
             if accion == "imprimir":
@@ -332,10 +421,11 @@ def ventas():
     # GET
     clientes = db.execute("SELECT ID_Cliente AS id, Nombre FROM Clientes")
     productos = db.execute("SELECT ID_Producto AS id, Descripcion FROM Productos")
+    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")  # <--- ¡Lista de bodegas!
     ultimo = db.execute("SELECT MAX(ID_Movimiento) AS max_id FROM Movimientos_Inventario")
     siguiente_id = (ultimo[0]["max_id"] or 0) + 1
     n_factura_sugerido = f"F-{siguiente_id:05d}"
-    return render_template("ventas.html", clientes=clientes, productos=productos, n_factura=n_factura_sugerido)
+    return render_template("ventas.html", clientes=clientes, productos=productos, bodegas=bodegas, n_factura=n_factura_sugerido)
 
 
 
@@ -593,13 +683,11 @@ def historial_pagos_pagar(id_pago):
 # Ruta Factura impresion
 @app.route("/factura/pdf/<int:venta_id>")
 def generar_factura_pdf(venta_id):
-    # Encabezado de la factura
     venta = db.execute("""
-        SELECT M.ID_Movimiento, M.Fecha, M.N_Factura, C.Nombre AS Cliente,
-               M.Contado_Credito, M.Observacion
-        FROM Movimientos_Inventario M
-        JOIN Clientes C ON C.ID_Cliente = M.ID_Cliente
-        WHERE M.ID_Movimiento = ?
+        SELECT F.ID_Movimiento, F.Fecha, F.Cliente, F.Credito_Contado, F.Observacion, M.N_Factura
+        FROM Facturacion F
+        JOIN Movimientos_Inventario M ON M.ID_Movimiento = F.ID_Movimiento
+        WHERE F.ID_Movimiento = ?
     """, venta_id)
 
     if not venta:
@@ -608,7 +696,6 @@ def generar_factura_pdf(venta_id):
 
     venta = venta[0]
 
-    # Detalles de productos vendidos
     detalles = db.execute("""
         SELECT P.Descripcion, D.Cantidad, D.Costo, D.IVA, D.Descuento, D.Costo_Total
         FROM Detalle_Movimiento_Inventario D
@@ -616,7 +703,6 @@ def generar_factura_pdf(venta_id):
         WHERE D.ID_Movimiento = ?
     """, venta_id)
 
-    # Renderizar y generar PDF
     rendered = render_template("factura_pdf.html", venta=venta, detalles=detalles)
     pdf = HTML(string=rendered).write_pdf()
     return Response(pdf, mimetype='application/pdf')
@@ -652,7 +738,7 @@ def visualizar_facturas():
 #ruta de bodega e inventario
 @app.route("/bodega", methods=["GET", "POST"])
 def ver_bodega():
-    # Manejar el alta de nueva bodega
+    # Alta de nueva bodega
     if request.method == "POST":
         nombre = request.form.get("nombre", "").strip()
         ubicacion = request.form.get("ubicacion", "").strip()
@@ -663,9 +749,10 @@ def ver_bodega():
         else:
             flash("El nombre de la bodega es obligatorio.", "danger")
 
-    # Obtener bodegas para el selector
+    # Obtener todas las bodegas
     bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
-    # Selección de bodega
+
+    # Selección de bodega (por GET: ?bodega_id=)
     bodega_id = request.args.get("bodega_id", type=int)
     if not bodega_id and bodegas:
         bodega_id = bodegas[0]["ID_Bodega"]  # Por defecto la primera
@@ -739,6 +826,116 @@ def historial_inventario():
 
 
 #fin de ruta de bodega e inventario
+
+#ruta de vehiculos
+@app.route("/vehiculos", methods=["GET", "POST"])
+def vehiculos():
+    # Agregar nuevo vehículo
+    if request.method == "POST":
+        placa = request.form.get("placa", "").strip()
+        marca = request.form.get("marca", "").strip()
+        modelo = request.form.get("modelo", "").strip()
+        año = request.form.get("año", "").strip()
+        color = request.form.get("color", "").strip()
+        chasis = request.form.get("chasis", "").strip()
+        motor = request.form.get("motor", "").strip()
+        estado = int(request.form.get("estado", 1))
+
+        # Validación básica
+        if not placa:
+            flash("La placa es obligatoria.", "danger")
+            return redirect(url_for("vehiculos"))
+
+        db.execute("""
+            INSERT INTO Vehiculos 
+            (Placa, Marca, Modelo, Año, Color, NumeroChasis, NumeroMotor, Estado)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, placa, marca, modelo, año, color, chasis, motor, estado)
+        flash("Vehículo agregado correctamente.", "success")
+        return redirect(url_for("vehiculos"))
+
+    # Mostrar lista de vehículos
+    vehiculos = db.execute("""
+        SELECT 
+            ID_Vehiculo, Placa, Marca, Modelo, Año, Color, 
+            NumeroChasis, NumeroMotor, Estado
+        FROM Vehiculos
+        ORDER BY Placa ASC
+    """)
+    return render_template("vehiculos.html", vehiculos=vehiculos)
+
+
+
+@app.route("/vehiculos/<int:id>/editar", methods=["GET", "POST"])
+def editar_vehiculo(id):
+    vehiculo = db.execute("SELECT * FROM Vehiculos WHERE ID_Vehiculo = ?", id)
+    if not vehiculo:
+        flash("Vehículo no encontrado.", "danger")
+        return redirect(url_for("vehiculos"))
+    vehiculo = vehiculo[0]
+
+    if request.method == "POST":
+        placa = request.form.get("placa", "").strip()
+        marca = request.form.get("marca", "").strip()
+        modelo = request.form.get("modelo", "").strip()
+        año = request.form.get("año", "").strip()
+        color = request.form.get("color", "").strip()
+        chasis = request.form.get("chasis", "").strip()
+        motor = request.form.get("motor", "").strip()
+        estado = int(request.form.get("estado", 1))
+
+        db.execute("""
+            UPDATE Vehiculos
+            SET Placa = ?, Marca = ?, Modelo = ?, Año = ?, Color = ?, 
+                NumeroChasis = ?, NumeroMotor = ?, Estado = ?
+            WHERE ID_Vehiculo = ?
+        """, placa, marca, modelo, año, color, chasis, motor, estado, id)
+        flash("Vehículo actualizado correctamente.", "success")
+        return redirect(url_for("vehiculos"))
+
+    return render_template("editar_vehiculo.html", vehiculo=vehiculo)
+
+@app.route("/vehiculos/<int:id>/eliminar")
+def eliminar_vehiculo(id):
+    vehiculo = db.execute("SELECT * FROM Vehiculos WHERE ID_Vehiculo = ?", id)
+    if not vehiculo:
+        flash("Vehículo no encontrado.", "danger")
+    else:
+        db.execute("DELETE FROM Vehiculos WHERE ID_Vehiculo = ?", id)
+        flash("Vehículo eliminado correctamente.", "success")
+    return redirect(url_for("vehiculos"))
+
+@app.route("/combustible", methods=["GET", "POST"])
+def gasto_combustible():
+    if request.method == "POST":
+        fecha = request.form.get("fecha")
+        id_vehiculo = request.form.get("vehiculo")
+        monto = request.form.get("monto")
+        litros = request.form.get("litros") or None
+        kilometraje = request.form.get("kilometraje") or None
+        observacion = request.form.get("observacion") or ""
+        id_bodega = request.form.get("bodega") or None
+        id_empresa = 1  # O según tu lógica de empresa
+
+        if not fecha or not id_vehiculo or not monto:
+            flash("Fecha, vehículo y monto son obligatorios.", "danger")
+            return redirect(url_for("gasto_combustible"))
+
+        db.execute("""
+            INSERT INTO Gastos_Combustible 
+            (Fecha, ID_Vehiculo, Monto, Litros, Kilometraje, Observacion, ID_Bodega, ID_Empresa)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, fecha, id_vehiculo, monto, litros, kilometraje, observacion, id_bodega, id_empresa)
+
+        flash("Gasto de combustible registrado correctamente.", "success")
+        return redirect(url_for("gasto_combustible"))
+
+    # GET: mostrar formulario
+    vehiculos = db.execute("SELECT ID_Vehiculo, Placa, Marca, Modelo FROM Vehiculos WHERE Estado=1")
+    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
+    return render_template("combustible.html", vehiculos=vehiculos, bodegas=bodegas)
+
+#fin de ruta de vehiculos
 
 if __name__ == '__main__':
     app.run(debug=True)

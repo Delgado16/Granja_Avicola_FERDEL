@@ -2,63 +2,83 @@
 {% block title %}Cuentas por Cobrar{% endblock %}
 
 {% block main %}
-<div class="container mt-5">
-    <h2 class="text-center mb-4">Cuentas por Cobrar</h2>
+<div class="container" style="max-width: 980px; margin-top: 32px;">
+    <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-body p-4">
+            <h2 class="text-center mb-4 text-primary" style="font-weight: 700; letter-spacing: 1px;">
+                <i class="bi bi-cash-stack"></i> Cuentas por Cobrar
+            </h2>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
 
-    <table class="table table-striped table-bordered">
-        <thead>
-            <tr>
-                <th>Cliente</th>
-                <th>N° Factura</th>
-                <th>Fecha de Vencimiento</th>
-                <th>Saldo Pendiente</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for cuenta in cuentas %}
-            <tr>
-                <td>{{ cuenta.Cliente }}</td>
-                <td>{{ cuenta.Factura }}</td>
-                <td>{{ cuenta.Fecha_Vencimiento }}</td>
-                <td>${{ "%.2f"|format(cuenta.Saldo) }}</td>
-                <td>
-                    {% if cuenta.Saldo > 0 %}
-                        <span class="badge bg-warning text-dark">Pendiente</span>
-                    {% else %}
-                        <span class="badge bg-success">Cancelado</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if cuenta.Saldo > 0 %}
-                        <a href="{{ url_for('registrar_cobro', id_venta=cuenta.ID_Movimiento) }}" class="btn btn-success btn-sm">Registrar Cobro</a>
-                        <a href="{{ url_for('cancelar_deuda', id_venta=cuenta.ID_Movimiento) }}" class="btn btn-danger btn-sm"
-                           onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');">
-                            Cancelar Manual
-                        </a>
-                    {% else %}
-                        <span class="text-muted">Pago completo</span>
-                    {% endif %}
-                    <br>
-                    <a href="{{ url_for('historial_pagos', id_venta=cuenta.ID_Movimiento) }}" class="btn btn-info btn-sm mt-1">
-                        Ver Historial
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            <div class="table-responsive rounded-4">
+                <table class="table table-hover table-bordered align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="text-center">Cliente</th>
+                            <th class="text-center">N° Factura</th>
+                            <th class="text-center">Vencimiento</th>
+                            <th class="text-center">Saldo Pendiente</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cuenta in cuentas %}
+                        <tr>
+                            <td class="text-center">{{ cuenta.Cliente }}</td>
+                            <td class="text-center">{{ cuenta.Factura }}</td>
+                            <td class="text-center">{{ cuenta.Fecha_Vencimiento }}</td>
+                            <td class="text-center">
+                                <span class="{% if cuenta.Saldo > 0 %}text-danger fw-bold{% else %}text-success fw-bold{% endif %}">
+                                    ${{ "%.2f"|format(cuenta.Saldo) }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                {% if cuenta.Saldo > 0 %}
+                                    <span class="badge bg-warning text-dark py-2 px-3 fs-6">Pendiente</span>
+                                {% else %}
+                                    <span class="badge bg-success py-2 px-3 fs-6">Cancelado</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex flex-column flex-md-row gap-1 justify-content-center align-items-center">
+                                    {% if cuenta.Saldo > 0 %}
+                                        <a href="{{ url_for('registrar_cobro', id_venta=cuenta.ID_Movimiento) }}" class="btn btn-success btn-sm mb-1">
+                                            <i class="bi bi-cash-coin"></i> Cobrar
+                                        </a>
+                                        <a href="{{ url_for('cancelar_deuda', id_venta=cuenta.ID_Movimiento) }}" class="btn btn-danger btn-sm mb-1"
+                                           onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');">
+                                            <i class="bi bi-x-octagon"></i>
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted small">Pago completo</span>
+                                    {% endif %}
+                                    <a href="{{ url_for('historial_pagos', id_venta=cuenta.ID_Movimiento) }}" class="btn btn-info btn-sm mt-1">
+                                        <i class="bi bi-clock-history"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">No hay cuentas por cobrar registradas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

@@ -3,59 +3,50 @@
 {% block title %}Gestionar Compras{% endblock %}
 
 {% block main %}
-<div class="container" style="max-width: 98vw; margin-top: 18px;">
-    <div class="card shadow-sm p-3">
-        <h2 class="text-center mb-3 text-primary" style="font-weight: 700;">Historial de Compras</h2>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped align-middle">
-                <thead class="table-dark">
-                    <tr>
-                        <th>ID</th>
-                        <th>Fecha</th>
-                        <th>Proveedor</th>
-                        <th>Factura</th>
-                        <th>Tipo de Pago</th>
-                        <th>Observaciones</th>
-                        <th>Total</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for compra in compras %}
-                    <tr>
-                        <td>{{ compra.id }}</td>
-                        <td>{{ compra.fecha }}</td>
-                        <td>{{ compra.proveedor }}</td>
-                        <td>{{ compra.factura }}</td>
-                        <td>
-                            <span class="badge bg-{{ 'success' if compra.tipo_pago == 0 else 'primary' }}">
-                                {{ 'Contado' if compra.tipo_pago == 0 else 'Crédito' }}
-                            </span>
-                        </td>
-                        <td>{{ compra.observacion }}</td>
-                        <td>{{ 'C$ ' ~ (compra.total | round(2)) }}</td>
-                        <td>
-                            <div class="btn-group" role="group">
-                                <a href="/compras/{{ compra.id }}" class="btn btn-sm btn-info" title="Ver">
-                                    <i class="bi bi-eye"></i> <span class="d-none d-md-inline">Ver</span>
-                                </a>
-                                <a href="/compras/{{ compra.id }}/editar" class="btn btn-sm btn-warning" title="Editar">
-                                    <i class="bi bi-pencil-square"></i> <span class="d-none d-md-inline">Editar</span>
-                                </a>
-                                <a href="/compras/{{ compra.id }}/eliminar" class="btn btn-sm btn-danger"
-                                   onclick="return confirm('¿Seguro que deseas eliminar esta compra?');" title="Eliminar">
-                                    <i class="bi bi-trash"></i> <span class="d-none d-md-inline">Eliminar</span>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="8" class="text-center">No hay compras registradas.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="container" style="max-width: 900px; margin-top: 24px;">
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body">
+            <h2 class="text-center mb-4 text-primary" style="font-weight: 700;">Historial de Compras</h2>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Proveedor</th>
+                            <th>Factura</th>
+                            <th>Tipo de Pago</th>
+                            <th>Observaciones</th>
+                            <th>Total</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for compra in compras %}
+                        <tr>
+                            <td>{{ compra.id }}</td>
+                            <td>{{ compra.fecha }}</td>
+                            <td>{{ compra.proveedor }}</td>
+                            <td>{{ compra.factura }}</td>
+                            <td>{{ 'Contado' if compra.tipo_pago == 0 else 'Crédito' }}</td>
+                            <td>{{ compra.observacion }}</td>
+                            <td>{{ 'C$ ' ~ (compra.total | round(2)) }}</td>
+                            <td>
+                                <a href="/compras/{{ compra.id }}" class="btn btn-sm btn-info mb-1">Ver</a>
+                                <a href="/compras/{{ compra.id }}/editar" class="btn btn-sm btn-warning mb-1">Editar</a>
+                                <a href="/compras/{{ compra.id }}/eliminar" class="btn btn-sm btn-danger mb-1"
+                                    onclick="return confirm('¿Seguro que deseas eliminar esta compra?');">Eliminar</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center">No hay compras registradas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

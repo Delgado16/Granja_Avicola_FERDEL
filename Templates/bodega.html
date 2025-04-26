@@ -1,7 +1,20 @@
 {% extends "layout.html" %}
 {% block title %}Inventario de Bodega{% endblock %}
+
 {% block main %}
 <div class="container" style="max-width: 900px; margin-top: 20px;">
+    <!-- Mensajes flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
     <div class="card shadow-sm mb-4">
         <div class="card-body bg-light">
             <h2 class="card-title text-center mb-4 text-primary" style="font-weight: 700;">Inventario de Bodega</h2>
@@ -26,9 +39,9 @@
                     <label for="bodega_id" class="form-label mb-1"><strong>Selecciona una bodega para ver su inventario:</strong></label>
                     <select name="bodega_id" id="bodega_id" class="form-select d-inline-block w-auto ms-2">
                         {% for b in bodegas %}
-                        <option value="{{ b.ID_Bodega }}" {% if bodega_id == b.ID_Bodega %}selected{% endif %}>
-                            {{ b.Nombre }}
-                        </option>
+                            <option value="{{ b.ID_Bodega }}" {% if b.ID_Bodega == bodega_id %}selected{% endif %}>
+                                {{ b.Nombre }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -42,9 +55,15 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <h5 class="mb-3 text-secondary">
-                Inventario actual de: 
+                Inventario actual de:
                 <span class="fw-bold text-dark">
-                    {{ bodegas|selectattr('ID_Bodega', 'equalto', bodega_id)|map(attribute='Nombre')|first or '---' }}
+                    {{
+                        (bodegas | selectattr('ID_Bodega', 'equalto', bodega_id)
+                                 | map(attribute='Nombre')
+                                 | list
+                                 | first)
+                        or '---'
+                    }}
                 </span>
             </h5>
             <div class="table-responsive">
