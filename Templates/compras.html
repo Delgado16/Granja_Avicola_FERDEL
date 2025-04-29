@@ -37,10 +37,11 @@
             </div>
             <div class="row g-2 mt-1">
                 <div class="col-12 col-md-6">
-                    <label for="bodega" class="form-label">Bodega de ingreso:</label>
-                    <select id="bodega" name="bodega" class="form-select" required>
+                    <label for="id_bodega" class="form-label">Bodega de ingreso:</label>
+                    <select id="id_bodega" name="id_bodega" class="form-select" required>
+                        <option value="">-- Seleccione una bodega --</option>
                         {% for bodega in bodegas %}
-                            <option value="{{ bodega.id }}">{{ bodega.Nombre or bodega.nombre }}</option>
+                            <option value="{{ bodega.ID_Bodega }}">{{ bodega.Nombre or bodega.nombre }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -63,6 +64,7 @@
                 </div>
             </div>
             <hr class="my-3">
+
             <!-- Productos -->
             <h5 class="text-secondary mb-2">Productos</h5>
             <div id="productos">
@@ -77,11 +79,11 @@
                     </div>
                     <div class="col-4 col-md-2">
                         <label class="form-label">Cantidad:</label>
-                        <input type="number" name="cantidades[]" class="form-control" step="0.01" min="0.01">
+                        <input type="number" name="cantidades[]" class="form-control" step="0.01" min="0.01" required>
                     </div>
                     <div class="col-4 col-md-2">
                         <label class="form-label">Costo:</label>
-                        <input type="number" name="costos[]" class="form-control" step="0.01">
+                        <input type="number" name="costos[]" class="form-control" step="0.01" required>
                     </div>
                     <div class="col-2 col-md-1">
                         <label class="form-label">IVA:</label>
@@ -93,6 +95,7 @@
                     </div>
                 </div>
             </div>
+
             <div class="text-center mt-3">
                 <button type="submit" class="btn btn-success fw-bold px-4 py-2">Guardar Compra</button>
             </div>

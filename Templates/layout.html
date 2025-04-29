@@ -11,13 +11,24 @@
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <title>AVICOLA FERDERL: {% block title %}{% endblock %}</title>
+    <style>
+        main {
+          padding-top: 80px;
+        }
+        @media (max-width: 576px) {
+          main {
+            padding-top: 100px;
+          }
+        }
+      </style>
+      
 </head>
 <body>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-md navbar-dark bg-dark border-bottom">
         <div class="container-fluid">
             <img src="{{ url_for('static', filename='logoFerdel_web.png') }}" alt="Logo de Ferdel" width="50" height="50">
-            <a class="navbar-brand ms-2" href="/">AVICOLA FERDERL</a>
+            <a class="navbar-brand ms-2" href="/">AVICOLA FERDEL</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -103,7 +114,7 @@
                         <ul class="dropdown-menu" aria-labelledby="vehiculosDropdown">
                             <li><a class="dropdown-item" href="{{ url_for('vehiculos') }}">Ver Vehículos</a></li>
 
-                            <a class="dropdown-item" href="{{ url_for('reporte_combustible') }}">
+                            <a class="dropdown-item" href="{{ url_for('combustible') }}">
                                 Gasto de Combustibles
                               </a>
                             <li><a class="dropdown-item" href="#">Gestionar Mantenimiento</a></li>
@@ -116,14 +127,12 @@
                             Catalogos
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="CatalogosDropdown">
-                            <li><a class="dropdown-item" href="#">Ver Catalogos Clientes</a></li>
-                            <li><a class="dropdown-item" href="#">Ver Catalogos Proveedores</a></li>
-                            <li><a class="dropdown-item" href="#">Ver Catalogos Productos</a></li>
-                            <li><a class="dropdown-item" href="#">Ver Catalogos vehiculos</a></li>
-                            <li><a class="dropdown-item" href="#">Gestionar Catalogos Clientes</a></li>
-                            <li><a class="dropdown-item" href="#">Gestionar Catalogos Proveedores</a></li>
-                            <li><a class="dropdown-item" href="#">Gestionar Catalogos Productos</a></li>
-                            <li><a class="dropdown-item" href="#">Gestionar Catalogos Vehiculos</a></li>
+                            <li><a class="dropdown-item" href="/clientes">Gestionar Catalogos Clientes</a></li>
+                            <li><a class="dropdown-item" href="/proveedores">Gestionar Catalogos Proveedores</a></li>
+                            <li><a class="dropdown-item" href="/productos">Gestionar Catalogos Productos</a></li>
+                            <li><a class="dropdown-item" href="/empresa">Gestionar Catalogos Empresa</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('familia') }}">Gestionar Catalogos Familias</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('tipo_producto') }}">Gestionar Catalogos Tipos Producto</a></li>
                         </ul>
                       </liv>
                 </ul>
@@ -158,23 +167,6 @@
         {% endblock %}
     </main>
 
-    <!-- Footer con validador -->
-    <footer class="text-center py-3">
-        <form action="https://validator.w3.org/check" enctype="multipart/form-data" method="post" target="_blank">
-            <input name="doctype" type="hidden" value="HTML5">
-            <input name="fragment" type="hidden">
-        </form>
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const html = '<!DOCTYPE ' +
-                    document.doctype.name +
-                    (document.doctype.publicId ? ' PUBLIC "' + document.doctype.publicId + '"' : '') +
-                    (!document.doctype.publicId && document.doctype.systemId ? ' SYSTEM' : '') +
-                    (document.doctype.systemId ? ' "' + document.doctype.systemId + '"' : '') +
-                    '>\n' + document.documentElement.outerHTML;
-                document.querySelector('input[name="fragment"]').value = html;
-            });
-        </script>
-    </footer>
+
 </body>
 </html>

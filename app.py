@@ -122,24 +122,34 @@ def register():
 
 
 # Registrar Compra
-from datetime import datetime, timedelta
-
 @app.route("/compras", methods=["GET", "POST"])
 def compras():
     if request.method == "POST":
         try:
             # 🟡 1. Obtener datos del formulario
-            id_bodega = int(request.form.get("id_bodega"))
+            id_bodega = request.form.get("id_bodega")
             fecha = request.form.get("fecha")
             proveedor_id = request.form.get("proveedor")
             n_factura = request.form.get("n_factura") or ""
             tipo_pago = int(request.form.get("tipo_pago") or 0)
             observacion = request.form.get("observacion") or ""
-            id_empresa = 1  # Asignar según login
+            id_empresa = 1  # Por defecto
             tipo_movimiento = 1  # Compra
 
-            if not fecha or not proveedor_id:
-                flash("Fecha y proveedor son obligatorios", "warning")
+            # Validaciones básicas
+            if not fecha or not proveedor_id or not id_bodega:
+                flash("Fecha, proveedor y bodega son obligatorios.", "danger")
+                return redirect(url_for("compras"))
+
+            # Verificar existencia real en la base de datos
+            proveedor_existente = db.execute("SELECT 1 FROM Proveedores WHERE ID_Proveedor = ?", proveedor_id)
+            if not proveedor_existente:
+                flash("El proveedor seleccionado no existe.", "danger")
+                return redirect(url_for("compras"))
+
+            bodega_existente = db.execute("SELECT 1 FROM Bodegas WHERE ID_Bodega = ?", id_bodega)
+            if not bodega_existente:
+                flash("La bodega seleccionada no existe.", "danger")
                 return redirect(url_for("compras"))
 
             # 🟡 2. Insertar encabezado de compra
@@ -153,7 +163,7 @@ def compras():
 
             movimiento_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
 
-            # 🟡 3. Detalle de productos
+            # 🟡 3. Procesar productos
             productos = request.form.getlist("productos[]")
             cantidades = request.form.getlist("cantidades[]")
             costos = request.form.getlist("costos[]")
@@ -161,59 +171,62 @@ def compras():
             descuentos = request.form.getlist("descuentos[]")
 
             if not productos:
-                flash("Debe ingresar al menos un producto en la compra", "warning")
+                flash("Debe agregar al menos un producto a la compra.", "danger")
                 return redirect(url_for("compras"))
 
             total_compra = 0
 
             for i in range(len(productos)):
-                try:
-                    id_producto = int(productos[i])
-                    cantidad = float(cantidades[i])
-                    costo = float(costos[i])
-                    iva = float(ivas[i])
-                    descuento = float(descuentos[i])
-                    costo_total = (cantidad * costo) - descuento + iva
-                    total_compra += costo_total
+                id_producto = productos[i]
 
-                    db.execute("""
-                        INSERT INTO Detalle_Movimiento_Inventario (
-                            ID_Movimiento, ID_TipoMovimiento, ID_Producto,
-                            Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, movimiento_id, tipo_movimiento, id_producto,
-                         cantidad, costo, iva, descuento, costo_total, cantidad)
-
-                    # 🟢 Actualizar inventario general
-                    db.execute("""
-                        UPDATE Productos
-                        SET Existencias = Existencias + ?
-                        WHERE ID_Producto = ?
-                    """, cantidad, id_producto)
-
-                    # 🟢 ACTUALIZAR INVENTARIO EN LA BODEGA SELECCIONADA
-                    existe = db.execute("""
-                        SELECT 1 FROM Inventario_Bodega WHERE ID_Bodega = ? AND ID_Producto = ?
-                    """, id_bodega, id_producto)
-
-                    if existe:
-                        db.execute("""
-                            UPDATE Inventario_Bodega
-                            SET Existencias = Existencias + ?
-                            WHERE ID_Bodega = ? AND ID_Producto = ?
-                        """, cantidad, id_bodega, id_producto)
-                    else:
-                        db.execute("""
-                            INSERT INTO Inventario_Bodega (ID_Bodega, ID_Producto, Existencias)
-                            VALUES (?, ?, ?)
-                        """, id_bodega, id_producto, cantidad)
-
-                except Exception as e:
-                    flash(f"Error en producto #{i+1}: {e}", "danger")
+                # Verificar existencia del producto
+                producto_existente = db.execute("SELECT 1 FROM Productos WHERE ID_Producto = ?", id_producto)
+                if not producto_existente:
+                    flash(f"El producto con ID {id_producto} no existe.", "danger")
                     return redirect(url_for("compras"))
 
-            # 🟡 4. Si es a crédito, insertar en Cuentas_Por_Pagar
-            if tipo_pago == 1:  # Si es a crédito
+                cantidad = float(cantidades[i] or 0)
+                costo = float(costos[i] or 0)
+                iva = float(ivas[i] or 0)
+                descuento = float(descuentos[i] or 0)
+
+                costo_total = (cantidad * costo) - descuento + iva
+                total_compra += costo_total
+
+                db.execute("""
+                    INSERT INTO Detalle_Movimiento_Inventario (
+                        ID_Movimiento, ID_TipoMovimiento, ID_Producto,
+                        Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, movimiento_id, tipo_movimiento, id_producto,
+                     cantidad, costo, iva, descuento, costo_total, cantidad)
+
+                # Actualizar stock general
+                db.execute("""
+                    UPDATE Productos
+                    SET Existencias = Existencias + ?
+                    WHERE ID_Producto = ?
+                """, cantidad, id_producto)
+
+                # Actualizar inventario en la bodega seleccionada
+                existe_en_bodega = db.execute("""
+                    SELECT 1 FROM Inventario_Bodega WHERE ID_Bodega = ? AND ID_Producto = ?
+                """, id_bodega, id_producto)
+
+                if existe_en_bodega:
+                    db.execute("""
+                        UPDATE Inventario_Bodega
+                        SET Existencias = Existencias + ?
+                        WHERE ID_Bodega = ? AND ID_Producto = ?
+                    """, cantidad, id_bodega, id_producto)
+                else:
+                    db.execute("""
+                        INSERT INTO Inventario_Bodega (ID_Bodega, ID_Producto, Existencias)
+                        VALUES (?, ?, ?)
+                    """, id_bodega, id_producto, cantidad)
+
+            # 🟡 4. Si es a crédito, registrar cuenta por pagar
+            if tipo_pago == 1:
                 fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
 
                 db.execute("""
@@ -226,18 +239,19 @@ def compras():
                     fecha_vencimiento.strftime("%Y-%m-%d"), tipo_movimiento,
                     total_compra, id_empresa)
 
-            flash("✅ Compra registrada correctamente", "success")
+            flash("✅ Compra registrada correctamente.", "success")
             return redirect(url_for("gestionar_compras"))
 
         except Exception as e:
             flash(f"❌ Error al registrar la compra: {e}", "danger")
             return redirect(url_for("compras"))
 
-    # GET: formulario
+    # Método GET (mostrar formulario)
     proveedores = db.execute("SELECT ID_Proveedor AS id, Nombre FROM Proveedores")
     productos = db.execute("SELECT ID_Producto AS id, Descripcion FROM Productos")
-    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")  # <--- ¡Lista de bodegas!
+    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
     return render_template("compras.html", proveedores=proveedores, productos=productos, bodegas=bodegas)
+
 
 
 # Gestionar compras
@@ -906,7 +920,8 @@ def eliminar_vehiculo(id):
     return redirect(url_for("vehiculos"))
 
 @app.route("/combustible", methods=["GET", "POST"])
-def gasto_combustible():
+def combustible():
+    # --- REGISTRO DE GASTO (POST) ---
     if request.method == "POST":
         fecha = request.form.get("fecha")
         id_vehiculo = request.form.get("vehiculo")
@@ -915,11 +930,11 @@ def gasto_combustible():
         kilometraje = request.form.get("kilometraje") or None
         observacion = request.form.get("observacion") or ""
         id_bodega = request.form.get("bodega") or None
-        id_empresa = 1  # O según tu lógica de empresa
+        id_empresa = 1  # O según tu lógica
 
         if not fecha or not id_vehiculo or not monto:
             flash("Fecha, vehículo y monto son obligatorios.", "danger")
-            return redirect(url_for("gasto_combustible"))
+            return redirect(url_for("combustible"))
 
         db.execute("""
             INSERT INTO Gastos_Combustible 
@@ -928,14 +943,357 @@ def gasto_combustible():
         """, fecha, id_vehiculo, monto, litros, kilometraje, observacion, id_bodega, id_empresa)
 
         flash("Gasto de combustible registrado correctamente.", "success")
-        return redirect(url_for("gasto_combustible"))
+        return redirect(url_for("combustible"))
 
-    # GET: mostrar formulario
+    # --- FILTRO Y LISTADO DE GASTOS (GET) ---
+    fecha_filtro = request.args.get("fecha")
+    id_vehiculo_filtro = request.args.get("vehiculo")
+
+    # Consulta base
+    consulta = """
+        SELECT g.Fecha, v.Placa, v.Marca, v.Modelo, g.Monto, g.Litros, g.Kilometraje, g.Observacion
+        FROM Gastos_Combustible g
+        JOIN Vehiculos v ON v.ID_Vehiculo = g.ID_Vehiculo
+        WHERE 1=1
+    """
+    params = []
+    if fecha_filtro:
+        consulta += " AND g.Fecha = ?"
+        params.append(fecha_filtro)
+    if id_vehiculo_filtro:
+        consulta += " AND g.ID_Vehiculo = ?"
+        params.append(id_vehiculo_filtro)
+    consulta += " ORDER BY g.Fecha DESC"
+
+    gastos = db.execute(consulta, *params)
     vehiculos = db.execute("SELECT ID_Vehiculo, Placa, Marca, Modelo FROM Vehiculos WHERE Estado=1")
     bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
-    return render_template("combustible.html", vehiculos=vehiculos, bodegas=bodegas)
 
-#fin de ruta de vehiculos
+    return render_template(
+        "combustible.html",
+        vehiculos=vehiculos,
+        bodegas=bodegas,
+        gastos=gastos,
+        fecha=fecha_filtro,
+        id_vehiculo=id_vehiculo_filtro
+    )
+
+
+@app.route("/clientes", methods=["GET", "POST"])
+def clientes():
+    if request.method == "POST":
+        nombre = request.form.get("nombre", "").strip()
+        telefono = request.form.get("telefono", "").strip()
+        direccion = request.form.get("direccion", "").strip()
+        ruc_cedula = request.form.get("ruc_cedula", "").strip()
+
+        if not nombre:
+            flash("El nombre del cliente es obligatorio.", "danger")
+            return redirect(url_for("clientes"))
+
+        db.execute("""
+            INSERT INTO Clientes (Nombre, Telefono, Direccion, RUC_CEDULA)
+            VALUES (?, ?, ?, ?)
+        """, nombre, telefono, direccion, ruc_cedula)
+        flash("Cliente agregado correctamente.", "success")
+        return redirect(url_for("clientes"))
+
+    # Mostrar lista de clientes
+    clientes = db.execute("SELECT * FROM Clientes ORDER BY Nombre")
+    return render_template("clientes.html", clientes=clientes)
+
+# Editar Cliente
+@app.route("/clientes/<int:id>/editar", methods=["GET", "POST"])
+def editar_cliente(id):
+    cliente = db.execute("SELECT * FROM Clientes WHERE ID_Cliente = ?", id)
+    if not cliente:
+        flash("Cliente no encontrado.", "danger")
+        return redirect(url_for("clientes"))
+    cliente = cliente[0]
+
+    if request.method == "POST":
+        nombre = request.form.get("nombre", "").strip()
+        telefono = request.form.get("telefono", "").strip()
+        direccion = request.form.get("direccion", "").strip()
+        ruc_cedula = request.form.get("ruc_cedula", "").strip()
+
+        db.execute("""
+            UPDATE Clientes
+            SET Nombre = ?, Telefono = ?, Direccion = ?, RUC_CEDULA = ?
+            WHERE ID_Cliente = ?
+        """, nombre, telefono, direccion, ruc_cedula, id)
+        flash("Cliente actualizado correctamente.", "success")
+        return redirect(url_for("clientes"))
+
+    return render_template("editar_cliente.html", cliente=cliente)
+
+# Eliminar Cliente
+@app.route("/clientes/<int:id>/eliminar")
+def eliminar_cliente(id):
+    db.execute("DELETE FROM Clientes WHERE ID_Cliente = ?", id)
+    flash("Cliente eliminado correctamente.", "success")
+    return redirect(url_for("clientes"))
+
+
+# Añadir Proveedor
+@app.route("/proveedores", methods=["GET", "POST"])
+def proveedores():
+    if request.method == "POST":
+        nombre = request.form.get("nombre", "").strip()
+        telefono = request.form.get("telefono", "").strip()
+        direccion = request.form.get("direccion", "").strip()
+        ruc_cedula = request.form.get("ruc_cedula", "").strip()
+
+        if not nombre:
+            flash("El nombre del proveedor es obligatorio.", "danger")
+            return redirect(url_for("proveedores"))
+
+        db.execute("""
+            INSERT INTO Proveedores (Nombre, Telefono, Direccion, RUC_CEDULA)
+            VALUES (?, ?, ?, ?)
+        """, nombre, telefono, direccion, ruc_cedula)
+        flash("Proveedor agregado correctamente.", "success")
+        return redirect(url_for("proveedores"))
+
+    # Mostrar lista de proveedores
+    proveedores = db.execute("SELECT * FROM Proveedores ORDER BY Nombre")
+    return render_template("proveedores.html", proveedores=proveedores)
+
+# Editar Proveedor
+@app.route("/proveedores/<int:id>/editar", methods=["GET", "POST"])
+def editar_proveedor(id):
+    proveedor = db.execute("SELECT * FROM Proveedores WHERE ID_Proveedor = ?", id)
+    if not proveedor:
+        flash("Proveedor no encontrado.", "danger")
+        return redirect(url_for("proveedores"))
+    proveedor = proveedor[0]
+
+    if request.method == "POST":
+        nombre = request.form.get("nombre", "").strip()
+        telefono = request.form.get("telefono", "").strip()
+        direccion = request.form.get("direccion", "").strip()
+        ruc_cedula = request.form.get("ruc_cedula", "").strip()
+
+        db.execute("""
+            UPDATE Proveedores
+            SET Nombre = ?, Telefono = ?, Direccion = ?, RUC_CEDULA = ?
+            WHERE ID_Proveedor = ?
+        """, nombre, telefono, direccion, ruc_cedula, id)
+        flash("Proveedor actualizado correctamente.", "success")
+        return redirect(url_for("proveedores"))
+
+    return render_template("editar_proveedor.html", proveedor=proveedor)
+
+# Eliminar Proveedor
+@app.route("/proveedores/<int:id>/eliminar")
+def eliminar_proveedor(id):
+    db.execute("DELETE FROM Proveedores WHERE ID_Proveedor = ?", id)
+    flash("Proveedor eliminado correctamente.", "success")
+    return redirect(url_for("proveedores"))
+
+
+# Añadir Empresa (generalmente se gestiona solo una, pero igual aquí)
+@app.route("/empresa", methods=["GET", "POST"])
+def empresa():
+    if request.method == "POST":
+        descripcion = request.form.get("descripcion", "").strip()
+        if not descripcion:
+            flash("La descripción de la empresa es obligatoria.", "danger")
+            return redirect(url_for("empresa"))
+
+        db.execute("INSERT INTO Empresa (Descripcion) VALUES (?)", descripcion)
+        flash("Empresa agregada correctamente.", "success")
+        return redirect(url_for("empresa"))
+
+    empresas = db.execute("SELECT * FROM Empresa ORDER BY ID_Empresa")
+    return render_template("empresa.html", empresas=empresas)
+
+# Editar Empresa
+@app.route("/empresa/<int:id>/editar", methods=["GET", "POST"])
+def editar_empresa(id):
+    empresa = db.execute("SELECT * FROM Empresa WHERE ID_Empresa = ?", id)
+    if not empresa:
+        flash("Empresa no encontrada.", "danger")
+        return redirect(url_for("empresa"))
+    empresa = empresa[0]
+
+    if request.method == "POST":
+        descripcion = request.form.get("descripcion", "").strip()
+        db.execute("""
+            UPDATE Empresa
+            SET Descripcion = ?
+            WHERE ID_Empresa = ?
+        """, descripcion, id)
+        flash("Empresa actualizada correctamente.", "success")
+        return redirect(url_for("empresa"))
+
+    return render_template("editar_empresa.html", empresa=empresa)
+
+# Eliminar Empresa
+@app.route("/empresa/<int:id>/eliminar")
+def eliminar_empresa(id):
+    db.execute("DELETE FROM Empresa WHERE ID_Empresa = ?", id)
+    flash("Empresa eliminada correctamente.", "success")
+    return redirect(url_for("empresa"))
+
+# Listar y Agregar Producto
+@app.route("/productos", methods=["GET", "POST"])
+def productos():
+    if request.method == "POST":
+        cod = request.form.get("cod_producto", "").strip()
+        descripcion = request.form.get("descripcion", "").strip()
+        unidad = request.form.get("unidad")
+        familia = request.form.get("familia") or None
+        tipo = request.form.get("tipo") or None
+        costo_promedio = float(request.form.get("costo_promedio", 0))
+        precio_venta = float(request.form.get("precio_venta", 0))
+        existencias = float(request.form.get("existencias", 0))
+        iva = 1 if request.form.get("iva") else 0
+        estado = int(request.form.get("estado", 1))
+        id_empresa = 1  # Cambia según login/sesión
+
+        if not descripcion or not unidad:
+            flash("La descripción y la unidad son obligatorias.", "danger")
+            return redirect(url_for("productos"))
+
+        db.execute("""
+            INSERT INTO Productos (
+                COD_Producto, Descripcion, Unidad_Medida, Existencias,
+                Estado, Familia, Costo_Promedio, IVA, Tipo, Precio_Venta, ID_Empresa
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, cod, descripcion, unidad, existencias, estado, familia, costo_promedio, iva, tipo, precio_venta, id_empresa)
+        flash("Producto agregado correctamente.", "success")
+        return redirect(url_for("productos"))
+
+    # Listar productos y combos
+    productos = db.execute("""
+        SELECT P.*, U.Descripcion AS Unidad, F.Descripcion AS FamiliaDesc, T.Descripcion AS TipoDesc
+        FROM Productos P
+        LEFT JOIN Unidades_Medida U ON P.Unidad_Medida = U.ID_Unidad
+        LEFT JOIN Familia F ON P.Familia = F.ID_Familia
+        LEFT JOIN Tipo_Producto T ON P.Tipo = T.ID_TipoProducto
+        ORDER BY P.Descripcion
+    """)
+    unidades = db.execute("SELECT ID_Unidad, Descripcion FROM Unidades_Medida")
+    familias = db.execute("SELECT ID_Familia, Descripcion FROM Familia")
+    tipos = db.execute("SELECT ID_TipoProducto, Descripcion FROM Tipo_Producto")
+    return render_template("productos.html", productos=productos, unidades=unidades, familias=familias, tipos=tipos)
+
+
+
+# Editar Producto
+@app.route("/productos/<int:id>/editar", methods=["GET", "POST"])
+def editar_producto(id):
+    producto = db.execute("SELECT * FROM Productos WHERE ID_Producto = ?", id)
+    if not producto:
+        flash("Producto no encontrado.", "danger")
+        return redirect(url_for("productos"))
+    producto = producto[0]
+
+    if request.method == "POST":
+        cod = request.form.get("cod_producto", "").strip()
+        descripcion = request.form.get("descripcion", "").strip()
+        unidad = request.form.get("unidad")
+        familia = request.form.get("familia") or None
+        tipo = request.form.get("tipo") or None
+        costo_promedio = float(request.form.get("costo_promedio", 0))
+        precio_venta = float(request.form.get("precio_venta", 0))
+        existencias = float(request.form.get("existencias", 0))
+        iva = 1 if request.form.get("iva") else 0
+        estado = int(request.form.get("estado", 1))
+        id_empresa = 1  # Cambia según login/sesión
+
+        db.execute("""
+            UPDATE Productos SET
+                COD_Producto = ?, Descripcion = ?, Unidad_Medida = ?,
+                Existencias = ?, Estado = ?, Familia = ?, Costo_Promedio = ?,
+                IVA = ?, Tipo = ?, Precio_Venta = ?, ID_Empresa = ?
+            WHERE ID_Producto = ?
+        """, cod, descripcion, unidad, existencias, estado, familia, costo_promedio, iva, tipo, precio_venta, id_empresa, id)
+        flash("Producto actualizado correctamente.", "success")
+        return redirect(url_for("productos"))
+
+    unidades = db.execute("SELECT ID_Unidad, Descripcion FROM Unidades_Medida")
+    familias = db.execute("SELECT ID_Familia, Descripcion FROM Familia")
+    tipos = db.execute("SELECT ID_TipoProducto, Descripcion FROM Tipo_Producto")
+
+    return render_template("editar_producto.html", producto=producto, unidades=unidades, familias=familias, tipos=tipos)
+
+
+# Eliminar Producto
+@app.route("/productos/<int:id>/eliminar")
+def eliminar_producto(id):
+    db.execute("DELETE FROM Productos WHERE ID_Producto = ?", id)
+    flash("Producto eliminado correctamente.", "success")
+    return redirect(url_for("productos"))
+
+# Listar y Agregar Familia
+@app.route("/familia", methods=["GET", "POST"])
+def familia():
+    if request.method == "POST":
+        descripcion = request.form.get("descripcion", "").strip()
+        if not descripcion:
+            flash("La descripción es obligatoria.", "danger")
+            return redirect(url_for("familia"))
+        db.execute("INSERT INTO Familia (Descripcion) VALUES (?)", descripcion)
+        flash("Familia agregada correctamente.", "success")
+        return redirect(url_for("familia"))
+
+    familias = db.execute("SELECT * FROM Familia ORDER BY Descripcion")
+    return render_template("familia.html", familias=familias)
+
+# Editar Familia
+@app.route("/familia/<int:id>/editar", methods=["GET", "POST"])
+def editar_familia(id):
+    familia = db.execute("SELECT * FROM Familia WHERE ID_Familia = ?", id)
+    if not familia:
+        flash("Familia no encontrada.", "danger")
+        return redirect(url_for("familia"))
+    familia = familia[0]
+    if request.method == "POST":
+        descripcion = request.form.get("descripcion", "").strip()
+        if not descripcion:
+            flash("La descripción es obligatoria.", "danger")
+            return redirect(url_for("editar_familia", id=id))
+        db.execute("UPDATE Familia SET Descripcion = ? WHERE ID_Familia = ?", descripcion, id)
+        flash("Familia actualizada correctamente.", "success")
+        return redirect(url_for("familia"))
+    return render_template("editar_familia.html", familia=familia)
+
+# Listar y Agregar Tipo de Producto
+@app.route("/tipo_producto", methods=["GET", "POST"])
+def tipo_producto():
+    if request.method == "POST":
+        descripcion = request.form.get("descripcion", "").strip()
+        if not descripcion:
+            flash("La descripción es obligatoria.", "danger")
+            return redirect(url_for("tipo_producto"))
+        db.execute("INSERT INTO Tipo_Producto (Descripcion) VALUES (?)", descripcion)
+        flash("Tipo de producto agregado correctamente.", "success")
+        return redirect(url_for("tipo_producto"))
+
+    tipos = db.execute("SELECT * FROM Tipo_Producto ORDER BY Descripcion")
+    return render_template("tipo_producto.html", tipos=tipos)
+
+# Editar Tipo de Producto
+@app.route("/tipo_producto/<int:id>/editar", methods=["GET", "POST"])
+def editar_tipo_producto(id):
+    tipo = db.execute("SELECT * FROM Tipo_Producto WHERE ID_TipoProducto = ?", id)
+    if not tipo:
+        flash("Tipo de producto no encontrado.", "danger")
+        return redirect(url_for("tipo_producto"))
+    tipo = tipo[0]
+    if request.method == "POST":
+        descripcion = request.form.get("descripcion", "").strip()
+        if not descripcion:
+            flash("La descripción es obligatoria.", "danger")
+            return redirect(url_for("editar_tipo_producto", id=id))
+        db.execute("UPDATE Tipo_Producto SET Descripcion = ? WHERE ID_TipoProducto = ?", descripcion, id)
+        flash("Tipo de producto actualizado correctamente.", "success")
+        return redirect(url_for("tipo_producto"))
+    return render_template("editar_tipo_producto.html", tipo=tipo)
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
