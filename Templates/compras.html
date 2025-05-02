@@ -35,21 +35,34 @@
                     </select>
                 </div>
             </div>
+
             <div class="row g-2 mt-1">
                 <div class="col-12 col-md-6">
                     <label for="id_bodega" class="form-label">Bodega de ingreso:</label>
                     <select id="id_bodega" name="id_bodega" class="form-select" required>
-                        <option value="">-- Seleccione una bodega --</option>
+                        <option value="" disabled selected>-- Seleccione una bodega --</option>
                         {% for bodega in bodegas %}
                             <option value="{{ bodega.ID_Bodega }}">{{ bodega.Nombre or bodega.nombre }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-12 col-md-6">
+                    <label for="id_empresa" class="form-label">Empresa:</label>
+                    <select id="id_empresa" name="id_empresa" class="form-select" required>
+                        <option value="" disabled selected>-- Seleccione una empresa --</option>
+                        {% for empresa in empresas %}
+                            <option value="{{ empresa.ID_Empresa }}">{{ empresa.Descripcion }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="row g-2 mt-1">
+                <div class="col-6 col-md-6">
                     <label for="n_factura" class="form-label">N° Factura:</label>
                     <input type="text" id="n_factura" name="n_factura" class="form-control">
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-6">
                     <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
                     <select id="tipo_pago" name="tipo_pago" class="form-select">
                         <option value="0">Contado</option>
@@ -57,12 +70,14 @@
                     </select>
                 </div>
             </div>
+
             <div class="row g-2 mt-1">
                 <div class="col-12">
                     <label for="observacion" class="form-label">Observaciones:</label>
                     <input type="text" id="observacion" name="observacion" class="form-control">
                 </div>
             </div>
+
             <hr class="my-3">
 
             <!-- Productos -->
