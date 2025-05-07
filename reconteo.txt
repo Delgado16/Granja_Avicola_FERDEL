@@ -474,3 +474,93 @@ SELECT strftime('%Y-%m', fecha) AS mes,
 FROM Ventas
 GROUP BY mes;
 
+-- === CONFIGURACIÓN GENERAL DEL SISTEMA ===
+CREATE TABLE Configuracion (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    clave TEXT NOT NULL UNIQUE,
+    valor TEXT
+);
+
+-- === HISTORIAL DE CAMBIOS ===
+CREATE TABLE HistorialCambios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tabla TEXT NOT NULL,
+    id_registro INTEGER NOT NULL,
+    accion TEXT NOT NULL,
+    usuario TEXT,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    valores_anteriores TEXT,
+    valores_nuevos TEXT
+);
+
+-- === FACTURACIÓN ===
+CREATE TABLE Facturas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_venta INTEGER NOT NULL,
+    numero_factura TEXT NOT NULL UNIQUE,
+    tipo_documento TEXT,
+    fecha_emision DATE DEFAULT CURRENT_DATE,
+    estado TEXT DEFAULT 'Emitida',
+    url_pdf TEXT,
+    FOREIGN KEY (id_venta) REFERENCES Ventas(id)
+);
+
+-- === LOTES DE PRODUCTOS ===
+CREATE TABLE LotesProductos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_producto INTEGER NOT NULL,
+    codigo_lote TEXT,
+    fecha_vencimiento DATE,
+    cantidad REAL,
+    FOREIGN KEY (id_producto) REFERENCES Productos(id)
+);
+
+-- === CONTRATOS DE EMPLEADOS ===
+CREATE TABLE Contratos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_empleado INTEGER NOT NULL,
+    fecha_inicio DATE,
+    fecha_fin DATE,
+    tipo_contrato TEXT,
+    salario REAL,
+    archivo TEXT,
+    FOREIGN KEY (id_empleado) REFERENCES Empleados(id)
+);
+
+-- === VACACIONES ===
+CREATE TABLE Vacaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_empleado INTEGER NOT NULL,
+    fecha_inicio DATE,
+    fecha_fin DATE,
+    aprobado INTEGER DEFAULT 0,
+    observaciones TEXT,
+    FOREIGN KEY (id_empleado) REFERENCES Empleados(id)
+);
+
+-- === AGENDA DE EVENTOS ===
+CREATE TABLE AgendaEventos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    titulo TEXT NOT NULL,
+    descripcion TEXT,
+    fecha_inicio DATETIME NOT NULL,
+    fecha_fin DATETIME,
+    tipo TEXT,
+    prioridad TEXT,
+    id_usuario INTEGER,
+    FOREIGN KEY (id_usuario) REFERENCES Usuarios(id)
+);
+
+-- === ETIQUETAS GENERALES ===
+CREATE TABLE Etiquetas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE EtiquetasEntidad (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_etiqueta INTEGER NOT NULL,
+    entidad TEXT NOT NULL,
+    id_entidad INTEGER NOT NULL,
+    FOREIGN KEY (id_etiqueta) REFERENCES Etiquetas(id)
+);

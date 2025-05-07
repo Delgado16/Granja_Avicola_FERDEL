@@ -602,9 +602,11 @@ def pagos():
             JOIN Proveedores p ON cpp.ID_Proveedor = p.ID_Proveedor
         """)
         return render_template("pagos.html", cuentas=cuentas)
+
     except Exception as e:
         flash(f"❌ Error al cargar los pagos: {e}", "danger")
-        return redirect(url_for("index"))
+        return redirect(url_for("home"))
+
 
 @app.route("/registrar_pago/<int:id_pago>", methods=["GET", "POST"])
 def registrar_pago(id_pago):
