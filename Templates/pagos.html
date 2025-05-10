@@ -40,7 +40,7 @@
                             <td class="text-center">{{ cuenta.Fecha_Vencimiento }}</td>
                             <td class="text-center">
                                 <span class="{% if cuenta.Saldo > 0 %}text-danger fw-bold{% else %}text-success fw-bold{% endif %}">
-                                    ${{ "%.2f"|format(cuenta.Saldo) }}
+                                    {{ 'C$ ' ~ "{:,.2f}".format(cuenta.Saldo).replace(",", "X").replace(".", ",").replace("X", ".") }}
                                 </span>
                             </td>
                             <td class="text-center">

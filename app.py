@@ -286,9 +286,12 @@ def gestionar_compras():
             mi.ID_Movimiento AS id,
             mi.Fecha AS fecha,
             p.Nombre AS proveedor,
+            p.ID_Proveedor AS proveedor_id,
             mi.N_Factura AS factura,
             mi.Contado_Credito AS tipo_pago,
             mi.Observacion AS observacion,
+            mi.ID_Bodega AS id_bodega,
+            mi.ID_Empresa AS id_empresa,
             IFNULL(SUM(dmi.Costo_Total), 0) AS total
         FROM Movimientos_Inventario mi
         JOIN Proveedores p ON mi.ID_Proveedor = p.ID_Proveedor
@@ -297,37 +300,85 @@ def gestionar_compras():
         GROUP BY mi.ID_Movimiento
         ORDER BY mi.Fecha DESC
     """)
-    return render_template("gestionar_compras.html", compras=compras)
+
+    proveedores = db.execute("SELECT ID_Proveedor AS id, Nombre FROM Proveedores")
+    empresas = db.execute("SELECT ID_Empresa, Descripcion FROM Empresa")
+    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
+
+    return render_template("gestionar_compras.html",
+                           compras=compras,
+                           proveedores=proveedores,
+                           empresas=empresas,
+                           bodegas=bodegas)
+
 
 
 # Editar compra
-@app.route("/compras/<int:id>/editar", methods=["GET", "POST"])
+@app.route("/compras/<int:id>/editar", methods=["POST"])
+@login_required
 def editar_compra(id):
-    if request.method == "POST":
+    try:
+        # Obtener datos del formulario
         fecha = request.form.get("fecha")
-        proveedor = request.form.get("proveedor")
-        factura = request.form.get("n_factura")
-        tipo_pago = request.form.get("tipo_pago")
-        observacion = request.form.get("observacion")
+        proveedor_id = request.form.get("proveedor")
+        id_bodega = request.form.get("id_bodega")
+        id_empresa = request.form.get("id_empresa")
+        n_factura = request.form.get("n_factura") or ""
+        tipo_pago = int(request.form.get("tipo_pago") or 0)
+        observacion = request.form.get("observacion") or ""
 
+        # Validación por campo
+        if not fecha:
+            flash("La fecha es obligatoria.", "danger")
+            return redirect(url_for("gestionar_compras"))
+        if not proveedor_id:
+            flash("Debe seleccionar un proveedor.", "danger")
+            return redirect(url_for("gestionar_compras"))
+        if not id_bodega:
+            flash("Debe seleccionar una bodega.", "danger")
+            return redirect(url_for("gestionar_compras"))
+        if not id_empresa:
+            flash("Debe seleccionar una empresa.", "danger")
+            return redirect(url_for("gestionar_compras"))
+
+        try:
+            proveedor_id = int(proveedor_id)
+            id_bodega = int(id_bodega)
+            id_empresa = int(id_empresa)
+        except ValueError:
+            flash("Los valores de proveedor, bodega y empresa deben ser numéricos.", "danger")
+            return redirect(url_for("gestionar_compras"))
+
+        # Verificar existencia de registros foráneos
+        if not db.execute("SELECT 1 FROM Proveedores WHERE ID_Proveedor = ?", proveedor_id):
+            flash("El proveedor seleccionado no existe.", "danger")
+            return redirect(url_for("gestionar_compras"))
+        if not db.execute("SELECT 1 FROM Bodegas WHERE ID_Bodega = ?", id_bodega):
+            flash("La bodega seleccionada no existe.", "danger")
+            return redirect(url_for("gestionar_compras"))
+        if not db.execute("SELECT 1 FROM Empresa WHERE ID_Empresa = ?", id_empresa):
+            flash("La empresa seleccionada no existe.", "danger")
+            return redirect(url_for("gestionar_compras"))
+
+        # Actualizar encabezado
         db.execute("""
             UPDATE Movimientos_Inventario
-            SET Fecha = ?, ID_Proveedor = ?, N_Factura = ?, Contado_Credito = ?, Observacion = ?
+            SET Fecha = ?, ID_Proveedor = ?, ID_Empresa = ?, ID_Bodega = ?,
+                N_Factura = ?, Contado_Credito = ?, Observacion = ?
             WHERE ID_Movimiento = ?
-        """, fecha, proveedor, factura, tipo_pago, observacion, id)
+        """, fecha, proveedor_id, id_empresa, id_bodega,
+             n_factura, tipo_pago, observacion, id)
 
-        flash("Compra actualizada correctamente", "success")
+        flash("✅ Compra actualizada correctamente.", "success")
         return redirect(url_for("gestionar_compras"))
 
-    compra = db.execute("""
-        SELECT mi.*, p.Nombre as proveedor_nombre
-        FROM Movimientos_Inventario mi
-        JOIN Proveedores p ON mi.ID_Proveedor = p.ID_Proveedor
-        WHERE mi.ID_Movimiento = ?
-    """, id)[0]
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        flash(f"❌ Error al actualizar la compra: {e}", "danger")
+        return redirect(url_for("gestionar_compras"))
 
-    proveedores = db.execute("SELECT ID_Proveedor as id, Nombre FROM Proveedores")
-    return render_template("editar_compra.html", compra=compra, proveedores=proveedores)
+
 
 
 # Eliminar compra
@@ -410,10 +461,18 @@ def ventas():
             flash(f"Error al registrar la venta: {e}", "danger")
             return redirect(url_for("ventas"))
 
-    clientes = db.execute("SELECT ID_Cliente AS id, Nombre FROM Clientes")
-    productos = db.execute("SELECT ID_Producto AS id, Descripcion FROM Productos")
-    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
-    return render_template("ventas.html", clientes=clientes, productos=productos, bodegas=bodegas)
+    # === Carga de datos para el formulario ===
+    clientes = db.execute("SELECT ID_Cliente AS id, Nombre AS nombre FROM Clientes")
+    productos = db.execute("SELECT ID_Producto AS id, Descripcion AS descripcion FROM Productos")
+    bodegas = db.execute("SELECT ID_Bodega AS id, Nombre AS nombre FROM Bodegas")
+
+    # Generar próximo número de factura
+    last_seq = db.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", "Facturacion")
+    next_id = last_seq[0]["seq"] + 1 if last_seq else 1
+    n_factura = f"F-{next_id:05d}"
+
+    return render_template("ventas.html", clientes=clientes, productos=productos, bodegas=bodegas, n_factura=n_factura)
+
 
 
 
@@ -421,36 +480,33 @@ def ventas():
 @app.route("/gestionar_ventas", methods=["GET"])
 def gestionar_ventas():
     try:
-        # Obtener ventas con cliente
         ventas = db.execute("""
-            SELECT f.ID_Movimiento, f.Fecha, f.Credito_Contado, f.IDCliente, c.Nombre AS Cliente
+            SELECT f.ID_Factura, f.Fecha, c.Nombre AS Cliente, f.Credito_Contado, f.Observacion
             FROM Facturacion f
-            JOIN Clientes c ON f.IDCliente = c.ID_Cliente
+            JOIN Clientes c ON c.ID_Cliente = f.IDCliente
         """)
 
-        # Obtener productos por venta
         detalles = db.execute("""
             SELECT df.ID_Factura, p.Descripcion, df.Cantidad
             FROM Detalle_Facturacion df
             JOIN Productos p ON df.ID_Producto = p.ID_Producto
         """)
 
-        # Agrupar productos por ID de factura
         productos_por_venta = {}
         for d in detalles:
             productos_por_venta.setdefault(d["ID_Factura"], []).append(
                 f"{d['Cantidad']} x {d['Descripcion']}"
             )
 
-        # Agregar productos a cada venta
         for venta in ventas:
-            venta["Productos"] = productos_por_venta.get(venta["ID_Movimiento"], [])
+            venta["Productos"] = productos_por_venta.get(venta["ID_Factura"], [])
 
         return render_template("gestionar_ventas.html", ventas=ventas)
 
     except Exception as e:
         flash(f"❌ Error al cargar las ventas: {e}", "danger")
         return redirect(url_for("ventas"))
+
 
 
 @app.route("/editar_venta/<int:id_venta>", methods=["GET", "POST"])

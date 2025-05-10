@@ -54,18 +54,22 @@
                             <td class="text-center">
                                 <div class="d-flex flex-column flex-md-row gap-1 justify-content-center align-items-center">
                                     {% if cuenta.Saldo > 0 %}
-                                        <a href="{{ url_for('registrar_cobro', id_venta=cuenta.ID_Movimiento) }}" class="btn btn-success btn-sm mb-1">
-                                            <i class="bi bi-cash-coin"></i> Cobrar
+                                        <a href="{{ url_for('registrar_cobro', id_venta=cuenta.ID_Movimiento) }}" 
+                                           class="btn btn-success btn-sm mb-1" data-bs-toggle="tooltip" title="Registrar cobro">
+                                            <i class="bi bi-cash-coin"></i> Abono
                                         </a>
-                                        <a href="{{ url_for('cancelar_deuda', id_venta=cuenta.ID_Movimiento) }}" class="btn btn-danger btn-sm mb-1"
-                                           onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');">
-                                            <i class="bi bi-x-octagon"></i>
+                                        <a href="{{ url_for('cancelar_deuda', id_venta=cuenta.ID_Movimiento) }}" 
+                                           class="btn btn-danger btn-sm mb-1"
+                                           onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');"
+                                           data-bs-toggle="tooltip" title="Cancelar deuda manualmente">
+                                            <i class="bi bi-x-octagon"></i> Cancelar
                                         </a>
                                     {% else %}
                                         <span class="text-muted small">Pago completo</span>
                                     {% endif %}
-                                    <a href="{{ url_for('historial_pagos', id_venta=cuenta.ID_Movimiento) }}" class="btn btn-info btn-sm mt-1">
-                                        <i class="bi bi-clock-history"></i>
+                                    <a href="{{ url_for('historial_pagos', id_venta=cuenta.ID_Movimiento) }}" 
+                                       class="btn btn-info btn-sm mt-1" data-bs-toggle="tooltip" title="Ver historial de pagos">
+                                        <i class="bi bi-clock-history"></i> Historial
                                     </a>
                                 </div>
                             </td>
@@ -81,4 +85,12 @@
         </div>
     </div>
 </div>
+
+<!-- Activar tooltips -->
+<script>
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    tooltipTriggerList.forEach(tooltipTriggerEl => {
+        new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+</script>
 {% endblock %}

@@ -1,10 +1,10 @@
-type,name,tbl_name,rootpage,sql
-table,sqlite_sequence,sqlite_sequence,4,"CREATE TABLE sqlite_sequence(name,seq)"
-table,Roles,Roles,5,"CREATE TABLE Roles (
+
+"CREATE TABLE Roles (
     ID_Rol INTEGER PRIMARY KEY AUTOINCREMENT,
     Nombre_Rol TEXT NOT NULL
 )"
-table,Usuarios,Usuarios,6,"CREATE TABLE Usuarios (
+
+"CREATE TABLE Usuarios (
     ID_Usuario INTEGER PRIMARY KEY AUTOINCREMENT,
     NombreUsuario TEXT UNIQUE NOT NULL,
     ContrasenaHash TEXT NOT NULL,
@@ -13,12 +13,13 @@ table,Usuarios,Usuarios,6,"CREATE TABLE Usuarios (
     Fecha_Creacion DATE,
     FOREIGN KEY (Rol_ID) REFERENCES Roles(ID_Rol)
 )"
-index,sqlite_autoindex_Usuarios_1,Usuarios,7,NULL
-table,Metodos_Pago,Metodos_Pago,9,"CREATE TABLE Metodos_Pago (
+
+"CREATE TABLE Metodos_Pago (
     ID_MetodoPago INTEGER PRIMARY KEY AUTOINCREMENT,
     Nombre TEXT NOT NULL
 )"
-table,Pagos_CuentasCobrar,Pagos_CuentasCobrar,10,"CREATE TABLE Pagos_CuentasCobrar (
+
+"CREATE TABLE Pagos_CuentasCobrar (
     ID_Pago INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Movimiento INTEGER,
     Fecha DATETIME,
@@ -27,7 +28,8 @@ table,Pagos_CuentasCobrar,Pagos_CuentasCobrar,10,"CREATE TABLE Pagos_CuentasCobr
     FOREIGN KEY (ID_Movimiento) REFERENCES Detalle_Cuentas_Por_Cobrar(ID_MOVIMIENTO),
     FOREIGN KEY (ID_MetodoPago) REFERENCES Metodos_Pago(ID_MetodoPago)
 )"
-table,Pagos_CuentasPagar,Pagos_CuentasPagar,11,"CREATE TABLE Pagos_CuentasPagar (
+
+"CREATE TABLE Pagos_CuentasPagar (
     ID_Pago INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Movimiento INTEGER,
     Fecha DATETIME,
@@ -36,54 +38,64 @@ table,Pagos_CuentasPagar,Pagos_CuentasPagar,11,"CREATE TABLE Pagos_CuentasPagar 
     FOREIGN KEY (ID_Movimiento) REFERENCES Cuentas_Por_Pagar(ID_MOVIMIENTO),
     FOREIGN KEY (ID_MetodoPago) REFERENCES Metodos_Pago(ID_MetodoPago)
 )"
-table,Bancos,Bancos,12,"CREATE TABLE Bancos (
+
+"CREATE TABLE Bancos (
     ID_Banco INTEGER PRIMARY KEY AUTOINCREMENT,
     Nombre TEXT,
     Cuenta TEXT
 )"
-table,Configuracion,Configuracion,13,"CREATE TABLE Configuracion (
+
+"CREATE TABLE Configuracion (
     ID_Config INTEGER PRIMARY KEY AUTOINCREMENT,
     NombreParametro TEXT,
     ValorParametro TEXT
 )"
-table,Clientes,Clientes,14,"CREATE TABLE Clientes (
+
+"CREATE TABLE Clientes (
     ID_Cliente INTEGER PRIMARY KEY AUTOINCREMENT,
     Nombre TEXT NOT NULL,
     Telefono TEXT,
     Direccion TEXT,
     RUC_CEDULA TEXT
 )"
-table,Proveedores,Proveedores,15,"CREATE TABLE Proveedores (
+
+"CREATE TABLE Proveedores (
     ID_Proveedor INTEGER PRIMARY KEY AUTOINCREMENT,
     Nombre TEXT NOT NULL,
     Telefono TEXT,
     Direccion TEXT,
     RUC_CEDULA TEXT
 )"
-table,Empresa,Empresa,16,"CREATE TABLE Empresa (
+
+"CREATE TABLE Empresa (
     ID_Empresa INTEGER PRIMARY KEY AUTOINCREMENT,
     Descripcion TEXT
 )"
-table,Catalogo_Movimientos,Catalogo_Movimientos,17,"CREATE TABLE Catalogo_Movimientos (
+
+"CREATE TABLE Catalogo_Movimientos (
     ID_TipoMovimiento INTEGER PRIMARY KEY AUTOINCREMENT,
     Descripcion TEXT,
     Adicion TEXT,
     Letra TEXT
 )"
-table,Unidades_Medida,Unidades_Medida,19,"CREATE TABLE Unidades_Medida (
+
+"CREATE TABLE Unidades_Medida (
     ID_Unidad INTEGER PRIMARY KEY AUTOINCREMENT,
     Descripcion TEXT NOT NULL,
     Abreviatura TEXT
 )"
-table,Familia,Familia,20,"CREATE TABLE Familia (
+
+"CREATE TABLE Familia (
     ID_Familia INTEGER PRIMARY KEY AUTOINCREMENT,
     Descripcion TEXT NOT NULL
 )"
-table,Tipo_Producto,Tipo_Producto,21,"CREATE TABLE Tipo_Producto (
+
+"CREATE TABLE Tipo_Producto (
     ID_TipoProducto INTEGER PRIMARY KEY AUTOINCREMENT,
     Descripcion TEXT NOT NULL
 )"
-table,Detalle_Facturacion,Detalle_Facturacion,25,"CREATE TABLE Detalle_Facturacion (
+
+"CREATE TABLE Detalle_Facturacion (
     ID_Detalle INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Factura INTEGER,
     ID_Producto INTEGER,
@@ -95,7 +107,8 @@ table,Detalle_Facturacion,Detalle_Facturacion,25,"CREATE TABLE Detalle_Facturaci
     FOREIGN KEY (ID_Factura) REFERENCES Facturacion(ID_Movimiento),
     FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
 )"
-table,Detalle_Movimiento_Inventario,Detalle_Movimiento_Inventario,27,"CREATE TABLE Detalle_Movimiento_Inventario (
+
+"CREATE TABLE Detalle_Movimiento_Inventario (
     ID_Detalle INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Movimiento INTEGER,
     ID_TipoMovimiento INTEGER,
@@ -109,7 +122,8 @@ table,Detalle_Movimiento_Inventario,Detalle_Movimiento_Inventario,27,"CREATE TAB
     FOREIGN KEY (ID_Movimiento) REFERENCES Movimientos_Inventario(ID_Movimiento),
     FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
 )"
-table,Gastos,Gastos,30,"CREATE TABLE Gastos (
+
+"CREATE TABLE Gastos (
     ID_Movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
     Fecha DATE,
     Observacion TEXT,
@@ -117,12 +131,14 @@ table,Gastos,Gastos,30,"CREATE TABLE Gastos (
     ID_Empresa INTEGER,
     FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
 )"
-table,Bodegas,Bodegas,31,"CREATE TABLE Bodegas (
+
+"CREATE TABLE Bodegas (
     ID_Bodega INTEGER PRIMARY KEY AUTOINCREMENT,
     Nombre TEXT NOT NULL,
     Ubicacion TEXT
 )"
-table,Vehiculos,Vehiculos,34,"CREATE TABLE Vehiculos (
+
+"CREATE TABLE Vehiculos (
     ID_Vehiculo INTEGER PRIMARY KEY AUTOINCREMENT,
     Placa TEXT NOT NULL,
     Marca TEXT,
@@ -133,7 +149,8 @@ table,Vehiculos,Vehiculos,34,"CREATE TABLE Vehiculos (
     NumeroMotor TEXT,
     Estado INTEGER DEFAULT 1  -- 1=Activo, 0=Inactivo/Baja
 )"
-table,Mantenimiento_Vehiculo,Mantenimiento_Vehiculo,37,"CREATE TABLE Mantenimiento_Vehiculo (
+
+"CREATE TABLE Mantenimiento_Vehiculo (
     ID_Mantenimiento INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Vehiculo INTEGER,
     Fecha DATE,
@@ -145,14 +162,16 @@ table,Mantenimiento_Vehiculo,Mantenimiento_Vehiculo,37,"CREATE TABLE Mantenimien
     Observacion TEXT,
     FOREIGN KEY (ID_Vehiculo) REFERENCES Vehiculos(ID_Vehiculo)
 )"
-table,Conductores,Conductores,38,"CREATE TABLE Conductores (
+
+"CREATE TABLE Conductores (
     ID_Conductor INTEGER PRIMARY KEY AUTOINCREMENT,
     Nombre TEXT,
     Cedula TEXT,
     Telefono TEXT,
     Licencia TEXT
 )"
-table,Vehiculo_Conductor,Vehiculo_Conductor,39,"CREATE TABLE Vehiculo_Conductor (
+
+"CREATE TABLE Vehiculo_Conductor (
     ID_Vehiculo INTEGER,
     ID_Conductor INTEGER,
     FechaAsignacion DATE,
@@ -160,13 +179,14 @@ table,Vehiculo_Conductor,Vehiculo_Conductor,39,"CREATE TABLE Vehiculo_Conductor 
     FOREIGN KEY (ID_Vehiculo) REFERENCES Vehiculos(ID_Vehiculo),
     FOREIGN KEY (ID_Conductor) REFERENCES Conductores(ID_Conductor)
 )"
-index,sqlite_autoindex_Vehiculo_Conductor_1,Vehiculo_Conductor,40,NULL
-table,Rutas,Rutas,41,"CREATE TABLE Rutas (
+
+,"CREATE TABLE Rutas (
     ID_Ruta INTEGER PRIMARY KEY AUTOINCREMENT,
     Nombre TEXT NOT NULL,
     Descripcion TEXT
 )"
-table,Vehiculo_Ruta,Vehiculo_Ruta,42,"CREATE TABLE Vehiculo_Ruta (
+
+"CREATE TABLE Vehiculo_Ruta (
     ID_Vehiculo INTEGER,
     ID_Ruta INTEGER,
     FechaAsignacion DATE,
@@ -174,8 +194,8 @@ table,Vehiculo_Ruta,Vehiculo_Ruta,42,"CREATE TABLE Vehiculo_Ruta (
     FOREIGN KEY (ID_Vehiculo) REFERENCES Vehiculos(ID_Vehiculo),
     FOREIGN KEY (ID_Ruta) REFERENCES Rutas(ID_Ruta)
 )"
-index,sqlite_autoindex_Vehiculo_Ruta_1,Vehiculo_Ruta,43,NULL
-table,Gastos_Combustible,Gastos_Combustible,44,"CREATE TABLE Gastos_Combustible (
+
+"CREATE TABLE Gastos_Combustible (
     ID_Gasto INTEGER PRIMARY KEY AUTOINCREMENT,
     Fecha DATE NOT NULL,
     ID_Vehiculo INTEGER NOT NULL,
@@ -189,7 +209,8 @@ table,Gastos_Combustible,Gastos_Combustible,44,"CREATE TABLE Gastos_Combustible 
     FOREIGN KEY (ID_Bodega) REFERENCES Bodegas(ID_Bodega),
     FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
 )"
-table,Facturacion,Facturacion,2,"CREATE TABLE Facturacion (
+
+"CREATE TABLE Facturacion (
     ID_Factura INTEGER PRIMARY KEY AUTOINCREMENT,
     Fecha DATE NOT NULL,
     IDCliente INTEGER NOT NULL,
@@ -199,7 +220,8 @@ table,Facturacion,Facturacion,2,"CREATE TABLE Facturacion (
     FOREIGN KEY (IDCliente) REFERENCES Clientes(ID_Cliente),
     FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
 )"
-table,Detalle_Cuentas_Por_Cobrar,Detalle_Cuentas_Por_Cobrar,3,"CREATE TABLE Detalle_Cuentas_Por_Cobrar (
+
+"CREATE TABLE Detalle_Cuentas_Por_Cobrar (
     ID_Cobro INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Movimiento INTEGER NOT NULL,
     Fecha DATE,
@@ -215,7 +237,8 @@ table,Detalle_Cuentas_Por_Cobrar,Detalle_Cuentas_Por_Cobrar,3,"CREATE TABLE Deta
     FOREIGN KEY (ID_Cliente) REFERENCES Clientes(ID_Cliente),
     FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
 )"
-table,Cuentas_Por_Pagar,Cuentas_Por_Pagar,8,"CREATE TABLE Cuentas_Por_Pagar (
+
+"CREATE TABLE Cuentas_Por_Pagar (
     ID_Cuenta INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Movimiento INTEGER,
     Fecha DATE,
@@ -231,7 +254,8 @@ table,Cuentas_Por_Pagar,Cuentas_Por_Pagar,8,"CREATE TABLE Cuentas_Por_Pagar (
     FOREIGN KEY (ID_Proveedor) REFERENCES Proveedores(ID_Proveedor),
     FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
 )"
-table,Movimientos_Inventario,Movimientos_Inventario,18,"CREATE TABLE Movimientos_Inventario (
+
+"CREATE TABLE Movimientos_Inventario (
     ID_Movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_TipoMovimiento INTEGER,
     N_Factura TEXT,
@@ -251,7 +275,8 @@ table,Movimientos_Inventario,Movimientos_Inventario,18,"CREATE TABLE Movimientos
     FOREIGN KEY (ID_Bodega) REFERENCES Bodegas(ID_Bodega),
     FOREIGN KEY (ID_Ruta) REFERENCES Rutas(ID_Ruta)
 )"
-table,Productos,Productos,23,"CREATE TABLE Productos (
+
+"CREATE TABLE Productos (
     ID_Producto INTEGER PRIMARY KEY AUTOINCREMENT,
     COD_Producto TEXT,
     Descripcion TEXT NOT NULL,
@@ -271,7 +296,8 @@ table,Productos,Productos,23,"CREATE TABLE Productos (
     FOREIGN KEY (Tipo) REFERENCES Tipo_Producto(ID_TipoProducto),
     FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
 )"
-table,Bitacora,Bitacora,26,"CREATE TABLE Bitacora (
+
+"CREATE TABLE Bitacora (
     ID_Bitacora INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Usuario INTEGER,
     Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -280,7 +306,8 @@ table,Bitacora,Bitacora,26,"CREATE TABLE Bitacora (
     IP_Acceso TEXT,
     FOREIGN KEY (ID_Usuario) REFERENCES Usuarios(ID_Usuario)
 )"
-table,Inventario_Bodega,Inventario_Bodega,28,"CREATE TABLE Inventario_Bodega (
+
+"CREATE TABLE Inventario_Bodega (
     ID_Bodega INTEGER,
     ID_Producto INTEGER,
     Existencias NUMERIC DEFAULT 0,
@@ -288,4 +315,4 @@ table,Inventario_Bodega,Inventario_Bodega,28,"CREATE TABLE Inventario_Bodega (
     FOREIGN KEY (ID_Bodega) REFERENCES Bodegas(ID_Bodega),
     FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
 )"
-index,sqlite_autoindex_Inventario_Bodega_1,Inventario_Bodega,29,NULL
+

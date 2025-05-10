@@ -1,5 +1,0 @@
-apartado de cobro y pagos, son uno solo en el cual se van agregando a las tablas
-se van a ir mostrando en la visualizacion de cada uno, estan dividos por cobros y pagos
-cobros son los clientes a los cuales se les vendio al credito, evidentemente los pagos 
-son a los proveedores que le debemos plata, en ventas lo que hace es que se realice la factura directamente
-y permitra imprimir en pdf para llevar un mejor orden

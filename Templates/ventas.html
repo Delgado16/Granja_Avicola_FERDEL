@@ -35,12 +35,13 @@
                     </select>
                 </div>
             </div>
+
             <div class="row g-2 mt-1">
                 <div class="col-12 col-md-6">
                     <label for="id_bodega" class="form-label">Bodega:</label>
                     <select id="id_bodega" name="id_bodega" class="form-select" required>
                         {% for bodega in bodegas %}
-                            <option value="{{ bodega.ID_Bodega }}">{{ bodega.Nombre }}</option>
+                            <option value="{{ bodega.id }}">{{ bodega.nombre }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -56,18 +57,21 @@
                     </select>
                 </div>
             </div>
+
             <div class="row g-2 mt-1" id="fecha_vencimiento_row" style="display: none;">
                 <div class="col-12 col-md-6">
                     <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento:</label>
                     <input type="date" id="fecha_vencimiento" name="fecha_vencimiento" class="form-control">
                 </div>
             </div>
+
             <div class="row g-2 mt-1">
                 <div class="col-12">
                     <label for="observacion" class="form-label">Observaciones:</label>
                     <input type="text" id="observacion" name="observacion" class="form-control">
                 </div>
             </div>
+
             <hr class="my-3">
             <!-- Productos -->
             <h5 class="text-secondary mb-2">Productos</h5>
@@ -99,6 +103,7 @@
                     </div>
                 </div>
             </div>
+
             <div class="text-center mt-3">
                 <button type="submit" name="accion" value="guardar" class="btn btn-primary fw-bold px-4 py-2">Guardar Venta</button>
                 <button type="submit" name="accion" value="imprimir" class="btn btn-success fw-bold px-4 py-2 ms-2">Imprimir Factura</button>
