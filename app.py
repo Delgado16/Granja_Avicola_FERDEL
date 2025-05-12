@@ -730,10 +730,10 @@ def historial_pagos_pagar(id_pago):
 @app.route("/factura/pdf/<int:venta_id>")
 def generar_factura_pdf(venta_id):
     venta = db.execute("""
-        SELECT F.ID_Movimiento, F.Fecha, F.Cliente, F.Credito_Contado, F.Observacion, M.N_Factura
+        SELECT F.ID_Factura, F.Fecha, C.Nombre AS Cliente, F.Credito_Contado, F.Observacion
         FROM Facturacion F
-        JOIN Movimientos_Inventario M ON M.ID_Movimiento = F.ID_Movimiento
-        WHERE F.ID_Movimiento = ?
+        JOIN Clientes C ON C.ID_Cliente = F.IDCliente
+        WHERE F.ID_Factura = ?
     """, venta_id)
 
     if not venta:
@@ -743,15 +743,17 @@ def generar_factura_pdf(venta_id):
     venta = venta[0]
 
     detalles = db.execute("""
-        SELECT P.Descripcion, D.Cantidad, D.Costo, D.IVA, D.Descuento, D.Costo_Total
-        FROM Detalle_Movimiento_Inventario D
+        SELECT P.Descripcion, D.Cantidad, D.Costo, D.IVA, D.Descuento,
+               (D.Cantidad * D.Costo - D.Descuento + D.IVA) AS Costo_Total
+        FROM Detalle_Facturacion D
         JOIN Productos P ON P.ID_Producto = D.ID_Producto
-        WHERE D.ID_Movimiento = ?
+        WHERE D.ID_Factura = ?
     """, venta_id)
 
     rendered = render_template("factura_pdf.html", venta=venta, detalles=detalles)
     pdf = HTML(string=rendered).write_pdf()
     return Response(pdf, mimetype='application/pdf')
+
 
 
 @app.route("/facturas", methods=["GET", "POST"])
@@ -760,25 +762,25 @@ def visualizar_facturas():
     fecha = request.args.get("fecha", "").strip()
 
     query = """
-        SELECT F.ID_Movimiento, F.Fecha, F.Cliente, F.Credito_Contado, F.Observacion,
-               M.N_Factura
+        SELECT F.ID_Factura, F.Fecha, C.Nombre AS Cliente, F.Credito_Contado, F.Observacion
         FROM Facturacion F
-        JOIN Movimientos_Inventario M ON M.ID_Movimiento = F.ID_Movimiento
+        JOIN Clientes C ON C.ID_Cliente = F.IDCliente
         WHERE 1=1
     """
     params = []
 
     if cliente:
-        query += " AND F.Cliente LIKE ?"
+        query += " AND C.Nombre LIKE ?"
         params.append(f"%{cliente}%")
     if fecha:
         query += " AND F.Fecha = ?"
         params.append(fecha)
 
-    query += " ORDER BY F.ID_Movimiento DESC"
+    query += " ORDER BY F.ID_Factura DESC"
 
     facturas = db.execute(query, *params)
     return render_template("facturas.html", facturas=facturas, cliente=cliente, fecha=fecha)
+
 #fin de ruta de factura
 
 #ruta de bodega e inventario
@@ -798,14 +800,9 @@ def ver_bodega():
     # Obtener todas las bodegas
     bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
 
-    # Selección de bodega (por GET: ?bodega_id=)
-    bodega_id = request.args.get("bodega_id", type=int)
-    if not bodega_id and bodegas:
-        bodega_id = bodegas[0]["ID_Bodega"]  # Por defecto la primera
-
-    # Obtener inventario de la bodega seleccionada
-    inventario = []
-    if bodega_id:
+    # Crear diccionario con inventario por bodega
+    inventario_por_bodega = {}
+    for bodega in bodegas:
         inventario = db.execute("""
             SELECT P.COD_Producto, P.Descripcion, I.Existencias, U.Abreviatura
             FROM Inventario_Bodega I
@@ -813,9 +810,12 @@ def ver_bodega():
             LEFT JOIN Unidades_Medida U ON U.ID_Unidad = P.Unidad_Medida
             WHERE I.ID_Bodega = ?
             ORDER BY P.Descripcion
-        """, bodega_id)
+        """, bodega["ID_Bodega"])
+        inventario_por_bodega[str(bodega["ID_Bodega"])] = inventario  # clave como string para seguridad
 
-    return render_template("bodega.html", bodegas=bodegas, inventario=inventario, bodega_id=bodega_id)
+    return render_template("bodega.html", bodegas=bodegas, inventario_por_bodega=inventario_por_bodega)
+
+
 
 
 @app.route("/inventario", methods=["GET", "POST"])

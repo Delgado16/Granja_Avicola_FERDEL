@@ -46,7 +46,7 @@
                     <tbody>
                         {% for factura in facturas %}
                         <tr>
-                            <td class="text-center">{{ factura.N_Factura }}</td>
+                            <td class="text-center">F-{{ '%05d'|format(factura.ID_Factura) }}</td>
                             <td class="text-center">{{ factura.Fecha }}</td>
                             <td class="text-center">{{ factura.Cliente }}</td>
                             <td class="text-center">
@@ -58,7 +58,7 @@
                             </td>
                             <td class="text-center">{{ factura.Observacion or '' }}</td>
                             <td class="text-center">
-                                <a href="{{ url_for('generar_factura_pdf', venta_id=factura.ID_Movimiento) }}" class="btn btn-sm btn-secondary" target="_blank">
+                                <a href="{{ url_for('generar_factura_pdf', venta_id=factura.ID_Factura) }}" class="btn btn-sm btn-secondary" target="_blank">
                                     <i class="bi bi-file-earmark-pdf"></i> Ver PDF
                                 </a>
                             </td>

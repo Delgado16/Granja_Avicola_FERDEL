@@ -1,9 +1,8 @@
 {% extends "layout.html" %}
-{% block title %}Inventario de Bodega{% endblock %}
+{% block title %}Inventario por Bodega{% endblock %}
 
 {% block main %}
-<div class="container" style="max-width: 900px; margin-top: 20px;">
-    <!-- Mensajes flash -->
+<div class="container my-4">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -15,84 +14,60 @@
         {% endif %}
     {% endwith %}
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-body bg-light">
-            <h2 class="card-title text-center mb-4 text-primary" style="font-weight: 700;">Inventario de Bodega</h2>
-            <!-- Formulario para agregar nueva bodega -->
-            <form method="post" class="row g-2 align-items-end mb-3 justify-content-center">
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+            <h4 class="text-center text-primary fw-bold mb-3">Inventario General por Bodega</h4>
+            <form method="post" class="row g-2 justify-content-center">
                 <div class="col-md-4 col-12">
-                    <label class="form-label mb-1">Nueva bodega:</label>
-                    <input type="text" name="nombre" class="form-control" placeholder="Nombre" required>
+                    <input type="text" name="nombre" class="form-control" placeholder="Nombre de la bodega" required>
                 </div>
                 <div class="col-md-4 col-12">
-                    <label class="form-label mb-1">Ubicación:</label>
                     <input type="text" name="ubicacion" class="form-control" placeholder="Ubicación">
                 </div>
-                <div class="col-md-2 col-12">
+                <div class="col-md-2 col-6">
                     <button type="submit" class="btn btn-success w-100">Agregar</button>
-                </div>
-            </form>
-            <hr>
-            <!-- Selector de bodega -->
-            <form method="get" class="row g-2 align-items-end mb-4 justify-content-center">
-                <div class="col-md-6 col-12 text-center">
-                    <label for="bodega_id" class="form-label mb-1"><strong>Selecciona una bodega para ver su inventario:</strong></label>
-                    <select name="bodega_id" id="bodega_id" class="form-select d-inline-block w-auto ms-2">
-                        {% for b in bodegas %}
-                            <option value="{{ b.ID_Bodega }}" {% if b.ID_Bodega == bodega_id %}selected{% endif %}>
-                                {{ b.Nombre }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2 col-12">
-                    <button type="submit" class="btn btn-primary w-100">Ver Inventario</button>
                 </div>
             </form>
         </div>
     </div>
-    <!-- Tabla de inventario de la bodega seleccionada -->
-    <div class="card shadow-sm">
+
+    {% for bodega in bodegas %}
+    {% set inventario_bodega = inventario_por_bodega[bodega.ID_Bodega|string] %}
+    <div class="card mb-4 shadow-sm">
         <div class="card-body">
-            <h5 class="mb-3 text-secondary">
-                Inventario actual de:
-                <span class="fw-bold text-dark">
-                    {{
-                        (bodegas | selectattr('ID_Bodega', 'equalto', bodega_id)
-                                 | map(attribute='Nombre')
-                                 | list
-                                 | first)
-                        or '---'
-                    }}
-                </span>
-            </h5>
+            <h6 class="mb-3 text-secondary fw-semibold">
+                <i class="bi bi-box-seam me-1"></i> Bodega: {{ bodega.Nombre }}
+            </h6>
             <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
-                    <thead class="table-dark">
+                <table class="table table-sm table-striped table-bordered align-middle text-center">
+                    <thead class="table-dark small">
                         <tr>
-                            <th scope="col">Código</th>
-                            <th scope="col">Descripción</th>
-                            <th scope="col">Existencias</th>
-                            <th scope="col">Unidad</th>
+                            <th>Código</th>
+                            <th>Descripción</th>
+                            <th>Existencias</th>
+                            <th>Unidad</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for prod in inventario %}
-                        <tr>
-                            <td>{{ prod.COD_Producto }}</td>
-                            <td>{{ prod.Descripcion }}</td>
-                            <td>{{ prod.Existencias }}</td>
-                            <td>{{ prod.Abreviatura or '' }}</td>
-                        </tr>
+                        {% if inventario_bodega %}
+                            {% for prod in inventario_bodega %}
+                            <tr class="{% if prod.Existencias < 10 %}table-warning{% endif %}">
+                                <td>{{ prod.COD_Producto }}</td>
+                                <td class="text-start">{{ prod.Descripcion }}</td>
+                                <td>{{ "%.2f"|format(prod.Existencias) }}</td>
+                                <td>{{ prod.Abreviatura if prod.Abreviatura else 'Sin unidad' }}</td>
+                            </tr>
+                            {% endfor %}
                         {% else %}
-                        <tr>
-                            <td colspan="4" class="text-center text-muted">No hay productos en esta bodega.</td>
-                        </tr>
-                        {% endfor %}
+                            <tr>
+                                <td colspan="4" class="text-muted">No hay productos en esta bodega.</td>
+                            </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+    {% endfor %}
 </div>
 {% endblock %}
