@@ -404,11 +404,38 @@ def ventas():
         try:
             fecha = request.form.get("fecha")
             cliente_id = request.form.get("cliente")
-            tipo_pago = int(request.form.get("tipo_pago", 0))
+            tipo_pago = request.form.get("tipo_pago")
             observacion = request.form.get("observacion", "")
-            id_bodega = int(request.form.get("id_bodega"))
-            id_empresa = 1
+            id_bodega = request.form.get("id_bodega")
 
+            productos = request.form.getlist("productos[]")
+            cantidades = request.form.getlist("cantidades[]")
+            costos = request.form.getlist("costos[]")
+            ivas = request.form.getlist("ivas[]")
+            descuentos = request.form.getlist("descuentos[]")
+
+            # === VALIDACIONES ===
+            if not fecha or not cliente_id or not tipo_pago or not id_bodega:
+                flash("Todos los campos obligatorios deben estar completos.", "danger")
+                return redirect(url_for("ventas"))
+
+            if not productos or len(productos) == 0:
+                flash("Debe ingresar al menos un producto.", "danger")
+                return redirect(url_for("ventas"))
+
+            if len(productos) != len(cantidades) or len(productos) != len(costos):
+                flash("Error en los datos de productos.", "danger")
+                return redirect(url_for("ventas"))
+
+            tipo_pago = int(tipo_pago)
+            id_bodega = int(id_bodega)
+            id_empresa = 1  # Ajusta según tu lógica
+            total_venta = 0
+
+            # === INICIO DE TRANSACCIÓN ===
+            db.execute("BEGIN")
+
+            # Insertar la factura
             db.execute("""
                 INSERT INTO Facturacion (Fecha, IDCliente, Credito_Contado, Observacion, ID_Empresa)
                 VALUES (?, ?, ?, ?, ?)
@@ -416,13 +443,26 @@ def ventas():
 
             factura_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
 
-            # Inserción de productos
-            productos = request.form.getlist("productos[]")
-            cantidades = request.form.getlist("cantidades[]")
-            costos = request.form.getlist("costos[]")
-            ivas = request.form.getlist("ivas[]")
-            descuentos = request.form.getlist("descuentos[]")
+            # Obtener tipo de movimiento de inventario
+            tipo_mov = db.execute("SELECT ID_TipoMovimiento FROM Catalogo_Movimientos WHERE Descripcion = 'Venta'")
+            if not tipo_mov:
+                db.execute("ROLLBACK")
+                flash("El tipo de movimiento 'Venta' no está definido.", "danger")
+                return redirect(url_for("ventas"))
 
+            tipo_movimiento = tipo_mov[0]["ID_TipoMovimiento"]
+
+            db.execute("""
+                INSERT INTO Movimientos_Inventario (
+                    ID_TipoMovimiento, N_Factura, Contado_Credito, Fecha,
+                    ID_Proveedor, Observacion, IVA, Retencion,
+                    ID_Empresa, ID_Bodega
+                ) VALUES (?, ?, ?, ?, NULL, ?, 0, 0, ?, ?)
+            """, tipo_movimiento, f"F-{factura_id:05d}", tipo_pago, fecha, observacion, id_empresa, id_bodega)
+
+            movimiento_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
+
+            # === Insertar productos ===
             for i in range(len(productos)):
                 id_producto = int(productos[i])
                 cantidad = float(cantidades[i])
@@ -430,21 +470,36 @@ def ventas():
                 iva = float(ivas[i])
                 descuento = float(descuentos[i])
                 total = (cantidad * costo) - descuento + iva
+                total_venta += total
 
+                # Detalle de facturación
                 db.execute("""
                     INSERT INTO Detalle_Facturacion (ID_Factura, ID_Producto, Cantidad, Costo, Descuento, IVA, Total)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, factura_id, id_producto, cantidad, costo, descuento, iva, total)
 
-                db.execute("UPDATE Productos SET Existencias = Existencias - ? WHERE ID_Producto = ?", cantidad, id_producto)
+                # Movimiento de inventario
+                db.execute("""
+                    INSERT INTO Detalle_Movimiento_Inventario (
+                        ID_Movimiento, ID_TipoMovimiento, ID_Producto,
+                        Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, movimiento_id, tipo_movimiento, id_producto,
+                     cantidad, costo, iva, descuento, total, -cantidad)
+
+                # Actualizar inventario
+                db.execute("""
+                    UPDATE Productos SET Existencias = Existencias - ?
+                    WHERE ID_Producto = ?
+                """, cantidad, id_producto)
+
                 db.execute("""
                     UPDATE Inventario_Bodega SET Existencias = Existencias - ?
                     WHERE ID_Bodega = ? AND ID_Producto = ?
                 """, cantidad, id_bodega, id_producto)
 
-            # Si es crédito, se genera cuenta por cobrar
+            # Si es crédito, registrar cuenta por cobrar
             if tipo_pago == 1:
-                total_venta = sum((float(cantidades[i]) * float(costos[i])) - float(descuentos[i]) + float(ivas[i]) for i in range(len(productos)))
                 fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
                 db.execute("""
                     INSERT INTO Detalle_Cuentas_Por_Cobrar (
@@ -455,18 +510,22 @@ def ventas():
                 """, factura_id, fecha, cliente_id, f"F-{factura_id:05d}", observacion,
                      fecha_vencimiento.strftime("%Y-%m-%d"), 2, total_venta, id_empresa)
 
+            db.execute("COMMIT")
             flash("Venta registrada correctamente.", "success")
             return redirect(url_for("gestionar_ventas"))
+
         except Exception as e:
+            import traceback
+            print(traceback.format_exc())
+            db.execute("ROLLBACK")
             flash(f"Error al registrar la venta: {e}", "danger")
             return redirect(url_for("ventas"))
 
-    # === Carga de datos para el formulario ===
+    # === GET ===
     clientes = db.execute("SELECT ID_Cliente AS id, Nombre AS nombre FROM Clientes")
     productos = db.execute("SELECT ID_Producto AS id, Descripcion AS descripcion FROM Productos")
     bodegas = db.execute("SELECT ID_Bodega AS id, Nombre AS nombre FROM Bodegas")
 
-    # Generar próximo número de factura
     last_seq = db.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", "Facturacion")
     next_id = last_seq[0]["seq"] + 1 if last_seq else 1
     n_factura = f"F-{next_id:05d}"
@@ -474,38 +533,42 @@ def ventas():
     return render_template("ventas.html", clientes=clientes, productos=productos, bodegas=bodegas, n_factura=n_factura)
 
 
-
-
-
 @app.route("/gestionar_ventas", methods=["GET"])
 def gestionar_ventas():
     try:
+        # Obtener las ventas con datos del cliente
         ventas = db.execute("""
             SELECT f.ID_Factura, f.Fecha, c.Nombre AS Cliente, f.Credito_Contado, f.Observacion
             FROM Facturacion f
             JOIN Clientes c ON c.ID_Cliente = f.IDCliente
+            ORDER BY f.Fecha DESC
         """)
 
+        # Obtener los detalles (productos por venta)
         detalles = db.execute("""
             SELECT df.ID_Factura, p.Descripcion, df.Cantidad
             FROM Detalle_Facturacion df
             JOIN Productos p ON df.ID_Producto = p.ID_Producto
         """)
 
+        # Agrupar productos por factura
         productos_por_venta = {}
         for d in detalles:
             productos_por_venta.setdefault(d["ID_Factura"], []).append(
                 f"{d['Cantidad']} x {d['Descripcion']}"
             )
 
+        # Preparar datos para mostrar en la plantilla
         for venta in ventas:
             venta["Productos"] = productos_por_venta.get(venta["ID_Factura"], [])
+            venta["NumeroFactura"] = f"F-{venta['ID_Factura']:05d}"  # ← Formato del número de factura
 
         return render_template("gestionar_ventas.html", ventas=ventas)
 
     except Exception as e:
         flash(f"❌ Error al cargar las ventas: {e}", "danger")
         return redirect(url_for("ventas"))
+
 
 
 

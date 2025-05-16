@@ -1,0 +1,3 @@
+hay tablas que aun no c estan utilizando, seria revisar como va a funcionar todo nuevamente para hacer nuevos ajustes
+a la ves modificaciones internas como externas, ademas que tambien se tiene que agregar ahora un apartado para la crianza de chancho
+se tiene que realizar reestructuracion de todo, para añadir lo antes mencionado, lo cual sera la implementacion de nuesvas tablas a la base de datos
