@@ -1,10 +1,13 @@
-from flask import Flask, flash, render_template, redirect, url_for, request, session, make_response,Response
+from flask import Flask, flash, render_template, redirect, url_for, request, session, Response, jsonify
 from cs50 import SQL
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
+from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin
 from weasyprint import HTML
 from datetime import datetime, timedelta
+import traceback
+
+
 
 
 app = Flask(__name__)
@@ -276,8 +279,6 @@ def compras():
     return render_template("compras.html", proveedores=proveedores, productos=productos, bodegas=bodegas, empresas=empresas)
 
 
-
-
 # Gestionar compras
 @app.route("/gestionar_compras")
 def gestionar_compras():
@@ -324,32 +325,19 @@ def editar_compra(id):
         id_bodega = request.form.get("id_bodega")
         id_empresa = request.form.get("id_empresa")
         n_factura = request.form.get("n_factura") or ""
-        tipo_pago = int(request.form.get("tipo_pago") or 0)
+        tipo_pago_nuevo = int(request.form.get("tipo_pago") or 0)
         observacion = request.form.get("observacion") or ""
 
-        # Validación por campo
-        if not fecha:
-            flash("La fecha es obligatoria.", "danger")
-            return redirect(url_for("gestionar_compras"))
-        if not proveedor_id:
-            flash("Debe seleccionar un proveedor.", "danger")
-            return redirect(url_for("gestionar_compras"))
-        if not id_bodega:
-            flash("Debe seleccionar una bodega.", "danger")
-            return redirect(url_for("gestionar_compras"))
-        if not id_empresa:
-            flash("Debe seleccionar una empresa.", "danger")
+        # Validaciones
+        if not fecha or not proveedor_id or not id_bodega or not id_empresa:
+            flash("Todos los campos obligatorios deben completarse.", "danger")
             return redirect(url_for("gestionar_compras"))
 
-        try:
-            proveedor_id = int(proveedor_id)
-            id_bodega = int(id_bodega)
-            id_empresa = int(id_empresa)
-        except ValueError:
-            flash("Los valores de proveedor, bodega y empresa deben ser numéricos.", "danger")
-            return redirect(url_for("gestionar_compras"))
+        proveedor_id = int(proveedor_id)
+        id_bodega = int(id_bodega)
+        id_empresa = int(id_empresa)
 
-        # Verificar existencia de registros foráneos
+        # Verificar existencia
         if not db.execute("SELECT 1 FROM Proveedores WHERE ID_Proveedor = ?", proveedor_id):
             flash("El proveedor seleccionado no existe.", "danger")
             return redirect(url_for("gestionar_compras"))
@@ -360,16 +348,82 @@ def editar_compra(id):
             flash("La empresa seleccionada no existe.", "danger")
             return redirect(url_for("gestionar_compras"))
 
-        # Actualizar encabezado
+        # Obtener compra actual
+        movimiento = db.execute("""
+            SELECT Contado_Credito, N_Factura, ID_Bodega
+            FROM Movimientos_Inventario WHERE ID_Movimiento = ?
+        """, id)
+        if not movimiento:
+            flash("La compra no existe.", "danger")
+            return redirect(url_for("gestionar_compras"))
+
+        tipo_pago_anterior = movimiento[0]["Contado_Credito"]
+        num_factura = movimiento[0]["N_Factura"]
+        bodega_anterior = movimiento[0]["ID_Bodega"]
+
+        # Paso 1: Restar del inventario los productos anteriores
+        productos = db.execute("""
+            SELECT ID_Producto, Cantidad FROM Detalle_Movimiento_Inventario
+            WHERE ID_Movimiento = ?
+        """, id)
+        for prod in productos:
+            db.execute("""
+                UPDATE Inventario_Bodega
+                SET Cantidad = Cantidad - ?
+                WHERE ID_Bodega = ? AND ID_Producto = ?
+            """, prod["Cantidad"], bodega_anterior, prod["ID_Producto"])
+
+        # Paso 2: Eliminar detalles de movimiento de inventario anteriores
+        db.execute("DELETE FROM Detalle_Movimiento_Inventario WHERE ID_Movimiento = ?", id)
+
+        # Paso 3: Actualizar la compra
         db.execute("""
             UPDATE Movimientos_Inventario
             SET Fecha = ?, ID_Proveedor = ?, ID_Empresa = ?, ID_Bodega = ?,
                 N_Factura = ?, Contado_Credito = ?, Observacion = ?
             WHERE ID_Movimiento = ?
         """, fecha, proveedor_id, id_empresa, id_bodega,
-             n_factura, tipo_pago, observacion, id)
+             n_factura, tipo_pago_nuevo, observacion, id)
 
-        flash("✅ Compra actualizada correctamente.", "success")
+        # Paso 4: Insertar nuevos detalles y actualizar inventario (debes adaptar esto a tu formulario)
+        detalles = request.form.getlist("productos[]")  # ejemplo: [{"id_producto":1, "cantidad":10, "precio":5.50}, ...]
+        for detalle in detalles:
+            id_producto = int(detalle["id_producto"])
+            cantidad = float(detalle["cantidad"])
+            precio_unitario = float(detalle["precio"])
+            costo_total = cantidad * precio_unitario
+
+            # Insertar detalle de movimiento
+            db.execute("""
+                INSERT INTO Detalle_Movimiento_Inventario (ID_Movimiento, ID_Producto, Cantidad, Precio_Unitario, Costo_Total)
+                VALUES (?, ?, ?, ?, ?)
+            """, id, id_producto, cantidad, precio_unitario, costo_total)
+
+            # Actualizar inventario
+            db.execute("""
+                INSERT INTO Inventario_Bodega (ID_Bodega, ID_Producto, Cantidad)
+                VALUES (?, ?, ?)
+                ON CONFLICT(ID_Bodega, ID_Producto) DO UPDATE SET Cantidad = Cantidad + excluded.Cantidad
+            """, id_bodega, id_producto, cantidad)
+
+        # Paso 5: Actualizar cuentas por pagar si cambió el tipo de pago
+        if tipo_pago_anterior != tipo_pago_nuevo:
+            if tipo_pago_nuevo == 1:  # Cambio a crédito
+                total_credito = db.execute("""
+                    SELECT SUM(Costo_Total) as total FROM Detalle_Movimiento_Inventario WHERE ID_Movimiento = ?
+                """, id)[0]["total"]
+
+                db.execute("""
+                    INSERT INTO Cuentas_Por_Pagar (
+                        ID_Movimiento, Fecha, ID_Proveedor, Num_Documento, Observacion,
+                        Fecha_Vencimiento, Tipo_Movimiento, Monto_Movimiento, IVA, Retencion, ID_Empresa
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, id, fecha, proveedor_id, n_factura, observacion,
+                     fecha, 1, total_credito, 0, 0, id_empresa)
+            else:  # Cambio a contado
+                db.execute("DELETE FROM Cuentas_Por_Pagar WHERE ID_Movimiento = ?", id)
+
+        flash("✅ Compra, inventario y cuentas por pagar actualizados correctamente.", "success")
         return redirect(url_for("gestionar_compras"))
 
     except Exception as e:
@@ -377,7 +431,6 @@ def editar_compra(id):
         print(traceback.format_exc())
         flash(f"❌ Error al actualizar la compra: {e}", "danger")
         return redirect(url_for("gestionar_compras"))
-
 
 
 
@@ -393,6 +446,8 @@ def eliminar_compra(id):
 
     flash("Compra eliminada correctamente", "success")
     return redirect(url_for("gestionar_compras"))
+
+
 
 #fin de gestionar compras
 
@@ -541,7 +596,7 @@ def gestionar_ventas():
             SELECT f.ID_Factura, f.Fecha, c.Nombre AS Cliente, f.Credito_Contado, f.Observacion
             FROM Facturacion f
             JOIN Clientes c ON c.ID_Cliente = f.IDCliente
-            ORDER BY f.Fecha DESC
+            ORDER BY f.ID_Factura DESC
         """)
 
         # Obtener los detalles (productos por venta)
@@ -569,6 +624,20 @@ def gestionar_ventas():
         flash(f"❌ Error al cargar las ventas: {e}", "danger")
         return redirect(url_for("ventas"))
 
+@app.route("/productos_por_bodega/<int:id_bodega>")
+def productos_por_bodega(id_bodega):
+    try:
+        productos = db.execute("""
+            SELECT p.ID_Producto AS id, p.Descripcion AS descripcion
+            FROM Productos p
+            INNER JOIN Inventario_Bodega ib ON ib.ID_Producto = p.ID_Producto
+            WHERE ib.ID_Bodega = ? AND ib.Existencias > 0
+        """, id_bodega)
+
+        return jsonify(productos)
+    except Exception as e:
+        print(f"Error al obtener productos por bodega: {e}")
+        return jsonify([])
 
 
 
@@ -591,18 +660,14 @@ def editar_venta(id_venta):
         except Exception as e:
             flash(f"❌ Error al actualizar la venta: {e}", "danger")
             return redirect(url_for("gestionar_ventas"))
-
     else:
         venta = db.execute("""
-            SELECT f.ID_Movimiento, f.Fecha, f.Credito_Contado, f.IDCliente, c.Nombre AS Cliente
+            SELECT f.ID_Movimiento, f.Fecha, f.Credito_Contado, f.IDCliente
             FROM Facturacion f
-            JOIN Clientes c ON f.IDCliente = c.ID_Cliente
             WHERE f.ID_Movimiento = ?
         """, id_venta)[0]
 
-        clientes = db.execute("SELECT ID_Cliente, Nombre FROM Clientes")
-
-        return render_template("editar_venta.html", venta=venta, clientes=clientes)
+        return jsonify(venta)
 #fin de ruta de ventas
 
 # ruta de cobros
@@ -719,6 +784,8 @@ def pagos():
                    cpp.Fecha_Vencimiento
             FROM Cuentas_Por_Pagar cpp
             JOIN Proveedores p ON cpp.ID_Proveedor = p.ID_Proveedor
+            ORDER BY cpp.Fecha_Vencimiento DESC
+            
         """)
         return render_template("pagos.html", cuentas=cuentas)
 
@@ -872,7 +939,7 @@ def ver_bodega():
             JOIN Productos P ON P.ID_Producto = I.ID_Producto
             LEFT JOIN Unidades_Medida U ON U.ID_Unidad = P.Unidad_Medida
             WHERE I.ID_Bodega = ?
-            ORDER BY P.Descripcion
+            ORDER BY P.cod_producto
         """, bodega["ID_Bodega"])
         inventario_por_bodega[str(bodega["ID_Bodega"])] = inventario  # clave como string para seguridad
 
@@ -1234,46 +1301,150 @@ def eliminar_empresa(id):
 # Listar y Agregar Producto
 @app.route("/productos", methods=["GET", "POST"])
 def productos():
+    """
+    Ruta para gestionar productos: listar, agregar nuevos productos
+    """
     if request.method == "POST":
-        cod = request.form.get("cod_producto", "").strip()
-        descripcion = request.form.get("descripcion", "").strip()
-        unidad = request.form.get("unidad")
-        familia = request.form.get("familia") or None
-        tipo = request.form.get("tipo") or None
-        costo_promedio = float(request.form.get("costo_promedio", 0))
-        precio_venta = float(request.form.get("precio_venta", 0))
-        existencias = float(request.form.get("existencias", 0))
-        iva = 1 if request.form.get("iva") else 0
-        estado = int(request.form.get("estado", 1))
-        id_empresa = 1  # Cambia según login/sesión
-
-        if not descripcion or not unidad:
-            flash("La descripción y la unidad son obligatorias.", "danger")
-            return redirect(url_for("productos"))
-
-        db.execute("""
-            INSERT INTO Productos (
-                COD_Producto, Descripcion, Unidad_Medida, Existencias,
-                Estado, Familia, Costo_Promedio, IVA, Tipo, Precio_Venta, ID_Empresa
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, cod, descripcion, unidad, existencias, estado, familia, costo_promedio, iva, tipo, precio_venta, id_empresa)
-        flash("Producto agregado correctamente.", "success")
+        try:
+            # Obtener datos del formulario
+            cod = request.form.get("cod_producto", "").strip()
+            descripcion = request.form.get("descripcion", "").strip()
+            unidad = request.form.get("unidad")
+            familia = request.form.get("familia") or None
+            tipo = request.form.get("tipo") or None
+            
+            # Convertir valores numéricos con manejo de errores
+            try:
+                costo_promedio = float(request.form.get("costo_promedio", 0))
+                precio_venta = float(request.form.get("precio_venta", 0))
+                existencias = float(request.form.get("existencias", 0))
+                estado = int(request.form.get("estado", 1))
+            except ValueError:
+                flash("Los valores numéricos son inválidos. Verifique los datos ingresados.", "danger")
+                return redirect(url_for("productos"))
+            
+            iva = 1 if request.form.get("iva") else 0
+            id_bodega = request.form.get("bodega")
+            id_empresa = session.get("id_empresa", 1)  # Obtener de sesión o usar valor predeterminado
+            
+            # Validaciones básicas
+            if not descripcion or not unidad or not id_bodega:
+                flash("Descripción, unidad y bodega son obligatorias.", "danger")
+                return redirect(url_for("productos"))
+                
+            # Validar valores numéricos
+            if costo_promedio < 0 or precio_venta < 0 or existencias < 0:
+                flash("Los valores numéricos no pueden ser negativos.", "danger")
+                return redirect(url_for("productos"))
+                
+            # Validar longitud de campos
+            if len(descripcion) > 100:  # Ajustar según la definición de tu BD
+                flash("La descripción es demasiado larga.", "danger")
+                return redirect(url_for("productos"))
+                
+            # Iniciar transacción y realizar inserciones
+            try:
+                # Iniciar transacción
+                db.execute("BEGIN TRANSACTION")
+                
+                # Insertar producto
+                db.execute("""
+                    INSERT INTO Productos (
+                        COD_Producto, Descripcion, Unidad_Medida, Existencias,
+                        Estado, Familia, Costo_Promedio, IVA, Tipo, Precio_Venta, ID_Empresa
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, cod, descripcion, unidad, existencias, estado, familia, costo_promedio, iva, tipo, precio_venta, id_empresa)
+                
+                # Obtener el ID del nuevo producto - CORREGIDO
+                resultado = db.execute("SELECT last_insert_rowid() AS id")
+                
+                # Manejar diferentes tipos de retorno de db.execute()
+                if isinstance(resultado, list):
+                    # Si db.execute() devuelve una lista de diccionarios
+                    if resultado and len(resultado) > 0:
+                        producto_id = resultado[0]["id"]
+                    else:
+                        raise Exception("No se pudo obtener el ID del producto insertado")
+                else:
+                    # Si db.execute() devuelve un objeto cursor u otro objeto
+                    try:
+                        # Intentar usar fetchone() si está disponible
+                        row = resultado.fetchone()
+                        producto_id = row["id"]
+                    except (AttributeError, TypeError):
+                        # Si no tiene fetchone() o hay otro error
+                        raise Exception("No se pudo obtener el ID del producto insertado")
+                
+                # Insertar en Inventario_Bodega
+                db.execute("""
+                    INSERT INTO Inventario_Bodega (ID_Bodega, ID_Producto, Existencias)
+                    VALUES (?, ?, ?)
+                """, id_bodega, producto_id, existencias)
+                
+                # Confirmar transacción
+                db.execute("COMMIT")
+                flash("Producto agregado correctamente en la bodega.", "success")
+            except Exception as e:
+                # Revertir en caso de error
+                try:
+                    db.execute("ROLLBACK")
+                except:
+                    pass  # Ignorar errores en el rollback
+                flash(f"Error al guardar el producto: {str(e)}", "danger")
+                
+        except Exception as e:
+            flash(f"Error inesperado: {str(e)}", "danger")
+            
         return redirect(url_for("productos"))
 
-    # Listar productos y combos
-    productos = db.execute("""
-        SELECT P.*, U.Descripcion AS Unidad, F.Descripcion AS FamiliaDesc, T.Descripcion AS TipoDesc
-        FROM Productos P
-        LEFT JOIN Unidades_Medida U ON P.Unidad_Medida = U.ID_Unidad
-        LEFT JOIN Familia F ON P.Familia = F.ID_Familia
-        LEFT JOIN Tipo_Producto T ON P.Tipo = T.ID_TipoProducto
-        ORDER BY P.Descripcion
-    """)
-    unidades = db.execute("SELECT ID_Unidad, Descripcion FROM Unidades_Medida")
-    familias = db.execute("SELECT ID_Familia, Descripcion FROM Familia")
-    tipos = db.execute("SELECT ID_TipoProducto, Descripcion FROM Tipo_Producto")
-    return render_template("productos.html", productos=productos, unidades=unidades, familias=familias, tipos=tipos)
+    # Obtener datos para el formulario (GET request)
+    try:
+        # Consulta para obtener productos con información relacionada
+        productos = db.execute("""
+            SELECT P.*, U.Descripcion AS Unidad, F.Descripcion AS FamiliaDesc, T.Descripcion AS TipoDesc
+            FROM Productos P
+            LEFT JOIN Unidades_Medida U ON P.Unidad_Medida = U.ID_Unidad
+            LEFT JOIN Familia F ON P.Familia = F.ID_Familia
+            LEFT JOIN Tipo_Producto T ON P.Tipo = T.ID_TipoProducto
+            ORDER BY P.cod_producto
+        """)
+        
+        # Consultas para obtener datos de formularios
+        unidades = db.execute("SELECT ID_Unidad, Descripcion FROM Unidades_Medida ORDER BY Descripcion")
+        familias = db.execute("SELECT ID_Familia, Descripcion FROM Familia ORDER BY Descripcion")
+        tipos = db.execute("SELECT ID_TipoProducto, Descripcion FROM Tipo_Producto ORDER BY Descripcion")
+        bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas ORDER BY Nombre")
+        
+        # Asegurarse de que los resultados sean iterables
+        if not isinstance(productos, (list, tuple)) and hasattr(productos, 'fetchall'):
+            productos = productos.fetchall()
+        if not isinstance(unidades, (list, tuple)) and hasattr(unidades, 'fetchall'):
+            unidades = unidades.fetchall()
+        if not isinstance(familias, (list, tuple)) and hasattr(familias, 'fetchall'):
+            familias = familias.fetchall()
+        if not isinstance(tipos, (list, tuple)) and hasattr(tipos, 'fetchall'):
+            tipos = tipos.fetchall()
+        if not isinstance(bodegas, (list, tuple)) and hasattr(bodegas, 'fetchall'):
+            bodegas = bodegas.fetchall()
+            
+    except Exception as e:
+        flash(f"Error al cargar los datos: {str(e)}", "danger")
+        # Proporcionar valores predeterminados vacíos
+        productos = []
+        unidades = []
+        familias = []
+        tipos = []
+        bodegas = []
 
+    # Renderizar plantilla con los datos
+    return render_template(
+        "productos.html", 
+        productos=productos, 
+        unidades=unidades, 
+        familias=familias, 
+        tipos=tipos, 
+        bodegas=bodegas
+    )
 
 
 # Editar Producto

@@ -46,37 +46,42 @@
                 </div>
             </form>
 
-            <!-- Tabla de Movimientos -->
-            <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
-                    <thead class="table-dark text-center">
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Producto</th>
-                            <th>Tipo de Movimiento</th>
-                            <th>Cantidad</th>
-                            <th>Costo</th>
-                            <th>Observación</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for m in movimientos %}
-                        <tr>
-                            <td class="text-center">{{ m.Fecha }}</td>
-                            <td>{{ m.Producto }}</td>
-                            <td>{{ m.TipoMovimiento }}</td>
-                            <td class="text-end">{{ m.Cantidad }}</td>
-                            <td class="text-end">{{ 'C$ ' ~ "{:,.2f}".format(m.Costo).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
-                            <td>{{ m.Observacion }}</td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted">No se encontraron movimientos.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <!-- Tabla de Movimientos dentro de un card desplazable -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-striped table-hover align-middle m-0">
+                            <thead class="table-dark text-center sticky-top">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Producto</th>
+                                    <th>Tipo de Movimiento</th>
+                                    <th>Cantidad</th>
+                                    <th>Costo</th>
+                                    <th>Observación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in movimientos %}
+                                <tr>
+                                    <td class="text-center">{{ m.Fecha }}</td>
+                                    <td>{{ m.Producto }}</td>
+                                    <td>{{ m.TipoMovimiento }}</td>
+                                    <td class="text-end">{{ m.Cantidad }}</td>
+                                    <td class="text-end">{{ 'C$ ' ~ "{:,.2f}".format(m.Costo).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                                    <td>{{ m.Observacion }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No se encontraron movimientos.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
+
         </div>
     </div>
 </div>

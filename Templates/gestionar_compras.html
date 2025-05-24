@@ -1,145 +1,605 @@
-{% extends 'layout.html' %}
-
+{% extends "layout.html" %}
 {% block title %}Gestionar Compras{% endblock %}
 
 {% block main %}
-<div class="container mt-4" style="max-width: 960px;">
-    <div class="card shadow-sm border-0 rounded-4">
-        <div class="card-body">
-            <h2 class="text-center text-primary fw-bold mb-4">Historial de Compras</h2>
-
-            <!-- Tabla dentro de card desplazable -->
-            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                <table class="table table-striped table-bordered align-middle">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>ID</th>
-                            <th>Fecha</th>
-                            <th>Proveedor</th>
-                            <th>Factura</th>
-                            <th>Tipo de Pago</th>
-                            <th>Observaciones</th>
-                            <th>Total</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for compra in compras %}
-                        <tr>
-                            <td>{{ compra.id }}</td>
-                            <td>{{ compra.fecha }}</td>
-                            <td>{{ compra.proveedor }}</td>
-                            <td>{{ compra.factura }}</td>
-                            <td>{{ 'Contado' if compra.tipo_pago == 0 else 'Crédito' }}</td>
-                            <td>{{ compra.observacion }}</td>
-                            <td>{{ 'C$ ' ~ "{:,.2f}".format(compra.total).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
-                            <td>
-                                <a href="/compras/{{ compra.id }}" class="btn btn-sm btn-info mb-1">Ver</a>
-                                <button class="btn btn-sm btn-warning mb-1"
-                                        onclick="llenarModalEditar({{ compra | tojson | safe }})"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalEditarCompra">Editar</button>
-                                <a href="/compras/{{ compra.id }}/eliminar" class="btn btn-sm btn-danger mb-1"
-                                    onclick="return confirm('¿Seguro que deseas eliminar esta compra?');">Eliminar</a>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="8" class="text-center">No hay compras registradas.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white">
+          <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">
+              <i class="fas fa-shopping-cart me-2"></i>
+              Gestionar Compras
+            </h1>
+            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#nuevaCompraModal">
+              <i class="fas fa-plus me-1"></i>
+              Nueva Compra
+            </button>
+          </div>
         </div>
+        
+        <div class="card-body p-0">
+          <!-- Mensajes Flash -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+          <div class="p-3">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+              <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} me-2"></i>
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% endwith %}
+
+          <!-- Tabla de Compras -->
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="border-0 fw-semibold">
+                    <i class="fas fa-hashtag me-1 text-muted"></i>ID
+                  </th>
+                  <th class="border-0 fw-semibold">
+                    <i class="fas fa-calendar me-1 text-muted"></i>Fecha
+                  </th>
+                  <th class="border-0 fw-semibold">
+                    <i class="fas fa-truck me-1 text-muted"></i>Proveedor
+                  </th>
+                  <th class="border-0 fw-semibold">
+                    <i class="fas fa-file-invoice me-1 text-muted"></i>Factura
+                  </th>
+                  <th class="border-0 fw-semibold">
+                    <i class="fas fa-credit-card me-1 text-muted"></i>Tipo de Pago
+                  </th>
+                  <th class="border-0 fw-semibold">
+                    <i class="fas fa-dollar-sign me-1 text-muted"></i>Total
+                  </th>
+                  <th class="border-0 fw-semibold text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for compra in compras %}
+                <tr class="align-middle">
+                  <td class="fw-medium">#{{ compra.id }}</td>
+                  <td>
+                    <span class="text-muted small">{{ compra.fecha }}</span>
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-sm bg-light rounded-circle d-flex align-items-center justify-content-center me-2">
+                        <i class="fas fa-building text-muted"></i>
+                      </div>
+                      <span class="fw-medium">{{ compra.proveedor }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark">{{ compra.factura }}</span>
+                  </td>
+                  <td>
+                    {% if compra.tipo_pago == 0 %}
+                    <span class="badge bg-success">
+                      <i class="fas fa-money-bill me-1"></i>Contado
+                    </span>
+                    {% elif compra.tipo_pago == 1 %}
+                    <span class="badge bg-warning">
+                      <i class="fas fa-credit-card me-1"></i>Crédito
+                    </span>
+                    {% else %}
+                    <span class="badge bg-secondary">-</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="fw-bold text-success">${{ "%.2f"|format(compra.total) }}</span>
+                  </td>
+                  <td class="text-center">
+                    <div class="btn-group" role="group">
+                      <button type="button" class="btn btn-outline-primary btn-sm" 
+                              data-bs-toggle="modal" data-bs-target="#editarModal{{ compra.id }}"
+                              title="Editar compra">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <a href="{{ url_for('eliminar_compra', id=compra.id) }}" 
+                         class="btn btn-outline-danger btn-sm"
+                         onclick="return confirm('¿Está seguro de eliminar esta compra?')"
+                         title="Eliminar compra">
+                        <i class="fas fa-trash"></i>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+                
+                {% if not compras %}
+                <tr>
+                  <td colspan="7" class="text-center py-5">
+                    <div class="text-muted">
+                      <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                      <h5>No hay compras registradas</h5>
+                      <p class="mb-0">Comience agregando una nueva compra</p>
+                    </div>
+                  </td>
+                </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
-<!-- Modal de Edición de Compra -->
-<div class="modal fade" id="modalEditarCompra" tabindex="-1" aria-labelledby="modalEditarCompraLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content rounded-4">
-      <div class="modal-header">
-        <h5 class="modal-title">Editar Compra</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+<!-- Modales para editar compras -->
+{% for compra in compras %}
+<div class="modal fade" id="editarModal{{ compra.id }}" tabindex="-1" aria-labelledby="editarModalLabel{{ compra.id }}" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="editarModalLabel{{ compra.id }}">
+          <i class="fas fa-edit me-2"></i>
+          Editar Compra #{{ compra.id }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
-      <form id="formEditarCompra" method="POST">
+      
+      <form action="{{ url_for('editar_compra', id=compra.id) }}" method="POST">
         <div class="modal-body">
-          <input type="hidden" name="id" id="editar_id">
-          <div class="row mb-3">
-            <div class="col-md-4">
-              <label class="form-label">Fecha</label>
-              <input type="date" class="form-control" name="fecha" id="editar_fecha" required>
+          <!-- Información básica -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label for="fecha{{ compra.id }}" class="form-label fw-semibold">
+                <i class="fas fa-calendar me-1 text-muted"></i>Fecha
+              </label>
+              <input type="date" class="form-control" id="fecha{{ compra.id }}" name="fecha"
+                     value="{{ compra.fecha }}" required>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Proveedor</label>
-              <select class="form-select" name="proveedor" id="editar_proveedor" required>
+            
+            <div class="col-md-6">
+              <label for="proveedor{{ compra.id }}" class="form-label fw-semibold">
+                <i class="fas fa-truck me-1 text-muted"></i>Proveedor
+              </label>
+              <select class="form-select" id="proveedor{{ compra.id }}" name="proveedor" required>
+                <option value="" disabled>Seleccione un proveedor</option>
                 {% for proveedor in proveedores %}
-                  <option value="{{ proveedor.id }}">{{ proveedor.Nombre }}</option>
+                <option value="{{ proveedor.id }}" {{ 'selected' if proveedor.id == compra.proveedor else '' }}>
+                  {{ proveedor.Nombre }}
+                </option>
                 {% endfor %}
               </select>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Factura</label>
-              <input type="text" class="form-control" name="n_factura" id="editar_factura">
-            </div>
           </div>
 
-          <div class="row mb-3">
+          <!-- Empresa y Bodega -->
+          <div class="row g-3 mb-4">
             <div class="col-md-4">
-              <label class="form-label">Tipo de Pago</label>
-              <select class="form-select" name="tipo_pago" id="editar_tipo_pago">
-                <option value="0">Contado</option>
-                <option value="1">Crédito</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Empresa</label>
-              <select class="form-select" name="id_empresa" id="editar_empresa" required>
+              <label for="id_empresa{{ compra.id }}" class="form-label fw-semibold">
+                <i class="fas fa-building me-1 text-muted"></i>Empresa
+              </label>
+              <select class="form-select" id="id_empresa{{ compra.id }}" name="id_empresa" required>
+                <option value="" disabled>Seleccione una empresa</option>
                 {% for empresa in empresas %}
-                  <option value="{{ empresa.ID_Empresa }}">{{ empresa.Descripcion }}</option>
+                <option value="{{ empresa.ID_Empresa }}">{{ empresa.Descripcion }}</option>
                 {% endfor %}
               </select>
             </div>
+            
             <div class="col-md-4">
-              <label class="form-label">Bodega</label>
-              <select class="form-select" name="id_bodega" id="editar_bodega" required>
+              <label for="id_bodega{{ compra.id }}" class="form-label fw-semibold">
+                <i class="fas fa-warehouse me-1 text-muted"></i>Bodega
+              </label>
+              <select class="form-select bodega-select" id="id_bodega{{ compra.id }}" name="id_bodega" 
+                      data-compra-id="{{ compra.id }}" required onchange="filtrarProductosPorBodega(this)">
+                <option value="" disabled selected>Seleccione una bodega</option>
                 {% for bodega in bodegas %}
-                  <option value="{{ bodega.ID_Bodega }}">{{ bodega.Nombre }}</option>
+                <option value="{{ bodega.ID_Bodega }}">{{ bodega.Nombre }}</option>
                 {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-md-4">
+              <label for="tipo_pago{{ compra.id }}" class="form-label fw-semibold">
+                <i class="fas fa-credit-card me-1 text-muted"></i>Tipo de Pago
+              </label>
+              <select class="form-select" id="tipo_pago{{ compra.id }}" name="tipo_pago" required>
+                <option value="0" {{ 'selected' if compra.tipo_pago == 0 else '' }}>Contado</option>
+                <option value="1" {{ 'selected' if compra.tipo_pago == 1 else '' }}>Crédito</option>
               </select>
             </div>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label">Observación</label>
-            <textarea class="form-control" name="observacion" id="editar_observacion" rows="2"></textarea>
+          <!-- Factura y Observación -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label for="n_factura{{ compra.id }}" class="form-label fw-semibold">
+                <i class="fas fa-file-invoice me-1 text-muted"></i>Nº Factura
+              </label>
+              <input type="text" class="form-control" id="n_factura{{ compra.id }}" name="n_factura"
+                     value="{{ compra.factura }}">
+            </div>
+            
+            <div class="col-md-6">
+              <label for="observacion{{ compra.id }}" class="form-label fw-semibold">
+                <i class="fas fa-sticky-note me-1 text-muted"></i>Observación
+              </label>
+              <textarea class="form-control" id="observacion{{ compra.id }}" name="observacion" rows="2"></textarea>
+            </div>
           </div>
 
-          <div class="alert alert-warning">
-            Los productos de la compra no se pueden editar desde esta ventana.
+          <!-- Productos -->
+          <div class="border rounded p-3 bg-light">
+            <h6 class="fw-semibold mb-3">
+              <i class="fas fa-box me-2 text-primary"></i>
+              Productos de la Compra
+            </h6>
+            
+            <!-- Alerta de selección de bodega -->
+            <div class="alert alert-info alert-dismissible fade show" id="alertaBodega{{ compra.id }}">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Importante:</strong> Seleccione primero una bodega para ver los productos disponibles en el inventario.
+            </div>
+            
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered bg-white" id="tabla-productos{{ compra.id }}">
+                <thead class="table-primary">
+                  <tr class="text-center">
+                    <th>Producto</th>
+                    <th style="width: 100px;">Stock Actual</th>
+                    <th style="width: 100px;">Cantidad</th>
+                    <th style="width: 100px;">Costo</th>
+                    <th style="width: 80px;">IVA</th>
+                    <th style="width: 100px;">Descuento</th>
+                    <th style="width: 80px;">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <select name="productos[]" class="form-select form-select-sm producto-select" 
+                              data-compra-id="{{ compra.id }}" required disabled>
+                        <option value="" disabled selected>Primero seleccione una bodega</option>
+                      </select>
+                    </td>
+                    <td>
+                      <span class="badge bg-secondary stock-display">-</span>
+                    </td>
+                    <td>
+                      <input type="number" name="cantidades[]" step="any" min="0" 
+                             class="form-control form-control-sm text-center" required>
+                    </td>
+                    <td>
+                      <input type="number" name="costos[]" step="any" min="0" 
+                             class="form-control form-control-sm text-end" required>
+                    </td>
+                    <td>
+                      <input type="number" name="ivas[]" step="any" min="0" 
+                             class="form-control form-control-sm text-center" required>
+                    </td>
+                    <td>
+                      <input type="number" name="descuentos[]" step="any" min="0" 
+                             class="form-control form-control-sm text-end" required>
+                    </td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-outline-danger btn-sm" 
+                              onclick="eliminarFila(this)" title="Eliminar producto">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <button type="button" class="btn btn-outline-secondary btn-sm" 
+                    onclick="agregarFila('{{ compra.id }}')" id="btnAgregarProducto{{ compra.id }}" disabled>
+              <i class="fas fa-plus me-1"></i>Agregar Producto
+            </button>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times me-1"></i>Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Guardar Cambios
+          </button>
         </div>
       </form>
     </div>
   </div>
 </div>
-{% endblock %}
+{% endfor %}
 
-{% block scripts %}
-<script>
-function llenarModalEditar(compra) {
-    document.getElementById('formEditarCompra').action = `/compras/${compra.id}/editar`;
-    document.getElementById('editar_id').value = compra.id;
-    document.getElementById('editar_fecha').value = compra.fecha;
-    document.getElementById('editar_proveedor').value = compra.proveedor_id;
-    document.getElementById('editar_factura').value = compra.factura;
-    document.getElementById('editar_tipo_pago').value = compra.tipo_pago;
-    document.getElementById('editar_observacion').value = compra.observacion;
-    document.getElementById('editar_empresa').value = compra.id_empresa;
-    document.getElementById('editar_bodega').value = compra.id_bodega;
+<!-- CSS personalizado -->
+<style>
+.avatar-sm {
+  width: 32px;
+  height: 32px;
 }
+
+.card {
+  border-radius: 12px;
+}
+
+.table th {
+  font-size: 0.875rem;
+  letter-spacing: 0.025em;
+}
+
+.btn-group .btn {
+  border-radius: 6px !important;
+  margin: 0 2px;
+}
+
+.modal-content {
+  border-radius: 12px;
+  border: none;
+}
+
+.modal-header {
+  border-radius: 12px 12px 0 0;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.table-responsive {
+  border-radius: 8px;
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+}
+
+.stock-display {
+  font-weight: bold;
+  min-width: 40px;
+  display: inline-block;
+}
+
+.stock-bajo {
+  background-color: #dc3545 !important;
+}
+
+.stock-medio {
+  background-color: #ffc107 !important;
+  color: #000 !important;
+}
+
+.stock-alto {
+  background-color: #198754 !important;
+}
+
+@media (max-width: 768px) {
+  .btn-group {
+    flex-direction: column;
+  }
+  
+  .btn-group .btn {
+    margin: 1px 0;
+  }
+}
+</style>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Datos de inventario por bodega (esto debería venir del backend)
+const inventarioPorBodega = {
+  {% for bodega in bodegas %}
+  "{{ bodega.ID_Bodega }}": {
+    {% if inventario_por_bodega and inventario_por_bodega[bodega.ID_Bodega] %}
+    {% for producto in inventario_por_bodega[bodega.ID_Bodega] %}
+    "{{ producto.id_producto }}": {
+      "descripcion": "{{ producto.descripcion }}",
+      "stock": {{ producto.stock }},
+      "precio": {{ producto.precio if producto.precio else 0 }}
+    }{{ "," if not loop.last else "" }}
+    {% endfor %}
+    {% endif %}
+  }{{ "," if not loop.last else "" }}
+  {% endfor %}
+};
+
+function filtrarProductosPorBodega(selectBodega) {
+  const bodegaId = selectBodega.value;
+  const compraId = selectBodega.getAttribute('data-compra-id');
+  const tabla = document.getElementById(`tabla-productos${compraId}`);
+  const productosSelects = tabla.querySelectorAll('.producto-select');
+  const btnAgregar = document.getElementById(`btnAgregarProducto${compraId}`);
+  const alerta = document.getElementById(`alertaBodega${compraId}`);
+  
+  if (bodegaId) {
+    // Ocultar alerta
+    alerta.style.display = 'none';
+    
+    // Habilitar botón de agregar producto
+    btnAgregar.disabled = false;
+    
+    // Actualizar todos los selects de productos en la tabla
+    productosSelects.forEach(select => {
+      actualizarSelectProductos(select, bodegaId);
+    });
+  } else {
+    // Mostrar alerta
+    alerta.style.display = 'block';
+    
+    // Deshabilitar botón de agregar producto
+    btnAgregar.disabled = true;
+    
+    // Limpiar y deshabilitar selects de productos
+    productosSelects.forEach(select => {
+      select.innerHTML = '<option value="" disabled selected>Primero seleccione una bodega</option>';
+      select.disabled = true;
+    });
+  }
+}
+
+function actualizarSelectProductos(select, bodegaId) {
+  const compraId = select.getAttribute('data-compra-id');
+  const fila = select.closest('tr');
+  const stockDisplay = fila.querySelector('.stock-display');
+  
+  // Limpiar select
+  select.innerHTML = '<option value="" disabled selected>Seleccione un producto</option>';
+  
+  // Obtener productos de la bodega seleccionada
+  const productosEnBodega = inventarioPorBodega[bodegaId] || {};
+  
+  if (Object.keys(productosEnBodega).length === 0) {
+    select.innerHTML = '<option value="" disabled selected>No hay productos en esta bodega</option>';
+    select.disabled = true;
+    return;
+  }
+  
+  // Agregar productos disponibles
+  Object.keys(productosEnBodega).forEach(productoId => {
+    const producto = productosEnBodega[productoId];
+    const option = document.createElement('option');
+    option.value = productoId;
+    option.textContent = `${producto.descripcion} (Stock: ${producto.stock})`;
+    option.setAttribute('data-stock', producto.stock);
+    option.setAttribute('data-precio', producto.precio);
+    select.appendChild(option);
+  });
+  
+  // Habilitar select
+  select.disabled = false;
+  
+  // Agregar evento para mostrar stock cuando se seleccione un producto
+  select.addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (selectedOption && selectedOption.value) {
+      const stock = selectedOption.getAttribute('data-stock');
+      const precio = selectedOption.getAttribute('data-precio');
+      
+      // Actualizar display de stock
+      stockDisplay.textContent = stock;
+      stockDisplay.className = 'badge stock-display';
+      
+      // Colorear según nivel de stock
+      if (stock <= 5) {
+        stockDisplay.classList.add('stock-bajo');
+      } else if (stock <= 20) {
+        stockDisplay.classList.add('stock-medio');
+      } else {
+        stockDisplay.classList.add('stock-alto');
+      }
+      
+      // Prellenar precio si está disponible
+      const inputCosto = fila.querySelector('input[name="costos[]"]');
+      if (precio && precio > 0 && !inputCosto.value) {
+        inputCosto.value = precio;
+      }
+    } else {
+      stockDisplay.textContent = '-';
+      stockDisplay.className = 'badge bg-secondary stock-display';
+    }
+  });
+}
+
+function agregarFila(compraId) {
+  const tabla = document.getElementById(`tabla-productos${compraId}`).getElementsByTagName('tbody')[0];
+  const selectBodega = document.getElementById(`id_bodega${compraId}`);
+  const bodegaId = selectBodega.value;
+  
+  if (!bodegaId) {
+    alert('Por favor, seleccione primero una bodega.');
+    return;
+  }
+  
+  const nuevaFila = tabla.insertRow();
+  
+  nuevaFila.innerHTML = `
+    <td>
+      <select name="productos[]" class="form-select form-select-sm producto-select" 
+              data-compra-id="${compraId}" required>
+        <option value="" disabled selected>Seleccione un producto</option>
+      </select>
+    </td>
+    <td>
+      <span class="badge bg-secondary stock-display">-</span>
+    </td>
+    <td>
+      <input type="number" name="cantidades[]" step="any" min="0" 
+             class="form-control form-control-sm text-center" required>
+    </td>
+    <td>
+      <input type="number" name="costos[]" step="any" min="0" 
+             class="form-control form-control-sm text-end" required>
+    </td>
+    <td>
+      <input type="number" name="ivas[]" step="any" min="0" 
+             class="form-control form-control-sm text-center" required>
+    </td>
+    <td>
+      <input type="number" name="descuentos[]" step="any" min="0" 
+             class="form-control form-control-sm text-end" required>
+    </td>
+    <td class="text-center">
+      <button type="button" class="btn btn-outline-danger btn-sm" 
+              onclick="eliminarFila(this)" title="Eliminar producto">
+        <i class="fas fa-trash"></i>
+      </button>
+    </td>
+  `;
+  
+  // Actualizar el nuevo select con los productos de la bodega seleccionada
+  const nuevoSelect = nuevaFila.querySelector('.producto-select');
+  actualizarSelectProductos(nuevoSelect, bodegaId);
+}
+
+function eliminarFila(boton) {
+  const fila = boton.closest('tr');
+  const tabla = fila.closest('tbody');
+  
+  if (tabla.rows.length > 1) {
+    fila.remove();
+  } else {
+    alert('Debe mantener al menos un producto en la compra.');
+  }
+}
+
+// Validación de cantidad vs stock
+document.addEventListener('input', function(e) {
+  if (e.target.name === 'cantidades[]') {
+    const fila = e.target.closest('tr');
+    const selectProducto = fila.querySelector('.producto-select');
+    const stockDisplay = fila.querySelector('.stock-display');
+    const cantidad = parseFloat(e.target.value) || 0;
+    
+    if (selectProducto.value && stockDisplay.textContent !== '-') {
+      const stockActual = parseInt(stockDisplay.textContent);
+      
+      if (cantidad > stockActual) {
+        e.target.setCustomValidity(`La cantidad no puede ser mayor al stock disponible (${stockActual})`);
+        e.target.classList.add('is-invalid');
+      } else {
+        e.target.setCustomValidity('');
+        e.target.classList.remove('is-invalid');
+      }
+    }
+  }
+});
+
+// Confirmación de eliminación
+document.addEventListener('DOMContentLoaded', function() {
+  const botonesEliminar = document.querySelectorAll('a[href*="eliminar_compra"]');
+  botonesEliminar.forEach(boton => {
+    boton.addEventListener('click', function(e) {
+      if (!confirm('¿Está seguro de que desea eliminar esta compra? Esta acción no se puede deshacer.')) {
+        e.preventDefault();
+      }
+    });
+  });
+});
 </script>
 {% endblock %}

@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block title %}Gestionar Ventas{% endblock %}
-
 {% block main %}
+
 <div class="container mt-4" style="max-width: 900px;">
     <div class="card shadow-sm border-0 rounded-4">
         <div class="card-body">
@@ -9,17 +9,15 @@
 
             <!-- Flash messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
+                {% endfor %}
             {% endwith %}
 
-            <!-- Card con desplazamiento para la tabla -->
+            <!-- Tabla de ventas -->
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
                     <table class="table table-bordered table-striped align-middle mb-0">
@@ -33,31 +31,25 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% if ventas %}
-                                {% for venta in ventas %}
-                                    <tr>
-                                        <td>{{ venta.Fecha }}</td>
-                                        <td>{{ venta.NumeroFactura }}</td>  <!-- CORREGIDO -->
-                                        <td>{{ venta.Cliente }}</td>
-                                        <td>{{ 'Crédito' if venta.Credito_Contado == 1 else 'Contado' }}</td>
-                                        <td>
-                                            <ul class="mb-2 ps-3">
-                                                {% for producto in venta.Productos %}
-                                                    <li>{{ producto }}</li>
-                                                {% endfor %}
-                                            </ul>
-                                            <div>
-                                                <a href="/ventas/{{ venta.ID_Movimiento }}" class="btn btn-sm btn-info me-1 mb-1">Ver</a>
-                                                <a href="/ventas/{{ venta.ID_Movimiento }}/editar" class="btn btn-sm btn-warning mb-1">Editar</a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr>
-                                    <td colspan="5" class="text-center">No hay ventas registradas.</td>
-                                </tr>
-                            {% endif %}
+                            {% for venta in ventas %}
+                            <tr>
+                                <td>{{ venta.Fecha }}</td>
+                                <td>{{ venta.NumeroFactura }}</td>
+                                <td>{{ venta.Cliente }}</td>
+                                <td>{{ 'Crédito' if venta.Credito_Contado == 1 else 'Contado' }}</td>
+                                <td>
+                                    <ul class="mb-2 ps-3">
+                                        {% for producto in venta.Productos %}
+                                        <li>{{ producto }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <div>
+                                        <a href="/ventas/{{ venta.ID_Movimiento }}" class="btn btn-sm btn-info me-1 mb-1">Ver</a>
+                                        <button class="btn btn-sm btn-warning mb-1 btn-editar" data-id="{{ venta.ID_Movimiento }}" data-bs-toggle="modal" data-bs-target="#modalEditarVenta">Editar</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -66,4 +58,73 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de edición -->
+<div class="modal fade" id="modalEditarVenta" tabindex="-1" aria-labelledby="modalEditarVentaLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" id="formEditarVenta">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Venta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editar_id_venta">
+                <div class="mb-3">
+                    <label for="editar_cliente" class="form-label">Cliente</label>
+                    <select class="form-select" name="cliente" id="editar_cliente">
+                        {% for c in clientes %}
+                        <option value="{{ c.ID_Cliente }}">{{ c.Nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="editar_fecha" class="form-label">Fecha</label>
+                    <input type="date" class="form-control" name="fecha" id="editar_fecha">
+                </div>
+                <div class="mb-3">
+                    <label for="editar_pago" class="form-label">Tipo de Pago</label>
+                    <select class="form-select" name="contado_credito" id="editar_pago">
+                        <option value="0">Contado</option>
+                        <option value="1">Crédito</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            </div>
+        </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById('formEditarVenta');
+
+    document.querySelectorAll(".btn-editar").forEach(button => {
+        button.addEventListener("click", async () => {
+            const idVenta = button.getAttribute("data-id");
+
+            try {
+                const response = await fetch(`/editar_venta/${idVenta}`);
+                const venta = await response.json();
+
+                // Llenar campos del formulario
+                document.getElementById("editar_cliente").value = venta.IDCliente;
+                document.getElementById("editar_fecha").value = venta.Fecha;
+                document.getElementById("editar_pago").value = venta.Credito_Contado;
+                document.getElementById("editar_id_venta").value = idVenta;
+
+                // Actualizar acción del formulario
+                form.action = `/editar_venta/${idVenta}`;
+            } catch (error) {
+                alert("Error al cargar datos de la venta.");
+            }
+        });
+    });
+});
+</script>
+
 {% endblock %}
