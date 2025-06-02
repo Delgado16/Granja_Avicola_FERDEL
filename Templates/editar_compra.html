@@ -1,0 +1,168 @@
+{% extends "layout.html" %}
+
+{% block title %}Editar Compra{% endblock %}
+
+{% block main %}
+<div class="container py-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Editar Compra</h4>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('editar_compra', id=compra.ID_Movimiento) }}" method="POST">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="fecha" class="form-label">Fecha:</label>
+                        <input type="date" class="form-control" id="fecha" name="fecha" value="{{ compra.Fecha }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="proveedor" class="form-label">Proveedor:</label>
+                        <select class="form-select" id="proveedor" name="proveedor" required>
+                            <option value="" disabled>Seleccione un proveedor</option>
+                            {% for proveedor in proveedores %}
+                                <option value="{{ proveedor.id }}" {% if proveedor.id == compra.ID_Proveedor %}selected{% endif %}>{{ proveedor.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_bodega" class="form-label">Bodega:</label>
+                        <select class="form-select" id="id_bodega" name="id_bodega" required>
+                            <option value="" disabled>Seleccione una bodega</option>
+                            {% for bodega in bodegas %}
+                                <option value="{{ bodega.id }}" {% if bodega.id == compra.ID_Bodega %}selected{% endif %}>{{ bodega.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="id_empresa" class="form-label">Empresa:</label>
+                        <select class="form-select" id="id_empresa" name="id_empresa" required>
+                            <option value="" disabled selected>Seleccione</option>
+                            {% for empresa in empresas %}
+                                <option value="{{ empresa.id }}" {% if empresa.id == compra.ID_Empresa %}selected{% endif %}>{{ empresa.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-3">
+                    <div class="col-md-4">
+                        <label for="n_factura" class="form-label">Nº Factura:</label>
+                        <input type="text" id="n_factura" name="n_factura" class="form-control" value="{{ compra.N_Factura }}" readonly>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
+                        <select id="tipo_pago" name="tipo_pago" class="form-select" onchange="toggleFechaVencimiento()">
+                            <option value="0" {% if compra.Contado_Credito == 0 %}selected{% endif %}>Contado</option>
+                            <option value="1" {% if compra.Contado_Credito == 1 %}selected{% endif %}>Crédito</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4" id="fecha_vencimiento_row" style="display: {% if compra.Contado_Credito == 1 %}block{% else %}none{% endif %};">
+                        <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento:</label>
+                        <input type="date" id="fecha_vencimiento" name="fecha_vencimiento" class="form-control">
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label for="observacion" class="form-label">Observación:</label>
+                    <textarea class="form-control" id="observacion" name="observacion" rows="2">{{ compra.Observacion }}</textarea>
+                </div>
+
+                <hr>
+                <h5>Productos</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm align-middle text-center" id="tabla-productos">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th style="width: 6rem;">Cantidad</th>
+                                <th style="width: 7rem;">Precio</th>
+                                <th style="width: 6rem;">IVA</th>
+                                <th style="width: 8rem;">Descuento</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for detalle in detalles %}
+                            <tr>
+                                <td>
+                                    <select name="productos[]" class="form-select producto-select" required>
+                                        <option value="" disabled>Seleccione un producto</option>
+                                        {% for producto in productos %}
+                                            <option value="{{ producto.id }}" {% if producto.id == detalle.ID_Producto %}selected{% endif %}>{{ producto.descripcion }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td><input type="number" name="cantidades[]" step="any" min="0" class="form-control" value="{{ detalle.Cantidad }}" required></td>
+                                <td><input type="number" name="costos[]" step="any" min="0" class="form-control" value="{{ detalle.Precio_Unitario }}" required></td>
+                                <td><input type="number" name="ivas[]" step="any" min="0" class="form-control" value="{{ detalle.IVA }}" required></td>
+                                <td><input type="number" name="descuentos[]" step="any" min="0" class="form-control" value="{{ detalle.Descuento }}" required></td>
+                                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarFila(this)">Eliminar</button></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-grid mb-3">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="agregarFila()">+ Agregar Producto</button>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-success">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script>
+    function agregarFila() {
+        const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
+        const filaBase = tabla.rows[0];
+        const nuevaFila = filaBase.cloneNode(true);
+
+        nuevaFila.querySelectorAll("input").forEach(input => input.value = "");
+        const select = nuevaFila.querySelector("select");
+        select.innerHTML = filaBase.querySelector("select").innerHTML;
+        tabla.appendChild(nuevaFila);
+    }
+
+    function eliminarFila(boton) {
+        const fila = boton.closest("tr");
+        const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
+        if (tabla.rows.length > 1) {
+            fila.remove();
+        } else {
+            alert("Debe haber al menos un producto.");
+        }
+    }
+
+    function toggleFechaVencimiento() {
+        const tipoPago = document.getElementById('tipo_pago').value;
+        const fechaVencimientoRow = document.getElementById('fecha_vencimiento_row');
+        fechaVencimientoRow.style.display = tipoPago == "1" ? "block" : "none";
+    }
+
+    document.getElementById("id_bodega").addEventListener("change", function () {
+        const idBodega = this.value;
+        if (!idBodega) return;
+
+        fetch(`/productos_por_bodega/${idBodega}`)
+            .then(res => res.json())
+            .then(data => {
+                const opciones = ['<option value="" disabled selected>Seleccione un producto</option>'];
+                data.forEach(producto => {
+                    opciones.push(`<option value="${producto.id}">${producto.descripcion}</option>`);
+                });
+
+                document.querySelectorAll(".producto-select").forEach(select => {
+                    select.innerHTML = opciones.join("");
+                });
+            })
+            .catch(err => {
+                console.error("Error al cargar productos:", err);
+                alert("No se pudieron cargar los productos.");
+            });
+    });
+</script>
+{% endblock %}

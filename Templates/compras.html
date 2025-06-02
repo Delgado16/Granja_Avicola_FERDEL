@@ -2,25 +2,27 @@
 
 {% block main %}
 <style>
-    /* Center and add spacing around the card */
     .card-container {
         max-width: 900px;
         margin: 2rem auto;
         padding: 1rem;
     }
-    /* Responsive adjustments */
+
     @media (max-width: 576px) {
         .card-container {
             margin: 1rem;
             padding: 0.5rem;
         }
+
         h1, h4 {
             font-size: 1.5rem;
         }
+
         .btn {
             width: 100%;
             margin-bottom: 0.5rem;
         }
+
         #tabla-productos th, #tabla-productos td {
             font-size: 0.85rem;
             padding: 0.3rem;
@@ -34,13 +36,11 @@
             <h1 class="card-title text-center mb-4">Registrar Compra</h1>
             <form action="/compras" method="post" onsubmit="return validarCompra()">
                 <div class="row g-3">
-                    <!-- Fecha compacto -->
                     <div class="col-6 col-md-3">
                         <label for="fecha" class="form-label">Fecha:</label>
                         <input type="date" class="form-control form-control-sm" id="fecha" name="fecha" required>
                     </div>
 
-                    <!-- Proveedor -->
                     <div class="col-12 col-md-5">
                         <label for="proveedor" class="form-label">Proveedor:</label>
                         <select class="form-select form-select-sm" id="proveedor" name="proveedor" required>
@@ -51,7 +51,6 @@
                         </select>
                     </div>
 
-                    <!-- Empresa -->
                     <div class="col-6 col-md-4">
                         <label for="id_empresa" class="form-label">Empresa:</label>
                         <select class="form-select form-select-sm" id="id_empresa" name="id_empresa" required>
@@ -62,8 +61,8 @@
                         </select>
                     </div>
                 </div>
+
                 <div class="row g-3 mt-2">
-                    <!-- Bodega -->
                     <div class="col-6 col-md-4">
                         <label for="id_bodega" class="form-label">Bodega:</label>
                         <select class="form-select form-select-sm" id="id_bodega" name="id_bodega" required>
@@ -73,7 +72,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <!-- Tipo de pago -->
+
                     <div class="col-6 col-md-4">
                         <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
                         <select class="form-select form-select-sm" id="tipo_pago" name="tipo_pago" required>
@@ -81,20 +80,18 @@
                             <option value="1">Crédito</option>
                         </select>
                     </div>
-                    <!-- Número de factura compacto -->
+
                     <div class="col-12 col-md-4">
                         <label for="n_factura" class="form-label">Nº Factura:</label>
                         <input type="text" class="form-control form-control-sm" id="n_factura" name="n_factura">
                     </div>
                 </div>
 
-                <!-- Observación -->
                 <div class="mb-3 mt-3">
                     <label for="observacion" class="form-label">Observación:</label>
                     <textarea class="form-control form-control-sm" id="observacion" name="observacion" rows="2"></textarea>
                 </div>
 
-                <!-- Tabla de productos -->
                 <div class="mb-3">
                     <h4>Agregar Productos</h4>
                     <div class="table-responsive">
@@ -110,10 +107,9 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Producto inicial -->
                                 <tr>
                                     <td>
-                                        <select name="productos[]" class="form-select form-select-sm" required>
+                                        <select name="productos[]" class="form-select form-select-sm producto-select" required>
                                             <option value="" disabled selected>Seleccione un producto</option>
                                             {% for producto in productos %}
                                             <option value="{{ producto.id }}">{{ producto.Descripcion }}</option>
@@ -132,7 +128,6 @@
                     <button type="button" class="btn btn-secondary btn-sm" onclick="agregarFila()">Agregar Producto</button>
                 </div>
 
-                <!-- Botón de envío -->
                 <button type="submit" class="btn btn-primary w-100">Registrar Compra</button>
             </form>
         </div>
@@ -170,5 +165,4 @@
         return true;
     }
 </script>
-{% endblock %}
-
+{% endblock %}ñ

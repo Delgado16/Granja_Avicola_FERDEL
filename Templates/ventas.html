@@ -2,7 +2,7 @@
 
 {% block main %}
 <!-- (tu estilo CSS permanece igual) -->
- <style>
+<style>
     .card-container {
         max-width: 900px;
         margin: 2rem auto;
@@ -14,14 +14,19 @@
             margin: 1rem;
             padding: 0.5rem;
         }
-        h1, h4 {
+
+        h1,
+        h4 {
             font-size: 1.5rem;
         }
+
         .btn {
             width: 100%;
             margin-bottom: 0.5rem;
         }
-        #tabla-productos th, #tabla-productos td {
+
+        #tabla-productos th,
+        #tabla-productos td {
             font-size: 0.85rem;
             padding: 0.3rem;
         }
@@ -64,25 +69,29 @@
                 <div class="row g-3 mt-2">
                     <div class="col-6 col-md-4">
                         <label for="n_factura" class="form-label">Nº Factura:</label>
-                        <input type="text" id="n_factura" name="n_factura" class="form-control form-control-sm" value="{{ n_factura }}" readonly>
+                        <input type="text" id="n_factura" name="n_factura" class="form-control form-control-sm"
+                            value="{{ n_factura }}" readonly>
                     </div>
                     <div class="col-6 col-md-4">
                         <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
-                        <select id="tipo_pago" name="tipo_pago" class="form-select form-select-sm" onchange="toggleFechaVencimiento()">
+                        <select id="tipo_pago" name="tipo_pago" class="form-select form-select-sm"
+                            onchange="toggleFechaVencimiento()">
                             <option value="0">Contado</option>
                             <option value="1">Crédito</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-4" id="fecha_vencimiento_row" style="display: none;">
                         <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento:</label>
-                        <input type="date" id="fecha_vencimiento" name="fecha_vencimiento" class="form-control form-control-sm">
+                        <input type="date" id="fecha_vencimiento" name="fecha_vencimiento"
+                            class="form-control form-control-sm">
                     </div>
                 </div>
 
                 <!-- Observación -->
                 <div class="mb-3 mt-3">
                     <label for="observacion" class="form-label">Observación:</label>
-                    <textarea class="form-control form-control-sm" id="observacion" name="observacion" rows="2"></textarea>
+                    <textarea class="form-control form-control-sm" id="observacion" name="observacion"
+                        rows="2"></textarea>
                 </div>
 
                 <!-- Tabla de productos -->
@@ -103,20 +112,27 @@
                             <tbody>
                                 <tr>
                                     <td>
-                                        <select name="productos[]" class="form-select form-select-sm producto-select" required>
+                                        <select name="productos[]" class="form-select form-select-sm producto-select"
+                                            required>
                                             <option value="" disabled selected>Seleccione un producto</option>
                                         </select>
                                     </td>
-                                    <td><input type="number" name="cantidades[]" step="any" min="0" class="form-control form-control-sm" required></td>
-                                    <td><input type="number" name="costos[]" step="any" min="0" class="form-control form-control-sm" required></td>
-                                    <td><input type="number" name="ivas[]" step="any" min="0" class="form-control form-control-sm" required></td>
-                                    <td><input type="number" name="descuentos[]" step="any" min="0" class="form-control form-control-sm" required></td>
-                                    <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)">Eliminar</button></td>
+                                    <td><input type="number" name="cantidades[]" step="any" min="0"
+                                            class="form-control form-control-sm" required></td>
+                                    <td><input type="number" name="costos[]" step="any" min="0"
+                                            class="form-control form-control-sm" required></td>
+                                    <td><input type="number" name="ivas[]" step="any" min="0"
+                                            class="form-control form-control-sm" required></td>
+                                    <td><input type="number" name="descuentos[]" step="any" min="0"
+                                            class="form-control form-control-sm" required></td>
+                                    <td><button type="button" class="btn btn-danger btn-sm"
+                                            onclick="eliminarFila(this)">Eliminar</button></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="agregarFila()">Agregar Producto</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="agregarFila()">Agregar
+                        Producto</button>
                 </div>
 
                 <button type="submit" class="btn btn-primary w-100">Registrar Venta</button>
@@ -127,6 +143,8 @@
 
 <!-- Scripts -->
 <script>
+
+
     function agregarFila() {
         const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
         const nuevaFila = tabla.rows[0].cloneNode(true);
@@ -146,6 +164,31 @@
     }
 
     function validarVenta() {
+        const cantidades = document.querySelectorAll('input[name="cantidades[]"]');
+        const productos = document.querySelectorAll('select[name="productos[]"]');
+
+        for (let i = 0; i < cantidades.length; i++) {
+            let cantidad = parseFloat(cantidades[i].value);
+            let productoSelect = productos[i];
+            let nombreProducto = productoSelect.options[productoSelect.selectedIndex]?.text || "Producto no seleccionado";
+
+            // Obtener el stock disponible del atributo data-stock
+            let stockDisponible = parseFloat(productoSelect.options[productoSelect.selectedIndex]?.getAttribute('data-stock')) || 0;
+
+            if (isNaN(cantidad) || cantidad < 50) {
+                alert("No se permite vender menos de 50 cajillas del producto: " + nombreProducto);
+                cantidades[i].focus();
+                return false; // Detiene el envío del formulario
+            }
+
+            if (cantidad > stockDisponible) {
+                alert("No hay suficientes existencias para el producto: " + nombreProducto +
+                    ". Stock disponible: " + stockDisponible + ", cantidad solicitada: " + cantidad);
+                cantidades[i].focus();
+                return false; // Detiene el envío del formulario
+            }
+        }
+
         const filas = document.querySelectorAll("#tabla-productos tbody tr");
         if (filas.length === 0) {
             alert("Debe agregar al menos un producto a la venta.");
@@ -153,6 +196,7 @@
         }
         return true;
     }
+
 
     function toggleFechaVencimiento() {
         const tipoPago = document.getElementById('tipo_pago').value;
