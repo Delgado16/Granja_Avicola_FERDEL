@@ -1,3 +1,276 @@
-hay tablas que aun no c estan utilizando, seria revisar como va a funcionar todo nuevamente para hacer nuevos ajustes
-a la ves modificaciones internas como externas, ademas que tambien se tiene que agregar ahora un apartado para la crianza de chancho
-se tiene que realizar reestructuracion de todo, para añadir lo antes mencionado, lo cual sera la implementacion de nuesvas tablas a la base de datos
+-- ========================
+-- 1. CONFIGURACIÓN BÁSICA
+-- ========================
+
+CREATE TABLE Empresa (
+    ID_Empresa INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT NOT NULL,
+    RUC TEXT,
+    Direccion TEXT
+);
+
+CREATE TABLE Roles (
+    ID_Rol INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre_Rol TEXT NOT NULL
+);
+
+CREATE TABLE Usuarios (
+    ID_Usuario INTEGER PRIMARY KEY AUTOINCREMENT,
+    NombreUsuario TEXT UNIQUE NOT NULL,
+    ContrasenaHash TEXT NOT NULL,
+    Rol_ID INTEGER,
+    Estado INTEGER,
+    Fecha_Creacion DATE,
+    FOREIGN KEY (Rol_ID) REFERENCES Roles(ID_Rol)
+);
+
+-- ========================
+-- 2. CLIENTES Y PROVEEDORES
+-- ========================
+
+CREATE TABLE Clientes (
+    ID_Cliente INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT NOT NULL,
+    Telefono TEXT,
+    Direccion TEXT,
+    RUC_CEDULA TEXT,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+CREATE TABLE Proveedores (
+    ID_Proveedor INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT NOT NULL,
+    Telefono TEXT,
+    Direccion TEXT,
+    RUC_CEDULA TEXT,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+-- ========================
+-- 3. PRODUCTOS E INVENTARIO
+-- ========================
+
+CREATE TABLE Unidades_Medida (
+    ID_Unidad INTEGER PRIMARY KEY AUTOINCREMENT,
+    Descripcion TEXT NOT NULL,
+    Abreviatura TEXT
+);
+
+CREATE TABLE Familia_Producto (
+    ID_Familia INTEGER PRIMARY KEY AUTOINCREMENT,
+    Descripcion TEXT NOT NULL
+);
+
+CREATE TABLE Tipo_Producto (
+    ID_TipoProducto INTEGER PRIMARY KEY AUTOINCREMENT,
+    Descripcion TEXT NOT NULL
+);
+
+CREATE TABLE Productos (
+    ID_Producto INTEGER PRIMARY KEY AUTOINCREMENT,
+    COD_Producto TEXT UNIQUE,
+    Descripcion TEXT NOT NULL,
+    Unidad_Medida INTEGER,
+    Existencias NUMERIC DEFAULT 0,
+    Familia INTEGER,
+    Tipo INTEGER,
+    Costo_Promedio NUMERIC,
+    IVA INTEGER DEFAULT 0,
+    Precio_Venta NUMERIC,
+    ID_Empresa INTEGER,
+    Fecha_Creacion DATE DEFAULT CURRENT_DATE,
+    Usuario_Creador INTEGER,
+    FOREIGN KEY (Unidad_Medida) REFERENCES Unidades_Medida(ID_Unidad),
+    FOREIGN KEY (Familia) REFERENCES Familia_Producto(ID_Familia),
+    FOREIGN KEY (Tipo) REFERENCES Tipo_Producto(ID_TipoProducto),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+CREATE TABLE Bodegas (
+    ID_Bodega INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT NOT NULL,
+    Ubicacion TEXT,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+CREATE TABLE Inventario_Bodega (
+    ID_Bodega INTEGER,
+    ID_Producto INTEGER,
+    Existencias NUMERIC DEFAULT 0,
+    PRIMARY KEY (ID_Bodega, ID_Producto),
+    FOREIGN KEY (ID_Bodega) REFERENCES Bodegas(ID_Bodega),
+    FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
+);
+
+-- ========================
+-- 4. COMPRAS Y MOVIMIENTOS DE INVENTARIO
+-- ========================
+
+CREATE TABLE Catalogo_Movimientos (
+    ID_TipoMovimiento INTEGER PRIMARY KEY AUTOINCREMENT,
+    Descripcion TEXT NOT NULL
+    -- Ej: Compra, Venta, Ajuste entrada, Ajuste salida
+);
+
+CREATE TABLE Movimientos_Inventario (
+    ID_Movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_TipoMovimiento INTEGER,
+    N_Factura TEXT,
+    Contado_Credito INTEGER,
+    Fecha DATE,
+    ID_Proveedor INTEGER,
+    Observacion TEXT,
+    IVA NUMERIC,
+    Retencion NUMERIC,
+    ID_Empresa INTEGER,
+    ID_Bodega INTEGER,
+    FOREIGN KEY (ID_TipoMovimiento) REFERENCES Catalogo_Movimientos(ID_TipoMovimiento),
+    FOREIGN KEY (ID_Proveedor) REFERENCES Proveedores(ID_Proveedor),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa),
+    FOREIGN KEY (ID_Bodega) REFERENCES Bodegas(ID_Bodega)
+);
+
+CREATE TABLE Detalle_Movimiento_Inventario (
+    ID_Detalle INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Movimiento INTEGER,
+    ID_Producto INTEGER,
+    Cantidad NUMERIC,
+    Costo NUMERIC,
+    IVA NUMERIC,
+    Descuento NUMERIC,
+    Costo_Total NUMERIC,
+    FOREIGN KEY (ID_Movimiento) REFERENCES Movimientos_Inventario(ID_Movimiento),
+    FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
+);
+
+-- ========================
+-- 5. VENTAS Y FACTURACIÓN
+-- ========================
+
+CREATE TABLE Facturacion (
+    ID_Factura INTEGER PRIMARY KEY AUTOINCREMENT,
+    Fecha DATE NOT NULL,
+    IDCliente INTEGER NOT NULL,
+    Credito_Contado INTEGER,
+    Observacion TEXT,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (IDCliente) REFERENCES Clientes(ID_Cliente),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+CREATE TABLE Detalle_Facturacion (
+    ID_Detalle INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Factura INTEGER,
+    ID_Producto INTEGER,
+    Cantidad NUMERIC,
+    Costo NUMERIC,
+    Descuento NUMERIC,
+    IVA NUMERIC,
+    Total NUMERIC,
+    FOREIGN KEY (ID_Factura) REFERENCES Facturacion(ID_Factura),
+    FOREIGN KEY (ID_Producto) REFERENCES Productos(ID_Producto)
+);
+
+-- ========================
+-- 6. CUENTAS POR PAGAR Y COBRAR
+-- ========================
+
+CREATE TABLE Metodos_Pago (
+    ID_MetodoPago INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT NOT NULL
+);
+
+CREATE TABLE Cuentas_Por_Pagar (
+    ID_Cuenta INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Movimiento INTEGER,
+    Fecha DATE,
+    ID_Proveedor INTEGER,
+    Num_Documento TEXT,
+    Observacion TEXT,
+    Fecha_Vencimiento DATE,
+    Monto_Movimiento NUMERIC,
+    IVA NUMERIC,
+    Retencion NUMERIC,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_Proveedor) REFERENCES Proveedores(ID_Proveedor),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+CREATE TABLE Pagos_CuentasPagar (
+    ID_Pago INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Movimiento INTEGER,
+    Fecha DATETIME,
+    Monto NUMERIC,
+    ID_MetodoPago INTEGER,
+    FOREIGN KEY (ID_Movimiento) REFERENCES Cuentas_Por_Pagar(ID_Cuenta),
+    FOREIGN KEY (ID_MetodoPago) REFERENCES Metodos_Pago(ID_MetodoPago)
+);
+
+CREATE TABLE Detalle_Cuentas_Por_Cobrar (
+    ID_Cobro INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Factura INTEGER,
+    Fecha DATE,
+    ID_Cliente INTEGER,
+    Num_Documento TEXT,
+    Observacion TEXT,
+    Fecha_Vencimiento DATE,
+    Monto_Movimiento NUMERIC,
+    IVA NUMERIC,
+    Retencion NUMERIC,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_Cliente) REFERENCES Clientes(ID_Cliente),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+CREATE TABLE Pagos_CuentasCobrar (
+    ID_Pago INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Cobro INTEGER,
+    Fecha DATETIME,
+    Monto NUMERIC,
+    ID_MetodoPago INTEGER,
+    FOREIGN KEY (ID_Cobro) REFERENCES Detalle_Cuentas_Por_Cobrar(ID_Cobro),
+    FOREIGN KEY (ID_MetodoPago) REFERENCES Metodos_Pago(ID_MetodoPago)
+);
+
+-- ========================
+-- 7. GASTOS CLASIFICADOS
+-- ========================
+
+CREATE TABLE Categoria_Gastos (
+    ID_Categoria INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nombre TEXT NOT NULL
+);
+
+CREATE TABLE Gastos (
+    ID_Gasto INTEGER PRIMARY KEY AUTOINCREMENT,
+    Fecha DATE,
+    Observacion TEXT,
+    Monto NUMERIC,
+    ID_Categoria INTEGER,
+    ID_Empresa INTEGER,
+    FOREIGN KEY (ID_Categoria) REFERENCES Categoria_Gastos(ID_Categoria),
+    FOREIGN KEY (ID_Empresa) REFERENCES Empresa(ID_Empresa)
+);
+
+-- ========================
+-- 8. AUDITORÍA Y CONFIGURACIÓN
+-- ========================
+
+CREATE TABLE Bitacora (
+    ID_Bitacora INTEGER PRIMARY KEY AUTOINCREMENT,
+    ID_Usuario INTEGER,
+    Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Modulo TEXT,
+    Accion TEXT,
+    IP_Acceso TEXT,
+    FOREIGN KEY (ID_Usuario) REFERENCES Usuarios(ID_Usuario)
+);
+
+CREATE TABLE Configuracion (
+    ID_Config INTEGER PRIMARY KEY AUTOINCREMENT,
+    NombreParametro TEXT,
+    ValorParametro TEXT
+);

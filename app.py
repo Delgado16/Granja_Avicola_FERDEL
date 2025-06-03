@@ -119,8 +119,6 @@ def register():
 
 
 #Ruta de Compra
-
-
 # Registrar Compra
 @app.route("/compras", methods=["GET", "POST"])
 @login_required
