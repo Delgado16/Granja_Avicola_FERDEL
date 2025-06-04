@@ -3,34 +3,42 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Factura {{ venta.N_Factura }}</title>
+    <title>Factura {{ venta.ID_Factura }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            font-size: 12px;
-            margin: 40px;
+            font-size: 10px;
+            margin: 5px;
+            max-width: 300px;
         }
 
         .encabezado {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            text-align: center;
         }
 
         .empresa {
-            font-size: 16px;
             font-weight: bold;
+            font-size: 10px;
+        }
+
+        .logo {
+            height: 50px;
+            margin-bottom: 5px;
         }
 
         .factura-numero {
-            font-size: 14px;
+            font-size: 11px;
             font-weight: bold;
+            margin-top: 5px;
             border: 1px solid #000;
-            padding: 8px;
+            display: inline-block;
+            padding: 3px 6px;
+            margin-bottom: 10px;
         }
 
         .datos {
-            margin-top: 20px;
+            margin-top: 5px;
+            margin-bottom: 10px;
         }
 
         .datos p {
@@ -39,14 +47,13 @@
 
         table {
             width: 100%;
-            margin-top: 20px;
             border-collapse: collapse;
         }
 
         th,
         td {
             border: 1px solid #333;
-            padding: 6px;
+            padding: 2px 3px;
             text-align: center;
         }
 
@@ -55,13 +62,14 @@
         }
 
         .totales {
-            margin-top: 20px;
+            margin-top: 10px;
             text-align: right;
+            font-weight: bold;
         }
 
         .observaciones {
-            margin-top: 20px;
-            font-size: 11px;
+            margin-top: 10px;
+            font-size: 9px;
         }
     </style>
 </head>
@@ -69,58 +77,58 @@
 <body>
 
     <div class="encabezado">
+        <img src="{{ LogoFerdel_web_url }}" alt="Logo" class="logo"><br>
         <div class="empresa">
-            <img src="{{ url_for('static', filename='img/logoFerdel_web.png') }}" height="80"><br>
             AVICOLA FERDEL S.A.<br>
-            RUC 2031407850000U<br>
+            RUC: 2031407850000U<br>
             Rastro Municipal 150 mts, Norte, Diriomo<br>
             Tel: 8100-6837
         </div>
         <div class="factura-numero">
-            FACTURA Nº {{ venta.N_Factura }}
+            FACTURA Nº {{ venta.ID_Factura }}
         </div>
     </div>
 
     <div class="datos">
-        <p><strong>Fecha:</strong> {{ venta.Fecha }}</p>
-        <p><strong>Cliente:</strong> {{ venta.Cliente }}</p>
-        <p><strong>Tipo de pago:</strong> {{ 'Crédito' if venta.Contado_Credito == 1 else 'Contado' }}</p>
+        <p><strong>Fecha:</strong> {{ venta.Fecha or 'N/A' }}</p>
+        <p><strong>Cliente:</strong> {{ venta.Cliente or 'N/A' }}</p>
+        <p><strong>Tipo de pago:</strong> {{ 'Crédito' if venta.Credito_Contado == 1 else 'Contado' }}</p>
     </div>
+
+    <div class="observaciones">
+        <p><strong>Observaciones:</strong> {{ venta.Observacion or "Ninguna." }}</p>
+    </div>
+
 
     <table>
         <thead>
             <tr>
                 <th>Producto</th>
-                <th>Cantidad</th>
+                <th>Cant.</th>
                 <th>Costo</th>
                 <th>IVA</th>
-                <th>Descuento</th>
+                <th>Desc.</th>
                 <th>Total</th>
             </tr>
         </thead>
         <tbody>
-            {% set total_general = 0 %}
             {% for item in detalles %}
-            {% set total_general = total_general + item.Costo_Total %}
             <tr>
-                <td>{{ item.Descripcion }}</td>
-                <td>{{ "%.2f"|format(item.Cantidad) }}</td>
-                <td>{{ "%.2f"|format(item.Costo) }}</td>
-                <td>{{ "%.2f"|format(item.IVA) }}</td>
-                <td>{{ "%.2f"|format(item.Descuento) }}</td>
-                <td>{{ "%.2f"|format(item.Costo_Total) }}</td>
+                <td style="text-align:left;">{{ item.Descripcion }}</td>
+                <td>{{ "{:,.2f}".format(item.Cantidad) }}</td>
+                <td>{{ format_currency(item.Costo) }}</td>
+                <td>{{ format_currency(item.IVA) }}</td>
+                <td>{{ format_currency(item.Descuento) }}</td>
+                <td>{{ format_currency(item.Costo_Total) }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
     <div class="totales">
-        <p><strong>Total a pagar: ${{ "%.2f"|format(total_general) }}</strong></p>
+        <p>Total a pagar: ${{ format_currency(total_general) }}</p>
     </div>
 
-    <div class="observaciones">
-        <p><strong>Observaciones:</strong> {{ venta.Observacion or "Ninguna." }}</p>
-    </div>
 
 </body>
 

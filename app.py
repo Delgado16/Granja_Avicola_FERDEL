@@ -1,4 +1,4 @@
-from flask import Flask, flash, render_template, redirect, url_for, request, session, Response, jsonify
+from flask import Flask, flash, render_template, redirect, url_for, request, session, Response, jsonify, current_app
 from cs50 import SQL
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,6 +6,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, U
 from weasyprint import HTML
 from datetime import datetime, timedelta
 import traceback
+import os
 
 app = Flask(__name__)
 
@@ -969,6 +970,9 @@ def historial_pagos_pagar(id_pago):
 #fin de ruta de pagos
 
 # Ruta Factura impresion
+def format_currency(value):
+    return "{:,.2f}".format(value)
+
 @app.route("/factura/pdf/<int:venta_id>")
 def generar_factura_pdf(venta_id):
     venta = db.execute("""
@@ -992,7 +996,17 @@ def generar_factura_pdf(venta_id):
         WHERE D.ID_Factura = ?
     """, venta_id)
 
-    rendered = render_template("factura_pdf.html", venta=venta, detalles=detalles)
+    # Calcula total general sumando los costos totales
+    total_general = sum(item['Costo_Total'] for item in detalles)
+
+    rendered = render_template(
+        "factura_pdf.html",
+        venta=venta,
+        detalles=detalles,
+        total_general=total_general,
+        format_currency=format_currency,
+        LogoFerdel_web_url=url_for('static', filename='LogoFerdel_web.png', _external=True)
+    )
     pdf = HTML(string=rendered).write_pdf()
     return Response(pdf, mimetype='application/pdf')
 
