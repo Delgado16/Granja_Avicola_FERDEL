@@ -143,7 +143,14 @@
 
 <!-- Scripts -->
 <script>
-
+    setTimeout(function () {
+        const flashMessages = document.getElementById('flash-messages');
+        if (flashMessages) {
+            flashMessages.style.transition = 'opacity 0.5s ease-out';
+            flashMessages.style.opacity = '0';
+            setTimeout(() => flashMessages.remove(), 500); // Elimina el div del DOM
+        }
+    }, 4000);
 
     function agregarFila() {
         const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
@@ -175,18 +182,6 @@
             // Obtener el stock disponible del atributo data-stock
             let stockDisponible = parseFloat(productoSelect.options[productoSelect.selectedIndex]?.getAttribute('data-stock')) || 0;
 
-            if (isNaN(cantidad) || cantidad < 50) {
-                alert("No se permite vender menos de 50 cajillas del producto: " + nombreProducto);
-                cantidades[i].focus();
-                return false; // Detiene el envío del formulario
-            }
-
-            if (cantidad > stockDisponible) {
-                alert("No hay suficientes existencias para el producto: " + nombreProducto +
-                    ". Stock disponible: " + stockDisponible + ", cantidad solicitada: " + cantidad);
-                cantidades[i].focus();
-                return false; // Detiene el envío del formulario
-            }
         }
 
         const filas = document.querySelectorAll("#tabla-productos tbody tr");

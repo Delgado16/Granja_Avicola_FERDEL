@@ -51,6 +51,7 @@ def after_request(response):
 @app.route('/')
 @login_required
 def home():
+
     return render_template("index.html")
 
 # Ruta login
@@ -629,11 +630,22 @@ def ventas():
                 iva = float(ivas[i])
                 descuento = float(descuentos[i])
 
-                # 🚫 Validación: mínimo 50 cajillas
-                if cantidad < 50:
+                # Validación: mínimo 50 cajillas
+                if cantidad < 0:
                     nombre_prod = db.execute("SELECT Descripcion FROM Productos WHERE ID_Producto = ?", id_producto)[0]["Descripcion"]
                     db.execute("ROLLBACK")
                     flash(f"No se permite vender menos de 50 cajillas del producto '{nombre_prod}'.", "danger")
+                    return redirect(url_for("ventas"))
+                
+                # Validación: existencia en bodega
+                existencia = db.execute("""
+                    SELECT Existencias FROM Inventario_Bodega
+                    WHERE ID_Bodega = ? AND ID_Producto = ?
+                """, id_bodega, id_producto)
+                if not existencia or existencia[0]["Existencias"] < cantidad:
+                    nombre_prod = db.execute("SELECT Descripcion FROM Productos WHERE ID_Producto = ?", id_producto)[0]["Descripcion"]
+                    db.execute("ROLLBACK")
+                    flash(f"No hay suficiente stock del producto '{nombre_prod}' en la bodega seleccionada.", "danger")
                     return redirect(url_for("ventas"))
 
                 total = (cantidad * costo) - descuento + iva
@@ -1036,8 +1048,6 @@ def visualizar_facturas():
 
     facturas = db.execute(query, *params)
     return render_template("facturas.html", facturas=facturas, cliente=cliente, fecha=fecha)
-
-#fin de ruta de factura
 
 #ruta de bodega e inventario
 @app.route("/bodega", methods=["GET", "POST"])
