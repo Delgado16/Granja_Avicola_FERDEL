@@ -985,6 +985,98 @@ def historial_pagos_pagar(id_pago):
 def format_currency(value):
     return "{:,.2f}".format(value)
 
+
+@app.route("/factura_alterna", methods=["GET", "POST"])
+def factura_alterna():
+    if request.method == "POST":
+        fecha = request.form.get("fecha", "").strip()
+        cliente = request.form.get("cliente", "").strip()
+        productos = request.form.getlist("productos[]")
+        cantidades = request.form.getlist("cantidades[]")
+        precio_unitarios = request.form.getlist("precio_unitarios[]")
+        tipo_pago = request.form.get("tipo_pago", "").strip()
+        observacion = request.form.get("observacion", "").strip()
+        id_bodega = request.form.get("id_bodega")
+
+        # Validaciones
+        if not fecha or not cliente or not tipo_pago or not id_bodega:
+            flash("Todos los campos obligatorios deben estar completos.", "danger")
+            return redirect(url_for("factura_alterna"))
+
+        if not productos or len(productos) == 0:
+            flash("Debe ingresar al menos un producto.", "danger")
+            return redirect(url_for("factura_alterna"))
+
+        if len(productos) != len(cantidades) or len(productos) != len(precio_unitarios):
+            flash("Error en los datos de productos.", "danger")
+            return redirect(url_for("factura_alterna"))
+
+        try:
+            tipo_pago = int(tipo_pago)
+            id_bodega = int(id_bodega)
+            id_cliente = int(cliente)
+            cantidades = list(map(float, cantidades))
+            precio_unitarios = list(map(float, precio_unitarios))
+        except:
+            flash("Error en el formato de los datos.", "danger")
+            return redirect(url_for("factura_alterna"))
+
+        total_venta = sum([cantidades[i] * precio_unitarios[i] for i in range(len(productos))])
+        id_empresa = 1
+
+        try:
+            db.execute("BEGIN")
+
+            # Insertar factura
+            db.execute("""
+                INSERT INTO Factura_Alterna (Fecha, IDCliente, Credito_Contado, Observacion, ID_Empresa)
+                VALUES (?, ?, ?, ?, ?)
+            """, fecha, id_cliente, tipo_pago, observacion, id_empresa)
+
+            id_factura = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+            for i in range(len(productos)):
+                id_producto = int(productos[i])
+                cantidad = cantidades[i]
+                costo = precio_unitarios[i]
+                total = cantidad * costo
+
+                # Insertar detalle
+                db.execute("""
+                    INSERT INTO Detalle_Factura_Alterna (ID_Factura, ID_Producto, Cantidad, Costo, Total)
+                    VALUES (?, ?, ?, ?, ?)
+                """, id_factura, id_producto, cantidad, costo, total)
+
+                # Actualizar inventario
+                db.execute("""
+                    UPDATE Inventario_Bodega
+                    SET Existencias = Existencias - ?
+                    WHERE ID_Producto = ? AND ID_Bodega = ?
+                """, cantidad, id_producto, id_bodega)
+
+                # Insertar movimiento de inventario
+                db.execute("""
+                    INSERT INTO Detalle_Movimiento_Inventario 
+                    (ID_Movimiento, ID_TipoMovimiento, ID_Producto, Cantidad, Costo, Costo_Total, ID_Bodega, Fecha)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, None, 3, id_producto, cantidad, costo, total, id_bodega, fecha)
+
+            db.execute("COMMIT")
+            flash("Factura alterna registrada correctamente.", "success")
+            return redirect(url_for("factura_alterna"))
+
+        except Exception as e:
+            db.execute("ROLLBACK")
+            flash(f"Error al registrar factura alterna: {e}", "danger")
+            return redirect(url_for("factura_alterna"))
+
+    # Método GET
+    clientes = db.execute("SELECT ID_Cliente, Nombre FROM Clientes").fetchall()
+    productos = db.execute("SELECT ID_Producto, Nombre FROM Productos").fetchall()
+    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas").fetchall()
+
+    return render_template("factura_alterna.html", clientes=clientes, productos=productos, bodegas=bodegas)
+
 @app.route("/factura/pdf/<int:venta_id>")
 def generar_factura_pdf(venta_id):
     venta = db.execute("""
