@@ -20,12 +20,18 @@
         :root {
             --navbar-height-lg: 80px;
             --navbar-height-sm: 100px;
+            --mobile-breakpoint: 576px;
+            --tablet-breakpoint: 768px;
+            --desktop-breakpoint: 992px;
+            --navbar-bg: #212529;
+            --dropdown-bg: rgba(52, 58, 64, 0.95);
         }
         
         body {
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            font-size: 1rem;
         }
         
         main {
@@ -33,33 +39,101 @@
             flex: 1;
         }
         
+        /* Navbar Flexbox mejorado */
+        .navbar {
+            height: auto;
+            min-height: var(--navbar-height-lg);
+        }
+        
+        .navbar-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+        
+        .navbar-brand-container {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
         .navbar-brand {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 200px;
+            margin-left: 0.5rem;
+        }
+        
+        .navbar-menu {
+            flex-grow: 1;
+            display: flex;
+            justify-content: space-between;
         }
         
         .dropdown-menu {
             max-height: 70vh;
             overflow-y: auto;
         }
+
+        /* Mejoras para dispositivos táctiles */
+        .dropdown-item, .nav-link {
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .dropdown-item i, .nav-link i {
+            margin-right: 0.5rem;
+        }
+
+        /* Aumentar tamaño de elementos clickables en móviles */
+        @media (max-width: 768px) {
+            .dropdown-item, .nav-link {
+                padding: 0.75rem 1.25rem;
+            }
+        }
         
-        /* Estilos responsivos */
+        /* Estilos responsivos mejorados */
         @media (max-width: 992px) {
             .navbar-collapse {
+                flex-basis: 100%;
                 padding-bottom: 15px;
+                background-color: var(--navbar-bg);
+                margin-top: 10px;
+                border-radius: 5px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             }
             
             .dropdown-menu {
                 margin-left: 15px;
                 width: calc(100% - 30px);
+                border: none;
+                background-color: var(--dropdown-bg);
+            }
+
+            .dropdown-item {
+                color: #f8f9fa !important;
+            }
+
+            .dropdown-item:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            .navbar-nav {
+                width: 100%;
             }
         }
         
         @media (max-width: 768px) {
             .navbar-brand {
                 max-width: 150px;
+            }
+
+            body {
+                font-size: 0.95rem; /* Tamaño de fuente ligeramente menor en tablets */
             }
         }
         
@@ -68,167 +142,252 @@
                 padding-top: var(--navbar-height-sm);
             }
             
-            .container {
-                padding-left: 15px;
-                padding-right: 15px;
+            .container, .container-fluid {
+                padding-left: 12px;
+                padding-right: 12px;
             }
+
+            body {
+                font-size: 0.9rem; /* Tamaño de fuente menor en móviles */
+            }
+
+            /* Optimización para pantallas pequeñas */
+            .navbar-brand {
+                max-width: 120px;
+                font-size: 0.9rem;
+            }
+
+            .navbar-toggler {
+                padding: 0.25rem 0.5rem;
+                font-size: 1rem;
+            }
+        }
+
+        /* Dispositivos muy pequeños (ej. smartphones antiguos) */
+        @media (max-width: 400px) {
+            .navbar-brand {
+                max-width: 100px;
+                font-size: 0.8rem;
+            }
+            
+            .navbar-brand-container img {
+                width: 35px;
+                height: 35px;
+            }
+        }
+
+        /* Dispositivos con pantalla grande */
+        @media (min-width: 1400px) {
+            body {
+                font-size: 1.05rem; /* Fuente ligeramente mayor en pantallas grandes */
+            }
+        }
+        
+        /* Mejoras de accesibilidad */
+        .nav-link:focus, .dropdown-item:focus {
+            outline: 2px solid rgba(255, 255, 255, 0.5);
+            outline-offset: -2px;
+        }
+        
+        /* Animación suave para el menú desplegable */
+        .navbar-collapse {
+            transition: all 0.3s ease;
+        }
+        
+        /* Mejora visual para el menú activo */
+        .nav-item.active .nav-link {
+            font-weight: bold;
+            position: relative;
+        }
+        
+        .nav-item.active .nav-link:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 1rem;
+            right: 1rem;
+            height: 2px;
+            background-color: #fff;
         }
     </style>
 </head>
 <body>
-    <!-- Navbar optimizado -->
+    <!-- Navbar optimizado con Flexbox -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom fixed-top">
         <div class="container-fluid">
-            <div class="d-flex align-items-center">
-                <img src="{{ url_for('static', filename='logoFerdel_web.png') }}" 
-                     alt="Logo de Ferdel" 
-                     width="50" 
-                     height="50"
-                     class="img-fluid">
-                <a class="navbar-brand ms-2" href="/">AVICOLA FERDEL</a>
-            </div>
+            <div class="navbar-container">
+                <!-- Logo y marca -->
+                <div class="navbar-brand-container">
+                    <img src="{{ url_for('static', filename='logoFerdel_web.png') }}" 
+                         alt="Logo de Ferdel" 
+                         width="50" 
+                         height="50"
+                         class="img-fluid d-none d-sm-block"> <!-- Oculta logo en móviles muy pequeños -->
+                    <img src="{{ url_for('static', filename='logoFerdel_web.png') }}" 
+                         alt="Logo de Ferdel" 
+                         width="40" 
+                         height="40"
+                         class="img-fluid d-sm-none"> <!-- Versión más pequeña para móviles -->
+                    <a class="navbar-brand" href="/">AVICOLA FERDEL</a>
+                </div>
 
-            <button class="navbar-toggler" type="button" 
-                    data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                    aria-controls="navbarNav" aria-expanded="false" 
-                    aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+                <!-- Botón de hamburguesa -->
+                <button class="navbar-toggler" type="button" 
+                        data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                        aria-controls="navbarNav" aria-expanded="false" 
+                        aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
 
-            <div class="collapse navbar-collapse" id="navbarNav">
-                {% if current_user.is_authenticated %}
-                <ul class="navbar-nav me-auto">
-                    <!-- Compras -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="comprasDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-cart-plus d-lg-none me-2"></i>Compras
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="comprasDropdown">
-                            <li><a class="dropdown-item" href="/compras"><i class="bi bi-plus-circle me-2"></i>Agregar Compras</a></li>
-                            <li><a class="dropdown-item" href="/gestionar_compras"><i class="bi bi-pencil-square me-2"></i>Editar Compras</a></li>
-                        </ul>
-                    </li>
+                <!-- Menú colapsable -->
+                <div class="collapse navbar-collapse navbar-menu" id="navbarNav">
+                    {% if current_user.is_authenticated %}
+                    <ul class="navbar-nav me-auto">
+                        <!-- Compras -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="comprasDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-cart-plus d-lg-none"></i>
+                                <span>Compras</span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="comprasDropdown">
+                                <li><a class="dropdown-item" href="/compras"><i class="bi bi-plus-circle"></i>Agregar Compras</a></li>
+                                <li><a class="dropdown-item" href="/gestionar_compras"><i class="bi bi-pencil-square"></i>Editar Compras</a></li>
+                            </ul>
+                        </li>
 
-                    <!-- Ventas -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="ventasDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-cash-stack d-lg-none me-2"></i>Ventas
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="ventasDropdown">
-                            <li><a class="dropdown-item" href="/ventas"><i class="bi bi-plus-circle me-2"></i>Agregar Ventas</a></li>
-                            <li><a class="dropdown-item" href="/gestionar_ventas"><i class="bi bi-pencil-square me-2"></i>Editar Ventas</a></li>
-                        </ul>
-                    </li>
+                        <!-- Ventas -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="ventasDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-cash-stack d-lg-none"></i>
+                                <span>Ventas</span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="ventasDropdown">
+                                <li><a class="dropdown-item" href="/ventas"><i class="bi bi-plus-circle"></i>Agregar Ventas</a></li>
+                                <li><a class="dropdown-item" href="/gestionar_ventas"><i class="bi bi-pencil-square"></i>Editar Ventas</a></li>
+                            </ul>
+                        </li>
 
-                    <!-- Cobros -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="cobrosDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-currency-dollar d-lg-none me-2"></i>Cobros
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="cobrosDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('cobros') }}"><i class="bi bi-eye me-2"></i>Ver Cobros</a></li>
-                        </ul>
-                    </li>
+                        <!-- Cobros -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="cobrosDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-currency-dollar d-lg-none"></i>
+                                <span>Cobros</span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="cobrosDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('cobros') }}"><i class="bi bi-eye"></i>Ver Cobros</a></li>
+                            </ul>
+                        </li>
 
-                    <!-- Pagos -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="pagosDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-credit-card d-lg-none me-2"></i>Pagos
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="pagosDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('pagos') }}"><i class="bi bi-eye me-2"></i>Ver Pagos</a></li>
-                        </ul>
-                    </li>
+                        <!-- Pagos -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="pagosDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-credit-card d-lg-none"></i>
+                                <span>Pagos</span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="pagosDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('pagos') }}"><i class="bi bi-eye"></i>Ver Pagos</a></li>
+                            </ul>
+                        </li>
 
-                    <!-- Factura -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="facturaDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-receipt d-lg-none me-2"></i>Factura
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="facturaDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('visualizar_facturas') }}"><i class="bi bi-eye me-2"></i>Visualizar Factura</a></li>
-                            <li><a class="dropdown-item" href="/factura_alterna"><i class="bi bi-file-earmark-plus me-2"></i>Generar nueva Factura</a></li>
-                        </ul>
-                    </li>
+                        <!-- Factura -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="facturaDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-receipt d-lg-none"></i>
+                                <span>Factura</span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="facturaDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('visualizar_facturas') }}"><i class="bi bi-eye"></i>Visualizar Factura</a></li>
+                                <li><a class="dropdown-item" href="/factura_alterna"><i class="bi bi-file-earmark-plus"></i>Generar nueva Factura</a></li>
+                            </ul>
+                        </li>
 
-                    <!-- Bodega -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="bodegaDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-box-seam d-lg-none me-2"></i>Bodega
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="bodegaDropdown">
-                            <li><a class="dropdown-item" href="/bodega"><i class="bi bi-eye me-2"></i>Ver Bodega</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('historial_inventario') }}"><i class="bi bi-clock-history me-2"></i>Historial de Movimientos</a></li>
-                        </ul>
-                    </li>
+                        <!-- Bodega -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="bodegaDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-box-seam d-lg-none"></i>
+                                <span>Bodega</span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="bodegaDropdown">
+                                <li><a class="dropdown-item" href="/bodega"><i class="bi bi-eye"></i>Ver Bodega</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('historial_inventario') }}"><i class="bi bi-clock-history"></i>Historial de Movimientos</a></li>
+                            </ul>
+                        </li>
 
-                    <!-- Vehículos -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="vehiculosDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-truck d-lg-none me-2"></i>Vehiculos
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="vehiculosDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('vehiculos') }}"><i class="bi bi-eye me-2"></i>Ver Vehículos</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('combustible') }}"><i class="bi bi-fuel-pump me-2"></i>Gasto de Combustibles</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-tools me-2"></i>Gestionar Mantenimiento</a></li>
-                        </ul>
-                    </li>
+                        <!-- Vehículos -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="vehiculosDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-truck d-lg-none"></i>
+                                <span>Vehiculos</span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="vehiculosDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('vehiculos') }}"><i class="bi bi-eye"></i>Ver Vehículos</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('combustible') }}"><i class="bi bi-fuel-pump"></i>Gasto de Combustibles</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-tools"></i>Gestionar Mantenimiento</a></li>
+                            </ul>
+                        </li>
 
-                    <!-- Catálogos -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="CatalogosDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-book d-lg-none me-2"></i>Catálogos
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="CatalogosDropdown">
-                            <li><a class="dropdown-item" href="/clientes"><i class="bi bi-people me-2"></i>Gestionar Clientes</a></li>
-                            <li><a class="dropdown-item" href="/proveedores"><i class="bi bi-truck me-2"></i>Gestionar Proveedores</a></li>
-                            <li><a class="dropdown-item" href="/productos"><i class="bi bi-box-seam me-2"></i>Gestionar Productos</a></li>
-                            <li><a class="dropdown-item" href="/empresa"><i class="bi bi-building me-2"></i>Gestionar Empresa</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('familia') }}"><i class="bi bi-diagram-3 me-2"></i>Gestionar Familias</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('tipo_producto') }}"><i class="bi bi-tags me-2"></i>Gestionar Tipos de Producto</a></li>
-                        </ul>
-                    </li>
-                </ul>
+                        <!-- Catálogos -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="CatalogosDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-book d-lg-none"></i>
+                                <span>Catálogos</span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="CatalogosDropdown">
+                                <li><a class="dropdown-item" href="/clientes"><i class="bi bi-people"></i>Gestionar Clientes</a></li>
+                                <li><a class="dropdown-item" href="/proveedores"><i class="bi bi-truck"></i>Gestionar Proveedores</a></li>
+                                <li><a class="dropdown-item" href="/productos"><i class="bi bi-box-seam"></i>Gestionar Productos</a></li>
+                                <li><a class="dropdown-item" href="/empresa"><i class="bi bi-building"></i>Gestionar Empresa</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('familia') }}"><i class="bi bi-diagram-3"></i>Gestionar Familias</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('tipo_producto') }}"><i class="bi bi-tags"></i>Gestionar Tipos de Producto</a></li>
+                            </ul>
+                        </li>
+                    </ul>
 
-                <!-- Usuario y sesión -->
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <span class="nav-link text-white">
-                            <i class="bi bi-person-circle d-lg-none me-2"></i>
-                            BIENVENIDO, {{ current_user.username }}
-                        </span>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout">
-                            <i class="bi bi-box-arrow-right d-lg-none me-2"></i>
-                            Cerrar sesión
-                        </a>
-                    </li>
-                </ul>
-                {% else %}
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/register">
-                            <i class="bi bi-person-plus d-lg-none me-2"></i>
-                            Registrar
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/login">
-                            <i class="bi bi-box-arrow-in-right d-lg-none me-2"></i>
-                            Iniciar sesión
-                        </a>
-                    </li>
-                </ul>
-                {% endif %}
+                    <!-- Usuario y sesión optimizados -->
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <span class="nav-link text-white">
+                                <i class="bi bi-person-circle d-lg-none"></i>
+                                <span class="d-none d-md-inline">BIENVENIDO, </span>
+                                <span class="d-inline d-md-none">Bienv. </span>
+                                {{ current_user.username }}
+                            </span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/logout">
+                                <i class="bi bi-box-arrow-right d-lg-none"></i>
+                                <span class="d-none d-sm-inline">Cerrar sesión</span>
+                                <span class="d-inline d-sm-none">Salir</span>
+                            </a>
+                        </li>
+                    </ul>
+                    {% else %}
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/register">
+                                <i class="bi bi-person-plus d-lg-none"></i>
+                                <span class="d-none d-sm-inline">Registrar</span>
+                                <span class="d-inline d-sm-none">Reg.</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/login">
+                                <i class="bi bi-box-arrow-in-right d-lg-none"></i>
+                                <span class="d-none d-sm-inline">Iniciar sesión</span>
+                                <span class="d-inline d-sm-none">Login</span>
+                            </a>
+                        </li>
+                    </ul>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </nav>
@@ -244,7 +403,7 @@
         {% endif %}
     {% endwith %}
 
-    <!-- Contenido principal -->
+    <!-- Contenido principal optimizado -->
     <main class="container-fluid py-3">
         <div class="row justify-content-center">
             <div class="col-12 col-xxl-10">
@@ -257,6 +416,65 @@
     <!-- Bootstrap JS al final del body -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    
+    <!-- Script para detección de dispositivo y optimizaciones -->
+    <script>
+        // Función para detectar el tipo de dispositivo
+        function detectDevice() {
+            const userAgent = navigator.userAgent;
+            const screenWidth = window.innerWidth;
+            
+            if (/Mobi|Android|iPhone|iPad|iPod/i.test(userAgent)) {
+                if (screenWidth < 768) return 'mobile';
+                return 'tablet';
+            }
+            return 'desktop';
+        }
+
+        // Aplicar clases según el dispositivo detectado
+        document.addEventListener('DOMContentLoaded', function() {
+            const device = detectDevice();
+            document.body.classList.add('device-' + device);
+            
+            // Optimizaciones específicas para dispositivos táctiles
+            if (device === 'mobile' || device === 'tablet') {
+                // Aumentar el tamaño de los elementos clickables
+                const clickableElements = document.querySelectorAll('.dropdown-item, .nav-link');
+                clickableElements.forEach(el => {
+                    el.style.padding = '0.75rem 1.25rem';
+                });
+                
+                // Mejorar la visualización de dropdowns
+                const dropdowns = document.querySelectorAll('.dropdown-menu');
+                dropdowns.forEach(menu => {
+                    menu.style.fontSize = '1rem';
+                });
+            }
+            
+            // Marcar el elemento activo del menú
+            markActiveMenuItem();
+        });
+
+        // Manejar el cambio de tamaño de ventana
+        window.addEventListener('resize', function() {
+            const device = detectDevice();
+            document.body.className = document.body.className.replace(/\bdevice-\S+/g, '');
+            document.body.classList.add('device-' + device);
+        });
+        
+        // Función para marcar el elemento activo del menú
+        function markActiveMenuItem() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+            
+            navLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && currentPath === href) {
+                    link.closest('.nav-item').classList.add('active');
+                }
+            });
+        }
+    </script>
     
     <!-- Scripts adicionales si es necesario -->
     {% block scripts %}{% endblock %}

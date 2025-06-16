@@ -2,10 +2,10 @@
 {% block title %}Cuentas por Cobrar{% endblock %}
 
 {% block main %}
-<div class="container" style="max-width: 980px; margin-top: 32px;">
+<div class="container-fluid my-3 px-2 px-md-3">
     <div class="card shadow-lg border-0 rounded-4">
-        <div class="card-body p-4">
-            <h2 class="text-center mb-4 text-primary" style="font-weight: 700; letter-spacing: 1px;">
+        <div class="card-body p-2 p-md-3">
+            <h2 class="text-center mb-3 mb-md-4 text-primary fw-bold">
                 <i class="bi bi-cash-stack"></i> Cuentas por Cobrar
             </h2>
 
@@ -22,54 +22,62 @@
             {% endwith %}
 
             <div class="table-responsive rounded-4">
-                <table class="table table-hover table-bordered align-middle mb-0">
+                <table class="table table-hover table-bordered align-middle text-center mb-0">
                     <thead class="table-dark">
                         <tr>
-                            <th class="text-center">Cliente</th>
-                            <th class="text-center">N° Factura</th>
-                            <th class="text-center">Vencimiento</th>
-                            <th class="text-center">Saldo Pendiente</th>
-                            <th class="text-center">Estado</th>
-                            <th class="text-center">Acciones</th>
+                            <th class="d-none d-md-table-cell">Cliente</th>
+                            <th>N° Factura</th>
+                            <th class="d-none d-sm-table-cell">Vencimiento</th>
+                            <th>Saldo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for cuenta in cuentas %}
                         <tr>
-                            <td class="text-center">{{ cuenta.Cliente }}</td>
-                            <td class="text-center">{{ cuenta.Factura }}</td>
-                            <td class="text-center">{{ cuenta.Fecha_Vencimiento }}</td>
-                            <td class="text-center">
+                            <td class="d-none d-md-table-cell">{{ cuenta.Cliente }}</td>
+                            <td>{{ cuenta.Factura }}</td>
+                            <td class="d-none d-sm-table-cell">{{ cuenta.Fecha_Vencimiento }}</td>
+                            <td>
                                 <span class="{% if cuenta.Saldo > 0 %}text-danger fw-bold{% else %}text-success fw-bold{% endif %}">
                                     {{ 'C$ ' ~ "{:,.2f}".format(cuenta.Saldo).replace(",", "X").replace(".", ",").replace("X", ".") }}
                                 </span>
                             </td>
-                            <td class="text-center">
+                            <td>
                                 {% if cuenta.Saldo > 0 %}
-                                    <span class="badge bg-warning text-dark py-2 px-3 fs-6">Pendiente</span>
+                                    <span class="badge bg-warning text-dark py-1 px-2 fs-6">Pendiente</span>
                                 {% else %}
-                                    <span class="badge bg-success py-2 px-3 fs-6">Cancelado</span>
+                                    <span class="badge bg-success py-1 px-2 fs-6">Pagado</span>
                                 {% endif %}
                             </td>
-                            <td class="text-center">
-                                <div class="d-flex flex-column flex-md-row gap-1 justify-content-center align-items-center">
+                            <td>
+                                <div class="d-flex flex-wrap gap-1 justify-content-center">
                                     {% if cuenta.Saldo > 0 %}
                                         <a href="{{ url_for('registrar_cobro', id_venta=cuenta.ID_Movimiento) }}" 
-                                           class="btn btn-success btn-sm mb-1" data-bs-toggle="tooltip" title="Registrar cobro">
-                                            <i class="bi bi-cash-coin"></i> Abono
+                                           class="btn btn-success btn-sm" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Registrar cobro"
+                                           style="min-width: 80px;">
+                                            <i class="bi bi-cash-coin d-none d-md-inline"></i> Abono
                                         </a>
                                         <a href="{{ url_for('cancelar_deuda', id_venta=cuenta.ID_Movimiento) }}" 
-                                           class="btn btn-danger btn-sm mb-1"
+                                           class="btn btn-danger btn-sm"
                                            onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');"
-                                           data-bs-toggle="tooltip" title="Cancelar deuda manualmente">
-                                            <i class="bi bi-x-octagon"></i> Cancelar
+                                           data-bs-toggle="tooltip" 
+                                           title="Cancelar deuda"
+                                           style="min-width: 80px;">
+                                            <i class="bi bi-x-octagon d-none d-md-inline"></i> Cancelar
                                         </a>
                                     {% else %}
-                                        <span class="text-muted small">Pago completo</span>
+                                        <span class="text-muted small d-none d-md-inline">Pago completo</span>
                                     {% endif %}
                                     <a href="{{ url_for('historial_pagos', id_venta=cuenta.ID_Movimiento) }}" 
-                                       class="btn btn-info btn-sm mt-1" data-bs-toggle="tooltip" title="Ver historial de pagos">
-                                        <i class="bi bi-clock-history"></i> Historial
+                                       class="btn btn-info btn-sm"
+                                       data-bs-toggle="tooltip" 
+                                       title="Historial de pagos"
+                                       style="min-width: 80px;">
+                                        <i class="bi bi-clock-history d-none d-md-inline"></i> Historial
                                     </a>
                                 </div>
                             </td>
@@ -88,9 +96,13 @@
 
 <!-- Activar tooltips -->
 <script>
-    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-    tooltipTriggerList.forEach(tooltipTriggerEl => {
-        new bootstrap.Tooltip(tooltipTriggerEl)
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl, {
+                trigger: 'hover focus'
+            });
+        });
     });
 </script>
 {% endblock %}

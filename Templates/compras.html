@@ -318,7 +318,7 @@
                                 <tr>
                                     <td data-label="Producto">
                                         <select name="productos[]" class="form-select producto-select" required>
-                                            <option value="" disabled selected>Seleccione un producto</option>
+                                            <option value="" disabled selected>Productos</option>
                                             {% for producto in productos %}
                                             <option value="{{ producto.id }}">{{ producto.Descripcion }}</option>
                                             {% endfor %}
