@@ -133,7 +133,7 @@
             }
 
             body {
-                font-size: 0.95rem; /* Tamaño de fuente ligeramente menor en tablets */
+                font-size: 0.95rem;
             }
         }
         
@@ -148,10 +148,9 @@
             }
 
             body {
-                font-size: 0.9rem; /* Tamaño de fuente menor en móviles */
+                font-size: 0.9rem;
             }
 
-            /* Optimización para pantallas pequeñas */
             .navbar-brand {
                 max-width: 120px;
                 font-size: 0.9rem;
@@ -163,7 +162,6 @@
             }
         }
 
-        /* Dispositivos muy pequeños (ej. smartphones antiguos) */
         @media (max-width: 400px) {
             .navbar-brand {
                 max-width: 100px;
@@ -176,10 +174,9 @@
             }
         }
 
-        /* Dispositivos con pantalla grande */
         @media (min-width: 1400px) {
             body {
-                font-size: 1.05rem; /* Fuente ligeramente mayor en pantallas grandes */
+                font-size: 1.05rem;
             }
         }
         
@@ -209,6 +206,23 @@
             height: 2px;
             background-color: #fff;
         }
+
+        /* Fix para dropdowns que no se abren */
+        .dropdown-toggle::after {
+            display: inline-block;
+            margin-left: 0.255em;
+            vertical-align: 0.255em;
+            content: "";
+            border-top: 0.3em solid;
+            border-right: 0.3em solid transparent;
+            border-bottom: 0;
+            border-left: 0.3em solid transparent;
+        }
+
+        /* Asegurar que los dropdowns funcionen correctamente */
+        .dropdown:hover .dropdown-menu {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -222,12 +236,12 @@
                          alt="Logo de Ferdel" 
                          width="50" 
                          height="50"
-                         class="img-fluid d-none d-sm-block"> <!-- Oculta logo en móviles muy pequeños -->
+                         class="img-fluid d-none d-sm-block">
                     <img src="{{ url_for('static', filename='logoFerdel_web.png') }}" 
                          alt="Logo de Ferdel" 
                          width="40" 
                          height="40"
-                         class="img-fluid d-sm-none"> <!-- Versión más pequeña para móviles -->
+                         class="img-fluid d-sm-none">
                     <a class="navbar-brand" href="/">AVICOLA FERDEL</a>
                 </div>
 
@@ -243,7 +257,7 @@
                 <div class="collapse navbar-collapse navbar-menu" id="navbarNav">
                     {% if current_user.is_authenticated %}
                     <ul class="navbar-nav me-auto">
-                        <!-- Compras -->
+                        <!-- Compras - CORREGIDO: href="#" en lugar de href="" -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="comprasDropdown" role="button" 
                                data-bs-toggle="dropdown" aria-expanded="false">
@@ -417,7 +431,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     
-    <!-- Script para detección de dispositivo y optimizaciones -->
+    <!-- Script mejorado para dropdowns -->
     <script>
         // Función para detectar el tipo de dispositivo
         function detectDevice() {
@@ -436,15 +450,19 @@
             const device = detectDevice();
             document.body.classList.add('device-' + device);
             
+            // Inicializar dropdowns manualmente si es necesario
+            const dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+            const dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+                return new bootstrap.Dropdown(dropdownToggleEl);
+            });
+            
             // Optimizaciones específicas para dispositivos táctiles
             if (device === 'mobile' || device === 'tablet') {
-                // Aumentar el tamaño de los elementos clickables
                 const clickableElements = document.querySelectorAll('.dropdown-item, .nav-link');
                 clickableElements.forEach(el => {
                     el.style.padding = '0.75rem 1.25rem';
                 });
                 
-                // Mejorar la visualización de dropdowns
                 const dropdowns = document.querySelectorAll('.dropdown-menu');
                 dropdowns.forEach(menu => {
                     menu.style.fontSize = '1rem';
@@ -453,6 +471,13 @@
             
             // Marcar el elemento activo del menú
             markActiveMenuItem();
+            
+            // Debug: Verificar que Bootstrap está cargado
+            if (typeof bootstrap === 'undefined') {
+                console.error('Bootstrap JavaScript no está cargado correctamente');
+            } else {
+                console.log('Bootstrap cargado correctamente');
+            }
         });
 
         // Manejar el cambio de tamaño de ventana
@@ -474,6 +499,23 @@
                 }
             });
         }
+
+        // Función adicional para forzar el funcionamiento de dropdowns
+        function initializeDropdowns() {
+            const dropdowns = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+            dropdowns.forEach(dropdown => {
+                dropdown.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const menu = this.nextElementSibling;
+                    if (menu && menu.classList.contains('dropdown-menu')) {
+                        menu.classList.toggle('show');
+                    }
+                });
+            });
+        }
+
+        // Llamar la función de inicialización como respaldo
+        document.addEventListener('DOMContentLoaded', initializeDropdowns);
     </script>
     
     <!-- Scripts adicionales si es necesario -->

@@ -59,7 +59,14 @@ def home():
         result = db.execute(query, params) if params else db.execute(query)
         return result[0]['total'] if result and result[0]['total'] is not None else 0
 
-    # 1. Total de ventas del mes actual
+    # 1. Total sales (today and month)
+    total_ventas_hoy = execute_query("""
+        SELECT SUM(df.Total) AS total 
+        FROM Detalle_Facturacion df
+        JOIN Facturacion f ON df.ID_Factura = f.ID_Factura
+        WHERE f.Fecha = ?
+    """, [today])
+
     total_ventas_mes = execute_query("""
         SELECT SUM(df.Total) AS total 
         FROM Detalle_Facturacion df
@@ -67,7 +74,66 @@ def home():
         WHERE strftime('%Y-%m', f.Fecha) = ?
     """, [current_month])
 
-    # 2. Cuentas por cobrar
+    # 2. Total purchases (today and month)
+    total_compras_hoy = execute_query("""
+        SELECT SUM(dm.Costo_Total) AS total
+        FROM Detalle_Movimiento_Inventario dm
+        JOIN Movimientos_Inventario mi ON dm.ID_Movimiento = mi.ID_Movimiento
+        WHERE mi.Fecha = ? AND mi.ID_TipoMovimiento IN (
+            SELECT ID_TipoMovimiento FROM Catalogo_Movimientos WHERE Adicion = '+'
+        )
+    """, [today])
+
+    total_compras_mes = execute_query("""
+        SELECT SUM(dm.Costo_Total) AS total
+        FROM Detalle_Movimiento_Inventario dm
+        JOIN Movimientos_Inventario mi ON dm.ID_Movimiento = mi.ID_Movimiento
+        WHERE strftime('%Y-%m', mi.Fecha) = ? AND mi.ID_TipoMovimiento IN (
+            SELECT ID_TipoMovimiento FROM Catalogo_Movimientos WHERE Adicion = '+'
+        )
+    """, [current_month])
+
+    # 3. Inventory by warehouse
+    inventario_bodegas = db.execute("""
+        SELECT b.Nombre AS bodega, p.Descripcion AS producto, ib.Existencias
+        FROM Inventario_Bodega ib
+        JOIN Bodegas b ON ib.ID_Bodega = b.ID_Bodega
+        JOIN Productos p ON ib.ID_Producto = p.ID_Producto
+        ORDER BY b.Nombre, p.Descripcion
+    """)
+
+    # 4. Vehicle information
+    vehiculos = db.execute("""
+        SELECT v.Placa, v.Marca, v.Modelo, v.Color, v.Estado,
+               (SELECT MAX(Kilometraje) FROM Mantenimiento_Vehiculo 
+                WHERE ID_Vehiculo = v.ID_Vehiculo) AS kilometraje
+        FROM Vehiculos v
+        ORDER BY v.Estado DESC, v.Placa
+    """)
+
+    # 5. Top customers
+    top_clientes = db.execute("""
+        SELECT c.Nombre, SUM(df.Total) AS total_comprado
+        FROM Clientes c
+        JOIN Facturacion f ON c.ID_Cliente = f.IDCliente
+        JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
+        GROUP BY c.ID_Cliente
+        ORDER BY total_comprado DESC
+        LIMIT 5
+    """)
+
+    # 6. Latest invoice and today's date
+    ultima_factura = db.execute("""
+        SELECT f.ID_Factura, f.Fecha, c.Nombre AS cliente, SUM(df.Total) AS total
+        FROM Facturacion f
+        JOIN Clientes c ON f.IDCliente = c.ID_Cliente
+        JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
+        GROUP BY f.ID_Factura
+        ORDER BY f.Fecha DESC
+        LIMIT 1
+    """)
+
+    # 7. Accounts receivable
     cuentas_cobrar = execute_query("""
         SELECT SUM(Monto_Movimiento) AS total
         FROM Detalle_Cuentas_Por_Cobrar
@@ -80,54 +146,17 @@ def home():
         WHERE Fecha_Vencimiento < DATE('now')
     """)
 
-    # 3. Últimas facturas
-    ultimas_facturas = db.execute("""
-        SELECT f.ID_Factura, f.Fecha, c.Nombre, SUM(df.Total) AS total
-        FROM Facturacion f
-        JOIN Clientes c ON f.IDCliente = c.ID_Cliente
-        JOIN Detalle_Facturacion df ON df.ID_Factura = f.ID_Factura
-        GROUP BY f.ID_Factura
-        ORDER BY f.Fecha DESC
-        LIMIT 5
-    """)
-
-    # 4. Productos más vendidos del mes
-    top_productos = db.execute("""
-        SELECT p.Descripcion, SUM(df.Cantidad) AS total_vendido
-        FROM Productos p
-        JOIN Detalle_Facturacion df ON p.ID_Producto = df.ID_Producto
-        JOIN Facturacion f ON df.ID_Factura = f.ID_Factura
-        WHERE strftime('%Y-%m', f.Fecha) = ?
-        GROUP BY p.ID_Producto
-        ORDER BY total_vendido DESC
-        LIMIT 5
-    """, [current_month])
-
-    # 5. Productos con stock bajo (recomendado: agregar campo Stock_Minimo en Productos)
+    # 8. Product stock alerts
     productos_stock_bajo = db.execute("""
-        SELECT Descripcion, Existencias
-        FROM Productos
-        WHERE Existencias <= 5 -- puedes parametrizar esto o agregar Stock_Minimo
+        SELECT p.Descripcion, p.Existencias, um.Abreviatura AS unidad
+        FROM Productos p
+        JOIN Unidades_Medida um ON p.Unidad_Medida = um.ID_Unidad
+        WHERE p.Existencias <= 5
+        ORDER BY p.Existencias ASC
         LIMIT 5
     """)
 
-    # 6. Valor total del inventario
-    valor_inventario = execute_query("""
-        SELECT SUM(Existencias * Costo_Promedio) AS total
-        FROM Productos
-    """)
-
-    # 7. Vehículos activos e inactivos
-    vehiculos = db.execute("""
-        SELECT 
-            SUM(CASE WHEN Estado = 1 THEN 1 ELSE 0 END) AS activos,
-            SUM(CASE WHEN Estado = 0 THEN 1 ELSE 0 END) AS inactivos
-        FROM Vehiculos
-    """)
-    vehiculos_activos = vehiculos[0]['activos'] if vehiculos else 0
-    vehiculos_inactivos = vehiculos[0]['inactivos'] if vehiculos else 0
-
-    # 8. Próximos mantenimientos
+    # 9. Upcoming vehicle maintenance
     proximos_mantenimientos = db.execute("""
         SELECT mv.*, v.Placa
         FROM Mantenimiento_Vehiculo mv
@@ -137,55 +166,32 @@ def home():
         LIMIT 5
     """)
 
-    # 9. Alertas
-    alertas = []
-
-    cobros_proximos = execute_query("""
-        SELECT COUNT(*) AS total
-        FROM Detalle_Cuentas_Por_Cobrar
-        WHERE Fecha_Vencimiento BETWEEN DATE('now') AND DATE('now', '+7 days')
-    """)
-    if cobros_proximos > 0:
-        alertas.append(f"{cobros_proximos} documentos por cobrar vencen esta semana")
-
-    if productos_stock_bajo:
-        alertas.append(f"{len(productos_stock_bajo)} productos con stock bajo")
-
-    # 10. Datos ficticios para gráficos (puedes reemplazarlos por una consulta real)
-    tipos_huevos = {
-        'blancos': [
-            {'tamano': 'Jumbo', 'cantidad': 1200, 'color': 'info'},
-            {'tamano': 'Grande', 'cantidad': 4500, 'color': 'success'},
-            {'tamano': 'Mediano', 'cantidad': 3800, 'color': 'warning'},
-            {'tamano': 'Pequeño', 'cantidad': 3000, 'color': 'secondary'}
-        ],
-        'rojos': [
-            {'tamano': 'Jumbo', 'cantidad': 800, 'color': 'info'},
-            {'tamano': 'Grande', 'cantidad': 1200, 'color': 'success'},
-            {'tamano': 'Mediano', 'cantidad': 500, 'color': 'warning'},
-            {'tamano': 'Pequeño', 'cantidad': 280, 'color': 'secondary'}
-        ]
-    }
-
-    ventas_semanales = {
-        'blancos': [1200, 1900, 1500, 2000, 1800, 1000, 500],
-        'rojos': [800, 600, 700, 900, 500, 300, 200]
-    }
+    # 10. Sales by product type (for chart)
+    ventas_por_tipo = db.execute("""
+        SELECT tp.Descripcion AS tipo, SUM(df.Cantidad) AS cantidad, SUM(df.Total) AS total
+        FROM Detalle_Facturacion df
+        JOIN Productos p ON df.ID_Producto = p.ID_Producto
+        JOIN Tipo_Producto tp ON p.Tipo = tp.ID_TipoProducto
+        JOIN Facturacion f ON df.ID_Factura = f.ID_Factura
+        WHERE strftime('%Y-%m', f.Fecha) = ?
+        GROUP BY tp.ID_TipoProducto
+    """, [current_month])
 
     return render_template("index.html",
+        today=today,
+        total_ventas_hoy=total_ventas_hoy,
         total_ventas_mes=total_ventas_mes,
+        total_compras_hoy=total_compras_hoy,
+        total_compras_mes=total_compras_mes,
+        inventario_bodegas=inventario_bodegas,
+        vehiculos=vehiculos,
+        top_clientes=top_clientes,
+        ultima_factura=ultima_factura[0] if ultima_factura else None,
         cuentas_cobrar=cuentas_cobrar,
         cuentas_cobrar_vencidas=cuentas_cobrar_vencidas,
-        ultimas_facturas=ultimas_facturas,
-        top_productos=top_productos,
         productos_stock_bajo=productos_stock_bajo,
-        valor_inventario=valor_inventario,
-        vehiculos_activos=vehiculos_activos,
-        vehiculos_inactivos=vehiculos_inactivos,
         proximos_mantenimientos=proximos_mantenimientos,
-        alertas=alertas,
-        tipos_huevos=tipos_huevos,
-        ventas_semanales=ventas_semanales
+        ventas_por_tipo=ventas_por_tipo
     )
 
 # Ruta login
