@@ -7,12 +7,17 @@
         --card-padding-lg: 1rem;
         --card-padding-md: 0.75rem;
         --card-padding-sm: 0.5rem;
+        --navbar-height-lg: 80px;
+        --navbar-height-sm: 100px;
+        --content-top-margin: 1rem;
     }
 
+    /* Ajustes generales */
     .card-container {
         max-width: var(--card-max-width);
-        margin: 1rem auto;
+        margin: var(--content-top-margin) auto;
         padding: var(--card-padding-lg);
+        margin-top: calc(var(--navbar-height-lg) + var(--content-top-margin));
     }
 
     .card-title {
@@ -26,13 +31,13 @@
     }
 
     .form-label {
-        font-size: 0.9rem;
+        font-size: clamp(0.85rem, 1vw, 0.9rem);
         margin-bottom: 0.3rem;
         font-weight: 500;
     }
 
     .form-control, .form-select {
-        font-size: 0.9rem;
+        font-size: clamp(0.85rem, 1vw, 0.9rem);
         padding: 0.5rem 0.75rem;
     }
 
@@ -53,14 +58,14 @@
         white-space: nowrap;
         background-color: #f8f9fa;
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: clamp(0.8rem, 1vw, 0.85rem);
         padding: 0.75rem;
     }
 
     #tabla-productos td {
         padding: 0.75rem;
         vertical-align: middle;
-        font-size: 0.85rem;
+        font-size: clamp(0.8rem, 1vw, 0.85rem);
     }
 
     #tabla-productos .btn-sm {
@@ -72,10 +77,21 @@
         margin-bottom: 1rem;
     }
 
+    /* Ajustes para pantallas grandes (desktop) */
+    @media (min-width: 1200px) {
+        .card-container {
+            max-width: 1000px;
+            padding: 1.5rem;
+        }
+    }
+
     /* Estilos para pantallas medianas (tablets) */
     @media (max-width: 992px) {
         .card-container {
             padding: var(--card-padding-md);
+            margin-left: 1rem;
+            margin-right: 1rem;
+            margin-top: calc(var(--navbar-height-lg) + 0.75rem);
         }
 
         .row.g-3 > [class^="col-"] {
@@ -92,39 +108,32 @@
         .card-container {
             margin: 0.75rem;
             padding: var(--card-padding-sm);
-        }
-
-        .form-label {
-            font-size: 0.85rem;
+            margin-top: calc(var(--navbar-height-lg) + 0.75rem);
         }
 
         .form-control, .form-select {
-            font-size: 0.85rem;
             padding: 0.45rem 0.65rem;
         }
 
         #tabla-productos th, #tabla-productos td {
             min-width: 90px;
-            font-size: 0.8rem;
             padding: 0.5rem;
         }
     }
 
-    /* Estilos para móviles pequeños */
+    /* Estilos para móviles pequeños (576px y menos) */
     @media (max-width: 576px) {
         .card-container {
             margin: 0.5rem;
-            padding: 0.25rem;
+            padding: 0.5rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.5rem);
         }
 
         .card-body {
             padding: 1rem;
         }
 
-        .form-control, .form-select {
-            font-size: 0.8rem;
-        }
-
+        /* Tabla responsiva para móviles */
         #tabla-productos {
             display: block;
             width: 100%;
@@ -200,13 +209,29 @@
             font-size: 0.75rem;
         }
 
-        .btn-action {
+        .btn-action, .btn-submit {
             width: 100%;
             margin-bottom: 1rem;
         }
+    }
 
-        .btn-submit {
-            margin-top: 1rem;
+    /* Ajustes para pantallas muy pequeñas (400px y menos) */
+    @media (max-width: 400px) {
+        .card-container {
+            margin: 0.25rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.25rem);
+        }
+        
+        .card-body {
+            padding: 0.75rem;
+        }
+
+        #tabla-productos td {
+            padding-left: 50%;
+        }
+
+        #tabla-productos td::before {
+            width: 45%;
         }
     }
 
@@ -225,6 +250,34 @@
 
     .is-invalid ~ .invalid-feedback {
         display: block;
+    }
+
+    /* Mejoras visuales */
+    .card {
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .card-body {
+        background-color: #fff;
+        border-radius: 0.5rem;
+    }
+
+    /* Ajustes generales del body */
+    body {
+        padding-top: 0;
+    }
+
+    /* Alertas flotantes */
+    .alert.position-fixed {
+        top: calc(var(--navbar-height-lg) + 1rem);
+        z-index: 1100;
+    }
+
+    @media (max-width: 576px) {
+        .alert.position-fixed {
+            top: calc(var(--navbar-height-sm) + 1rem);
+        }
     }
 </style>
 
@@ -404,21 +457,26 @@
         if (tabla.rows.length > 1) {
             fila.remove();
         } else {
-            // Mostrar alerta con toast de Bootstrap
-            const alerta = document.createElement('div');
-            alerta.className = 'alert alert-warning alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
-            alerta.style.zIndex = '1100';
-            alerta.innerHTML = `
-                <strong>Advertencia!</strong> Debe haber al menos un producto en la compra.
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            `;
-            document.body.appendChild(alerta);
-            
-            // Eliminar automáticamente después de 3 segundos
-            setTimeout(() => {
-                alerta.remove();
-            }, 3000);
+            mostrarAlerta('warning', 'Advertencia!', 'Debe haber al menos un producto en la compra.');
         }
+    }
+
+    function mostrarAlerta(tipo, titulo, mensaje) {
+        const alerta = document.createElement('div');
+        alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
+        alerta.style.zIndex = '1100';
+        alerta.innerHTML = `
+            <strong>${titulo}</strong> ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alerta);
+        
+        // Eliminar automáticamente después de 4 segundos
+        setTimeout(() => {
+            if (alerta.parentNode) {
+                alerta.remove();
+            }
+        }, 4000);
     }
 
     function validarCompra() {
@@ -438,21 +496,7 @@
         // Validar productos
         const filas = document.querySelectorAll("#tabla-productos tbody tr");
         if (filas.length === 0) {
-            // Mostrar alerta con toast
-            const alerta = document.createElement('div');
-            alerta.className = 'alert alert-danger alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
-            alerta.style.zIndex = '1100';
-            alerta.innerHTML = `
-                <strong>Error!</strong> Debe agregar al menos un producto a la compra.
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            `;
-            document.body.appendChild(alerta);
-            
-            // Eliminar automáticamente después de 3 segundos
-            setTimeout(() => {
-                alerta.remove();
-            }, 3000);
-            
+            mostrarAlerta('danger', 'Error!', 'Debe agregar al menos un producto a la compra.');
             return false;
         }
         
@@ -485,20 +529,7 @@
                 primerError.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
             
-            // Mostrar alerta con toast
-            const alerta = document.createElement('div');
-            alerta.className = 'alert alert-danger alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
-            alerta.style.zIndex = '1100';
-            alerta.innerHTML = `
-                <strong>Error!</strong> Por favor complete todos los campos requeridos.
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            `;
-            document.body.appendChild(alerta);
-            
-            // Eliminar automáticamente después de 3 segundos
-            setTimeout(() => {
-                alerta.remove();
-            }, 3000);
+            mostrarAlerta('danger', 'Error!', 'Por favor complete todos los campos requeridos.');
         }
         
         return valido;

@@ -1,34 +1,241 @@
 {% extends "layout.html" %}
 
 {% block main %}
-<!-- (tu estilo CSS permanece igual) -->
 <style>
-    .card-container {
-        max-width: 900px;
-        margin: 2rem auto;
-        padding: 1rem;
+    :root {
+        --card-max-width: 900px;
+        --card-padding-lg: 1.5rem;
+        --card-padding-md: 1rem;
+        --card-padding-sm: 0.75rem;
+        --card-padding-xs: 0.5rem;
+        --navbar-height-lg: 80px;
+        --navbar-height-sm: 100px;
     }
 
-    @media (max-width: 576px) {
+    /* Estilos base */
+    .card-container {
+        max-width: var(--card-max-width);
+        margin: 2rem auto;
+        padding: var(--card-padding-lg);
+        margin-top: calc(var(--navbar-height-lg) + 1rem);
+    }
+
+    .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: none;
+    }
+
+    .card-body {
+        padding: var(--card-padding-lg);
+    }
+
+    .card-title {
+        font-size: clamp(1.5rem, 2.5vw, 2rem);
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-size: clamp(0.85rem, 1vw, 0.9rem);
+        margin-bottom: 0.3rem;
+        font-weight: 500;
+    }
+
+    .form-control, .form-select {
+        font-size: clamp(0.85rem, 1vw, 0.9rem);
+        padding: 0.5rem 0.75rem;
+    }
+
+    .form-control-sm, .form-select-sm {
+        padding: 0.35rem 0.65rem;
+        font-size: clamp(0.8rem, 0.9vw, 0.85rem);
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1.5rem 0;
+        border-radius: 0.5rem;
+        box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+
+    #tabla-productos {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    #tabla-productos th {
+        white-space: nowrap;
+        background-color: #f8f9fa;
+        font-weight: 600;
+        font-size: clamp(0.8rem, 1vw, 0.85rem);
+        padding: 0.75rem;
+    }
+
+    #tabla-productos td {
+        padding: 0.75rem;
+        vertical-align: middle;
+        font-size: clamp(0.8rem, 1vw, 0.85rem);
+    }
+
+    #tabla-productos .btn-sm {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    .btn-action {
+        margin-bottom: 1rem;
+    }
+
+    /* Estilos para pantallas grandes (desktop) */
+    @media (min-width: 1200px) {
         .card-container {
-            margin: 1rem;
+            max-width: 1000px;
+        }
+    }
+
+    /* Estilos para tablets */
+    @media (max-width: 992px) {
+        .card-container {
+            padding: var(--card-padding-md);
+            margin-left: 1rem;
+            margin-right: 1rem;
+        }
+
+        .row.g-3 > [class^="col-"] {
+            margin-bottom: 0.75rem;
+        }
+
+        #tabla-productos th, #tabla-productos td {
+            padding: 0.6rem;
+        }
+    }
+
+    /* Estilos para móviles grandes */
+    @media (max-width: 768px) {
+        .card-container {
+            margin: 0.75rem;
+            padding: var(--card-padding-sm);
+            margin-top: calc(var(--navbar-height-lg) + 0.75rem);
+        }
+
+        #tabla-productos th, #tabla-productos td {
+            min-width: 90px;
             padding: 0.5rem;
         }
+    }
 
-        h1,
-        h4 {
-            font-size: 1.5rem;
+    /* Estilos para móviles pequeños */
+    @media (max-width: 576px) {
+        .card-container {
+            margin: 0.5rem;
+            padding: var(--card-padding-xs);
+            margin-top: calc(var(--navbar-height-sm) + 0.5rem);
         }
 
-        .btn {
+        .card-body {
+            padding: 1rem;
+        }
+
+        /* Tabla responsiva para móviles */
+        #tabla-productos {
+            display: block;
             width: 100%;
-            margin-bottom: 0.5rem;
+            border: 0;
         }
 
-        #tabla-productos th,
+        #tabla-productos thead {
+            display: none;
+        }
+
+        #tabla-productos tbody, #tabla-productos tr, #tabla-productos td {
+            display: block;
+            width: 100%;
+            text-align: left;
+        }
+
+        #tabla-productos tr {
+            margin-bottom: 1.25rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            position: relative;
+            padding-top: 2.5rem;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
         #tabla-productos td {
-            font-size: 0.85rem;
-            padding: 0.3rem;
+            border: none;
+            padding: 0.5rem 0.75rem;
+            padding-left: 45%;
+        }
+
+        #tabla-productos td::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 0.75rem;
+            width: 40%;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #495057;
+        }
+
+        #tabla-productos td:first-child {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+        }
+
+        #tabla-productos td:last-child {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: auto;
+            padding: 0;
+            text-align: right;
+        }
+
+        #tabla-productos td:last-child::before {
+            display: none;
+        }
+
+        #tabla-productos select, 
+        #tabla-productos input {
+            width: 100%;
+            margin-left: 0;
+            max-width: 100%;
+        }
+
+        #tabla-productos .btn {
+            width: auto;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .btn-action, .btn-submit {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+    }
+
+    /* Ajustes para pantallas muy pequeñas */
+    @media (max-width: 400px) {
+        .card-container {
+            margin: 0.25rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.25rem);
+        }
+        
+        .card-body {
+            padding: 0.75rem;
+        }
+
+        #tabla-productos td {
+            padding-left: 50%;
+        }
+
+        #tabla-productos td::before {
+            width: 45%;
         }
     }
 </style>
@@ -41,7 +248,7 @@
 
                 <!-- Primera fila -->
                 <div class="row g-3">
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <label for="fecha" class="form-label">Fecha:</label>
                         <input type="date" class="form-control form-control-sm" id="fecha" name="fecha" required>
                     </div>
@@ -54,7 +261,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-6 col-md-4">
+                    <div class="col-12 col-md-4">
                         <label for="id_bodega" class="form-label">Bodega:</label>
                         <select class="form-select form-select-sm" id="id_bodega" name="id_bodega" required>
                             <option value="" disabled selected>Seleccione una bodega</option>
@@ -67,12 +274,12 @@
 
                 <!-- Segunda fila -->
                 <div class="row g-3 mt-2">
-                    <div class="col-6 col-md-4">
+                    <div class="col-12 col-md-4">
                         <label for="n_factura" class="form-label">Nº Factura:</label>
                         <input type="text" id="n_factura" name="n_factura" class="form-control form-control-sm"
                             value="{{ n_factura }}" readonly>
                     </div>
-                    <div class="col-6 col-md-4">
+                    <div class="col-12 col-md-4">
                         <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
                         <select id="tipo_pago" name="tipo_pago" class="form-select form-select-sm"
                             onchange="toggleFechaVencimiento()">
@@ -96,68 +303,113 @@
 
                 <!-- Tabla de productos -->
                 <div class="mb-3">
-                    <h4>Agregar Productos</h4>
+                    <h4 class="section-title">Agregar Productos</h4>
+                    <button type="button" class="btn btn-secondary btn-sm btn-action" onclick="agregarFila()">
+                        <i class="bi bi-plus-circle"></i> Agregar Producto
+                    </button>
+                    
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm text-center" id="tabla-productos">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Producto</th>
-                                    <th style="width: 6rem;">Cantidad</th>
-                                    <th style="width: 7rem;">Precio</th>
-                                    <th style="width: 6rem;">IVA</th>
-                                    <th style="width: 8rem;">Descuento</th>
+                                    <th data-label="Producto">Producto</th>
+                                    <th data-label="Cantidad" style="width: 6rem;">Cantidad</th>
+                                    <th data-label="Precio" style="width: 7rem;">Precio</th>
+                                    <th data-label="IVA" style="width: 6rem;">IVA</th>
+                                    <th data-label="Descuento" style="width: 8rem;">Descuento</th>
                                     <th style="width: 6rem;">Acción</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>
-                                        <select name="productos[]" class="form-select form-select-sm producto-select"
-                                            required>
+                                    <td data-label="Producto">
+                                        <select name="productos[]" class="form-select form-select-sm producto-select" required>
                                             <option value="" disabled selected>Seleccione un producto</option>
                                         </select>
                                     </td>
-                                    <td><input type="number" name="cantidades[]" step="any" min="0"
-                                            class="form-control form-control-sm" required></td>
-                                    <td><input type="number" name="costos[]" step="any" min="0"
-                                            class="form-control form-control-sm" required></td>
-                                    <td><input type="number" name="ivas[]" step="any" min="0"
-                                            class="form-control form-control-sm" required></td>
-                                    <td><input type="number" name="descuentos[]" step="any" min="0"
-                                            class="form-control form-control-sm" required></td>
-                                    <td><button type="button" class="btn btn-danger btn-sm"
-                                            onclick="eliminarFila(this)">Eliminar</button></td>
+                                    <td data-label="Cantidad">
+                                        <input type="number" name="cantidades[]" step="any" min="0"
+                                            class="form-control form-control-sm" required>
+                                    </td>
+                                    <td data-label="Precio">
+                                        <input type="number" name="costos[]" step="any" min="0"
+                                            class="form-control form-control-sm" required>
+                                    </td>
+                                    <td data-label="IVA">
+                                        <input type="number" name="ivas[]" step="any" min="0"
+                                            class="form-control form-control-sm" required>
+                                    </td>
+                                    <td data-label="Descuento">
+                                        <input type="number" name="descuentos[]" step="any" min="0"
+                                            class="form-control form-control-sm" required>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm"
+                                            onclick="eliminarFila(this)">
+                                            <i class="bi bi-trash"></i> Eliminar
+                                        </button>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="agregarFila()">Agregar
-                        Producto</button>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100">Registrar Venta</button>
+                <button type="submit" class="btn btn-primary btn-submit w-100 py-2">
+                    <i class="bi bi-save"></i> Registrar Venta
+                </button>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Scripts -->
 <script>
-    setTimeout(function () {
-        const flashMessages = document.getElementById('flash-messages');
-        if (flashMessages) {
-            flashMessages.style.transition = 'opacity 0.5s ease-out';
-            flashMessages.style.opacity = '0';
-            setTimeout(() => flashMessages.remove(), 500); // Elimina el div del DOM
+    // Configuración inicial de data-labels para la tabla
+    document.addEventListener("DOMContentLoaded", function() {
+        const primeraFila = document.querySelector("#tabla-productos tbody tr");
+        if (primeraFila) {
+            const celdas = primeraFila.querySelectorAll("td");
+            const etiquetas = ["Producto", "Cantidad", "Precio", "IVA", "Descuento"];
+            
+            celdas.forEach((celda, index) => {
+                if (index < etiquetas.length) {
+                    celda.setAttribute("data-label", etiquetas[index]);
+                }
+            });
         }
-    }, 4000);
+        
+        // Establecer fecha actual por defecto
+        const fechaInput = document.getElementById("fecha");
+        if (fechaInput && !fechaInput.value) {
+            const today = new Date();
+            const formattedDate = today.toISOString().substr(0, 10);
+            fechaInput.value = formattedDate;
+        }
+    });
 
     function agregarFila() {
         const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
         const nuevaFila = tabla.rows[0].cloneNode(true);
+        
+        // Limpiar valores
         nuevaFila.querySelectorAll("input").forEach(input => input.value = "");
-        nuevaFila.querySelector("select").innerHTML = tabla.rows[0].querySelector("select").innerHTML;
+        nuevaFila.querySelector("select").selectedIndex = 0;
+        
+        // Asegurar data-labels
+        const celdas = nuevaFila.querySelectorAll("td");
+        const etiquetas = ["Producto", "Cantidad", "Precio", "IVA", "Descuento"];
+        celdas.forEach((celda, index) => {
+            if (index < etiquetas.length) {
+                celda.setAttribute("data-label", etiquetas[index]);
+            }
+        });
+
         tabla.appendChild(nuevaFila);
+        
+        // Desplazarse a la nueva fila en móviles
+        if (window.innerWidth <= 576) {
+            nuevaFila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 
     function eliminarFila(boton) {
@@ -166,41 +418,86 @@
         if (tabla.rows.length > 1) {
             fila.remove();
         } else {
-            alert("Debe haber al menos un producto en la venta.");
+            mostrarAlerta('warning', 'Advertencia', 'Debe haber al menos un producto en la venta.');
         }
+    }
+
+    function mostrarAlerta(tipo, titulo, mensaje) {
+        const alerta = document.createElement('div');
+        alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
+        alerta.style.zIndex = '1100';
+        alerta.innerHTML = `
+            <strong>${titulo}</strong> ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alerta);
+        
+        setTimeout(() => {
+            if (alerta.parentNode) {
+                alerta.remove();
+            }
+        }, 4000);
     }
 
     function validarVenta() {
-        const cantidades = document.querySelectorAll('input[name="cantidades[]"]');
-        const productos = document.querySelectorAll('select[name="productos[]"]');
+        let valido = true;
+        
+        // Validar campos principales
+        document.querySelectorAll('form [required]').forEach(campo => {
+            if (!campo.value) {
+                campo.classList.add("is-invalid");
+                valido = false;
+            } else {
+                campo.classList.remove("is-invalid");
+            }
+        });
 
-        for (let i = 0; i < cantidades.length; i++) {
-            let cantidad = parseFloat(cantidades[i].value);
-            let productoSelect = productos[i];
-            let nombreProducto = productoSelect.options[productoSelect.selectedIndex]?.text || "Producto no seleccionado";
-
-            // Obtener el stock disponible del atributo data-stock
-            let stockDisponible = parseFloat(productoSelect.options[productoSelect.selectedIndex]?.getAttribute('data-stock')) || 0;
-
-        }
-
+        // Validar productos
         const filas = document.querySelectorAll("#tabla-productos tbody tr");
         if (filas.length === 0) {
-            alert("Debe agregar al menos un producto a la venta.");
+            mostrarAlerta('danger', 'Error', 'Debe agregar al menos un producto a la venta.');
             return false;
         }
-        return true;
+        
+        filas.forEach(fila => {
+            const select = fila.querySelector("select");
+            const inputs = fila.querySelectorAll("input[required]");
+            
+            if (!select.value) {
+                select.classList.add("is-invalid");
+                valido = false;
+            } else {
+                select.classList.remove("is-invalid");
+            }
+            
+            inputs.forEach(input => {
+                if (!input.value) {
+                    input.classList.add("is-invalid");
+                    valido = false;
+                } else {
+                    input.classList.remove("is-invalid");
+                }
+            });
+        });
+        
+        if (!valido) {
+            const primerError = document.querySelector(".is-invalid");
+            if (primerError) {
+                primerError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            mostrarAlerta('danger', 'Error', 'Por favor complete todos los campos requeridos.');
+        }
+        
+        return valido;
     }
-
 
     function toggleFechaVencimiento() {
         const tipoPago = document.getElementById('tipo_pago').value;
-        const fechaVencimientoRow = document.getElementById('fecha_vencimiento_row');
-        fechaVencimientoRow.style.display = tipoPago == "1" ? "block" : "none";
+        document.getElementById('fecha_vencimiento_row').style.display = tipoPago == "1" ? "block" : "none";
     }
 
-    // Nueva funcionalidad para cargar productos al cambiar la bodega
-    document.getElementById("id_bodega").addEventListener("change", function () {
+    // Cargar productos al cambiar la bodega
+    document.getElementById("id_bodega").addEventListener("change", function() {
         const idBodega = this.value;
         if (!idBodega) return;
 
@@ -209,7 +506,7 @@
             .then(data => {
                 const opciones = ['<option value="" disabled selected>Seleccione un producto</option>'];
                 data.forEach(producto => {
-                    opciones.push(`<option value="${producto.id}">${producto.descripcion}</option>`);
+                    opciones.push(`<option value="${producto.id}" data-stock="${producto.stock}">${producto.descripcion}</option>`);
                 });
 
                 document.querySelectorAll(".producto-select").forEach(select => {
@@ -218,7 +515,7 @@
             })
             .catch(err => {
                 console.error("Error al cargar productos:", err);
-                alert("No se pudieron cargar los productos para la bodega seleccionada.");
+                mostrarAlerta('danger', 'Error', 'No se pudieron cargar los productos para la bodega seleccionada.');
             });
     });
 </script>
