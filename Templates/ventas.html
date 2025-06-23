@@ -41,12 +41,14 @@
         font-weight: 500;
     }
 
-    .form-control, .form-select {
+    .form-control,
+    .form-select {
         font-size: clamp(0.85rem, 1vw, 0.9rem);
         padding: 0.5rem 0.75rem;
     }
 
-    .form-control-sm, .form-select-sm {
+    .form-control-sm,
+    .form-select-sm {
         padding: 0.35rem 0.65rem;
         font-size: clamp(0.8rem, 0.9vw, 0.85rem);
     }
@@ -56,7 +58,7 @@
         -webkit-overflow-scrolling: touch;
         margin: 1.5rem 0;
         border-radius: 0.5rem;
-        box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
     }
 
     #tabla-productos {
@@ -102,11 +104,12 @@
             margin-right: 1rem;
         }
 
-        .row.g-3 > [class^="col-"] {
+        .row.g-3>[class^="col-"] {
             margin-bottom: 0.75rem;
         }
 
-        #tabla-productos th, #tabla-productos td {
+        #tabla-productos th,
+        #tabla-productos td {
             padding: 0.6rem;
         }
     }
@@ -119,7 +122,8 @@
             margin-top: calc(var(--navbar-height-lg) + 0.75rem);
         }
 
-        #tabla-productos th, #tabla-productos td {
+        #tabla-productos th,
+        #tabla-productos td {
             min-width: 90px;
             padding: 0.5rem;
         }
@@ -148,7 +152,9 @@
             display: none;
         }
 
-        #tabla-productos tbody, #tabla-productos tr, #tabla-productos td {
+        #tabla-productos tbody,
+        #tabla-productos tr,
+        #tabla-productos td {
             display: block;
             width: 100%;
             text-align: left;
@@ -161,7 +167,7 @@
             position: relative;
             padding-top: 2.5rem;
             background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
         #tabla-productos td {
@@ -200,7 +206,7 @@
             display: none;
         }
 
-        #tabla-productos select, 
+        #tabla-productos select,
         #tabla-productos input {
             width: 100%;
             margin-left: 0;
@@ -213,7 +219,8 @@
             font-size: 0.75rem;
         }
 
-        .btn-action, .btn-submit {
+        .btn-action,
+        .btn-submit {
             width: 100%;
             margin-bottom: 1rem;
         }
@@ -225,7 +232,7 @@
             margin: 0.25rem;
             margin-top: calc(var(--navbar-height-sm) + 0.25rem);
         }
-        
+
         .card-body {
             padding: 0.75rem;
         }
@@ -244,6 +251,7 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <h1 class="card-title text-center mb-4">Registrar Venta</h1>
+            <div id="error-message" class="alert alert-danger d-none" role="alert"></div>
             <form action="/ventas" method="post" onsubmit="return validarVenta()">
 
                 <!-- Primera fila -->
@@ -307,7 +315,7 @@
                     <button type="button" class="btn btn-secondary btn-sm btn-action" onclick="agregarFila()">
                         <i class="bi bi-plus-circle"></i> Agregar Producto
                     </button>
-                    
+
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm text-center" id="tabla-productos">
                             <thead class="table-light">
@@ -323,7 +331,8 @@
                             <tbody>
                                 <tr>
                                     <td data-label="Producto">
-                                        <select name="productos[]" class="form-select form-select-sm producto-select" required>
+                                        <select name="productos[]" class="form-select form-select-sm producto-select"
+                                            required>
                                             <option value="" disabled selected>Seleccione un producto</option>
                                         </select>
                                     </td>
@@ -364,20 +373,21 @@
 </div>
 
 <script>
+
     // Configuración inicial de data-labels para la tabla
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         const primeraFila = document.querySelector("#tabla-productos tbody tr");
         if (primeraFila) {
             const celdas = primeraFila.querySelectorAll("td");
             const etiquetas = ["Producto", "Cantidad", "Precio", "IVA", "Descuento"];
-            
+
             celdas.forEach((celda, index) => {
                 if (index < etiquetas.length) {
                     celda.setAttribute("data-label", etiquetas[index]);
                 }
             });
         }
-        
+
         // Establecer fecha actual por defecto
         const fechaInput = document.getElementById("fecha");
         if (fechaInput && !fechaInput.value) {
@@ -390,11 +400,11 @@
     function agregarFila() {
         const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
         const nuevaFila = tabla.rows[0].cloneNode(true);
-        
+
         // Limpiar valores
         nuevaFila.querySelectorAll("input").forEach(input => input.value = "");
         nuevaFila.querySelector("select").selectedIndex = 0;
-        
+
         // Asegurar data-labels
         const celdas = nuevaFila.querySelectorAll("td");
         const etiquetas = ["Producto", "Cantidad", "Precio", "IVA", "Descuento"];
@@ -405,7 +415,7 @@
         });
 
         tabla.appendChild(nuevaFila);
-        
+
         // Desplazarse a la nueva fila en móviles
         if (window.innerWidth <= 576) {
             nuevaFila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -431,7 +441,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         document.body.appendChild(alerta);
-        
+
         setTimeout(() => {
             if (alerta.parentNode) {
                 alerta.remove();
@@ -441,7 +451,7 @@
 
     function validarVenta() {
         let valido = true;
-        
+
         // Validar campos principales
         document.querySelectorAll('form [required]').forEach(campo => {
             if (!campo.value) {
@@ -458,18 +468,18 @@
             mostrarAlerta('danger', 'Error', 'Debe agregar al menos un producto a la venta.');
             return false;
         }
-        
+
         filas.forEach(fila => {
             const select = fila.querySelector("select");
             const inputs = fila.querySelectorAll("input[required]");
-            
+
             if (!select.value) {
                 select.classList.add("is-invalid");
                 valido = false;
             } else {
                 select.classList.remove("is-invalid");
             }
-            
+
             inputs.forEach(input => {
                 if (!input.value) {
                     input.classList.add("is-invalid");
@@ -479,7 +489,7 @@
                 }
             });
         });
-        
+
         if (!valido) {
             const primerError = document.querySelector(".is-invalid");
             if (primerError) {
@@ -487,7 +497,7 @@
             }
             mostrarAlerta('danger', 'Error', 'Por favor complete todos los campos requeridos.');
         }
-        
+
         return valido;
     }
 
@@ -497,7 +507,7 @@
     }
 
     // Cargar productos al cambiar la bodega
-    document.getElementById("id_bodega").addEventListener("change", function() {
+    document.getElementById("id_bodega").addEventListener("change", function () {
         const idBodega = this.value;
         if (!idBodega) return;
 

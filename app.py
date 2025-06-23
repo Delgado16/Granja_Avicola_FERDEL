@@ -74,23 +74,26 @@ def home():
         WHERE strftime('%Y-%m', f.Fecha) = ?
     """, [current_month])
 
-    # 2. Total purchases (today and month)
+
+# 2. Total purchases (today and month) - VERSION CORREGIDA
+# Consulta de compras hoy - Versión mejorada
     total_compras_hoy = execute_query("""
-        SELECT SUM(dm.Costo_Total) AS total
+        SELECT COALESCE(SUM(dm.Costo_Total), 0) AS total
         FROM Detalle_Movimiento_Inventario dm
         JOIN Movimientos_Inventario mi ON dm.ID_Movimiento = mi.ID_Movimiento
-        WHERE mi.Fecha = ? AND mi.ID_TipoMovimiento IN (
-            SELECT ID_TipoMovimiento FROM Catalogo_Movimientos WHERE Adicion = '+'
-        )
+        JOIN Catalogo_Movimientos cm ON mi.ID_TipoMovimiento = cm.ID_TipoMovimiento
+        WHERE DATE(mi.Fecha) = DATE(?)
+        AND cm.Adicion = '+'
     """, [today])
 
+    # Consulta de compras mes - Versión mejorada
     total_compras_mes = execute_query("""
-        SELECT SUM(dm.Costo_Total) AS total
+        SELECT COALESCE(SUM(dm.Costo_Total), 0) AS total
         FROM Detalle_Movimiento_Inventario dm
         JOIN Movimientos_Inventario mi ON dm.ID_Movimiento = mi.ID_Movimiento
-        WHERE strftime('%Y-%m', mi.Fecha) = ? AND mi.ID_TipoMovimiento IN (
-            SELECT ID_TipoMovimiento FROM Catalogo_Movimientos WHERE Adicion = '+'
-        )
+        JOIN Catalogo_Movimientos cm ON mi.ID_TipoMovimiento = cm.ID_TipoMovimiento
+        WHERE strftime('%Y-%m', mi.Fecha) = ?
+        AND cm.Adicion = '+'
     """, [current_month])
 
     # 3. Inventory by warehouse
@@ -785,8 +788,10 @@ def ventas():
                 if not existencia or existencia[0]["Existencias"] < cantidad:
                     nombre_prod = db.execute("SELECT Descripcion FROM Productos WHERE ID_Producto = ?", id_producto)[0]["Descripcion"]
                     db.execute("ROLLBACK")
-                    flash(f"No hay suficiente stock del producto '{nombre_prod}' en la bodega seleccionada.", "danger")
-                    return redirect(url_for("ventas"))
+                    return jsonify({
+                        "success": False,
+                        "message": f"No hay suficiente stock del producto '{nombre_prod}' en la bodega"
+                    }), 400
 
                 total = (cantidad * costo) - descuento + iva
                 total_venta += total
@@ -834,7 +839,6 @@ def ventas():
             return redirect(url_for("gestionar_ventas"))
 
         except Exception as e:
-            import traceback
             print(traceback.format_exc())
             db.execute("ROLLBACK")
             flash(f"Error al registrar la venta: {e}", "danger")

@@ -2,18 +2,195 @@
 {% block title %}Cuentas por Cobrar{% endblock %}
 
 {% block main %}
-<div class="container-fluid my-3 px-2 px-md-3">
-    <div class="card shadow-lg border-0 rounded-4">
-        <div class="card-body p-2 p-md-3">
-            <h2 class="text-center mb-3 mb-md-4 text-primary fw-bold">
+<style>
+    :root {
+        --card-max-width: 1200px;
+        --card-padding-lg: 1.5rem;
+        --card-padding-md: 1rem;
+        --card-padding-sm: 0.75rem;
+        --navbar-height-lg: 80px;
+        --navbar-height-sm: 100px;
+        --content-top-margin: 1rem;
+    }
+
+    /* Estilos base */
+    .container-fluid.my-3 {
+        max-width: var(--card-max-width);
+        margin: var(--content-top-margin) auto;
+        padding: var(--card-padding-sm);
+        margin-top: calc(var(--navbar-height-lg) + var(--content-top-margin));
+    }
+
+    .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.1);
+        border: none;
+    }
+
+    .card-body {
+        padding: var(--card-padding-sm);
+    }
+
+    h2 {
+        font-size: clamp(1.5rem, 2.5vw, 2rem);
+        margin-bottom: 1rem;
+    }
+
+    .alert {
+        font-size: clamp(0.85rem, 1.2vw, 1rem);
+        padding: 0.75rem 1.25rem;
+    }
+
+    .table-responsive {
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+        width: 100%;
+        font-size: clamp(0.85rem, 1.2vw, 1rem);
+    }
+
+    .table thead th {
+        background-color: #343a40;
+        color: white;
+        font-weight: 500;
+        padding: 0.75rem;
+        vertical-align: middle;
+    }
+
+    .table tbody td {
+        padding: 0.75rem;
+        vertical-align: middle;
+    }
+
+    .badge {
+        font-size: clamp(0.75rem, 1vw, 0.85rem);
+        padding: 0.35em 0.65em;
+        font-weight: 500;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: clamp(0.75rem, 1vw, 0.85rem);
+        white-space: nowrap;
+    }
+
+    /* Estilos para móviles */
+    @media (max-width: 768px) {
+        .container-fluid.my-3 {
+            padding: 0.5rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.5rem);
+        }
+
+        .card-body {
+            padding: 0.75rem;
+        }
+
+        .table thead {
+            display: none;
+        }
+
+        .table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+        }
+
+        .table tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .table tbody td:before {
+            content: attr(data-label);
+            font-weight: bold;
+            margin-right: 1rem;
+            flex: 1;
+        }
+
+        .table tbody td:last-child {
+            border-bottom: none;
+            justify-content: center;
+        }
+
+        .table tbody td > span,
+        .table tbody td > div {
+            flex: 2;
+            text-align: right;
+        }
+
+        .table tbody td .d-flex {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .table tbody td .btn-sm {
+            flex: 1 0 auto;
+            min-width: 100px;
+        }
+    }
+
+    /* Media queries para tablets */
+    @media (max-width: 992px) and (min-width: 769px) {
+        .container-fluid.my-3 {
+            padding: var(--card-padding-md);
+        }
+
+        .table thead th.d-none,
+        .table tbody td.d-none {
+            display: table-cell !important;
+        }
+
+        .table tbody td .d-flex {
+            flex-wrap: nowrap;
+        }
+
+        .table tbody td .btn-sm {
+            min-width: auto;
+            padding: 0.25rem;
+        }
+
+        .table tbody td .btn-sm i {
+            display: inline-block !important;
+        }
+
+        .table tbody td .btn-sm span {
+            display: none;
+        }
+    }
+
+    /* Media queries para desktop */
+    @media (min-width: 993px) {
+        .container-fluid.my-3 {
+            padding: var(--card-padding-lg);
+        }
+
+        .table tbody td .d-flex {
+            gap: 0.5rem;
+        }
+    }
+</style>
+
+<div class="container-fluid my-3">
+    <div class="card shadow-lg">
+        <div class="card-body">
+            <h2 class="text-center mb-3 text-primary">
                 <i class="bi bi-cash-stack"></i> Cuentas por Cobrar
             </h2>
 
-            <!-- Flash messages -->
+            <!-- Mensajes Flash -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
                             {{ message }}
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
@@ -21,52 +198,50 @@
                 {% endif %}
             {% endwith %}
 
-            <div class="table-responsive rounded-4">
-                <table class="table table-hover table-bordered align-middle text-center mb-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
                     <thead class="table-dark">
                         <tr>
-                            <th class="d-none d-md-table-cell">Cliente</th>
-                            <th>N° Factura</th>
-                            <th class="d-none d-sm-table-cell">Vencimiento</th>
-                            <th>Saldo</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
+                            <th class="d-none d-md-table-cell" data-label="Cliente">Cliente</th>
+                            <th data-label="Factura">N° Factura</th>
+                            <th class="d-none d-sm-table-cell" data-label="Vencimiento">Vencimiento</th>
+                            <th data-label="Saldo">Saldo</th>
+                            <th data-label="Estado">Estado</th>
+                            <th data-label="Acciones">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for cuenta in cuentas %}
                         <tr>
-                            <td class="d-none d-md-table-cell">{{ cuenta.Cliente }}</td>
-                            <td>{{ cuenta.Factura }}</td>
-                            <td class="d-none d-sm-table-cell">{{ cuenta.Fecha_Vencimiento }}</td>
-                            <td>
+                            <td class="d-none d-md-table-cell" data-label="Cliente">{{ cuenta.Cliente }}</td>
+                            <td data-label="Factura">{{ cuenta.Factura }}</td>
+                            <td class="d-none d-sm-table-cell" data-label="Vencimiento">{{ cuenta.Fecha_Vencimiento }}</td>
+                            <td data-label="Saldo">
                                 <span class="{% if cuenta.Saldo > 0 %}text-danger fw-bold{% else %}text-success fw-bold{% endif %}">
                                     {{ 'C$ ' ~ "{:,.2f}".format(cuenta.Saldo).replace(",", "X").replace(".", ",").replace("X", ".") }}
                                 </span>
                             </td>
-                            <td>
+                            <td data-label="Estado">
                                 {% if cuenta.Saldo > 0 %}
-                                    <span class="badge bg-warning text-dark py-1 px-2 fs-6">Pendiente</span>
+                                    <span class="badge bg-warning text-dark">Pendiente</span>
                                 {% else %}
-                                    <span class="badge bg-success py-1 px-2 fs-6">Pagado</span>
+                                    <span class="badge bg-success">Pagado</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Acciones">
                                 <div class="d-flex flex-wrap gap-1 justify-content-center">
                                     {% if cuenta.Saldo > 0 %}
                                         <a href="{{ url_for('registrar_cobro', id_venta=cuenta.ID_Movimiento) }}" 
                                            class="btn btn-success btn-sm" 
                                            data-bs-toggle="tooltip" 
-                                           title="Registrar cobro"
-                                           style="min-width: 80px;">
+                                           title="Registrar cobro">
                                             <i class="bi bi-cash-coin d-none d-md-inline"></i> Abono
                                         </a>
                                         <a href="{{ url_for('cancelar_deuda', id_venta=cuenta.ID_Movimiento) }}" 
                                            class="btn btn-danger btn-sm"
                                            onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');"
                                            data-bs-toggle="tooltip" 
-                                           title="Cancelar deuda"
-                                           style="min-width: 80px;">
+                                           title="Cancelar deuda">
                                             <i class="bi bi-x-octagon d-none d-md-inline"></i> Cancelar
                                         </a>
                                     {% else %}
@@ -75,8 +250,7 @@
                                     <a href="{{ url_for('historial_pagos', id_venta=cuenta.ID_Movimiento) }}" 
                                        class="btn btn-info btn-sm"
                                        data-bs-toggle="tooltip" 
-                                       title="Historial de pagos"
-                                       style="min-width: 80px;">
+                                       title="Historial de pagos">
                                         <i class="bi bi-clock-history d-none d-md-inline"></i> Historial
                                     </a>
                                 </div>
@@ -94,15 +268,29 @@
     </div>
 </div>
 
-<!-- Activar tooltips -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl, {
-                trigger: 'hover focus'
-            });
+document.addEventListener('DOMContentLoaded', function() {
+    // Activar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            trigger: 'hover focus'
         });
     });
+
+    // Ajustar tabla en móviles
+    if (window.innerWidth <= 768px) {
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const celdas = row.querySelectorAll('td');
+            const etiquetas = ["Cliente", "Factura", "Vencimiento", "Saldo", "Estado", "Acciones"];
+            
+            celdas.forEach((celda, index) => {
+                if (index < etiquetas.length) {
+                    celda.setAttribute('data-label', etiquetas[index]);
+                }
+            });
+        });
+    }
+});
 </script>
 {% endblock %}

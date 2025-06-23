@@ -15,6 +15,46 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 
     <title>AVICOLA FERDERL{% block title %}{% endblock %}</title>
+
+    <style>
+        /* Estilos para el espacio del navbar */
+        :root {
+            --navbar-height: 56px; /* Altura estándar del navbar de Bootstrap */
+        }
+        
+        body {
+            padding-top: calc(var(--navbar-height) + 20px); /* Navbar + 20px de espacio */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Ajuste para navbar fijo */
+        .fixed-top {
+            position: fixed;
+            top: 0;
+            right: 0;
+            left: 0;
+            z-index: 1030;
+        }
+        
+        /* Contenido principal */
+        main {
+            flex: 1;
+            padding-top: 1rem;
+        }
+        
+        /* Ajustes responsivos */
+        @media (max-width: 768px) {
+            :root {
+                --navbar-height: 60px; /* Altura mayor para móviles si es necesario */
+            }
+            
+            body {
+                padding-top: calc(var(--navbar-height) + 15px);
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Navbar optimizado con Flexbox -->
@@ -48,7 +88,7 @@
                 <div class="collapse navbar-collapse navbar-menu" id="navbarNav">
                     {% if current_user.is_authenticated %}
                     <ul class="navbar-nav me-auto">
-                        <!-- Compras - CORREGIDO: href="#" en lugar de href="" -->
+                        <!-- Compras -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="comprasDropdown" role="button" 
                                data-bs-toggle="dropdown" aria-expanded="false">
@@ -156,7 +196,7 @@
                         </li>
                     </ul>
 
-                    <!-- Usuario y sesión optimizados -->
+                    <!-- Usuario y sesión -->
                     <ul class="navbar-nav">
                         <li class="nav-item">
                             <span class="nav-link text-white">
@@ -197,7 +237,7 @@
         </div>
     </nav>
 
-    <!-- Flash messages seguros -->
+    <!-- Flash messages -->
     {% with mensajes = get_flashed_messages(with_categories=true) %}
         {% if mensajes %}
             {% for categoria, mensaje in mensajes %}
@@ -208,7 +248,7 @@
         {% endif %}
     {% endwith %}
 
-    <!-- Contenido principal optimizado -->
+    <!-- Contenido principal -->
     <main class="container-fluid py-3">
         <div class="row justify-content-center">
             <div class="col-12 col-xxl-10">
@@ -222,7 +262,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     
-    <!-- Script mejorado para dropdowns -->
+    <!-- Scripts adicionales -->
     <script>
         // Función para detectar el tipo de dispositivo
         function detectDevice() {
@@ -241,13 +281,13 @@
             const device = detectDevice();
             document.body.classList.add('device-' + device);
             
-            // Inicializar dropdowns manualmente si es necesario
+            // Inicializar dropdowns
             const dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
             const dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
                 return new bootstrap.Dropdown(dropdownToggleEl);
             });
             
-            // Optimizaciones específicas para dispositivos táctiles
+            // Optimizaciones para dispositivos táctiles
             if (device === 'mobile' || device === 'tablet') {
                 const clickableElements = document.querySelectorAll('.dropdown-item, .nav-link');
                 clickableElements.forEach(el => {
@@ -262,13 +302,6 @@
             
             // Marcar el elemento activo del menú
             markActiveMenuItem();
-            
-            // Debug: Verificar que Bootstrap está cargado
-            if (typeof bootstrap === 'undefined') {
-                console.error('Bootstrap JavaScript no está cargado correctamente');
-            } else {
-                console.log('Bootstrap cargado correctamente');
-            }
         });
 
         // Manejar el cambio de tamaño de ventana
@@ -290,26 +323,8 @@
                 }
             });
         }
-
-        // Función adicional para forzar el funcionamiento de dropdowns
-        function initializeDropdowns() {
-            const dropdowns = document.querySelectorAll('[data-bs-toggle="dropdown"]');
-            dropdowns.forEach(dropdown => {
-                dropdown.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const menu = this.nextElementSibling;
-                    if (menu && menu.classList.contains('dropdown-menu')) {
-                        menu.classList.toggle('show');
-                    }
-                });
-            });
-        }
-
-        // Llamar la función de inicialización como respaldo
-        document.addEventListener('DOMContentLoaded', initializeDropdowns);
     </script>
     
-    <!-- Scripts adicionales si es necesario -->
     {% block scripts %}{% endblock %}
 </body>
 </html>
