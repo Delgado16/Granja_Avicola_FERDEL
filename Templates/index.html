@@ -22,7 +22,7 @@
         max-width: var(--max-width);
         margin: 0 auto;
         padding: var(--padding-sm);
-        padding-top: 80px; /* ✅ Espacio para evitar que lo tape el navbar */
+        padding-top: 80px;
     }
 
     .header {
@@ -84,26 +84,18 @@
         color: #333;
     }
 
-    .chart-container {
+    .info-container {
         background: white;
         padding: var(--padding-sm);
         border-radius: var(--border-radius);
         box-shadow: var(--card-shadow);
-        margin-bottom: var(--gap-lg);
+        margin-bottom: var(--gap-md);
     }
 
-    .chart-title {
+    .info-title {
         font-size: clamp(1rem, 4vw, 1.3rem);
         margin-bottom: var(--gap-sm);
         color: #444;
-    }
-
-    .chart-wrapper {
-        position: relative;
-        width: 100%;
-        min-height: 250px;
-        max-height: 400px;
-        margin: 0 auto;
     }
 
     /* Media queries para tablets */
@@ -111,23 +103,19 @@
         .dashboard-container {
             padding: var(--padding-md);
         }
-        
+
         .header {
             padding: var(--padding-md);
         }
-        
+
         .metrics-grid {
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: var(--gap-md);
         }
-        
+
         .metric-card {
             padding: var(--padding-md);
             min-height: 120px;
-        }
-
-        .chart-wrapper {
-            min-height: 300px;
         }
     }
 
@@ -136,19 +124,15 @@
         .dashboard-container {
             padding: var(--padding-lg);
         }
-        
+
         .metrics-grid {
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: var(--gap-lg);
         }
-        
+
         .metric-card {
             padding: var(--padding-md);
             min-height: 140px;
-        }
-
-        .chart-wrapper {
-            min-height: 350px;
         }
     }
 </style>
@@ -182,84 +166,73 @@
         </div>
     </div>
 
-    <div class="chart-container">
-        <h2 class="chart-title">Ventas por Tipo de Producto</h2>
-        <div class="chart-wrapper">
-            <canvas id="ventasTipoChart"></canvas>
+    <!-- Productos con stock bajo -->
+    <div class="info-container">
+        <h2 class="info-title">Productos con Bajo Stock</h2>
+        <ul>
+            {% for producto in productos_stock_bajo %}
+            <li>
+                {{ producto.Descripcion }} – {{ producto.Existencias }} {{ producto.unidad }}
+            </li>
+            {% else %}
+            <li>No hay productos con bajo stock.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Top Clientes -->
+    <div class="info-container">
+        <h2 class="info-title">Top 5 Clientes</h2>
+        <ul>
+            {% for cliente in top_clientes %}
+            <li>{{ cliente.Nombre }} – ${{ "{:,.2f}".format(cliente.total_comprado) }}</li>
+            {% else %}
+            <li>No hay clientes con compras registradas.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Última Factura -->
+    <div class="info-container">
+        <h2 class="info-title">Última Factura</h2>
+        {% if ultima_factura %}
+        <p>
+            <strong>Factura #{{ ultima_factura.ID_Factura }}</strong><br>
+            Cliente: {{ ultima_factura.cliente }}<br>
+            Fecha: {{ ultima_factura.Fecha }}<br>
+            Total: ${{ "{:,.2f}".format(ultima_factura.total) }}
+        </p>
+        {% else %}
+        <p>No hay facturas registradas aún.</p>
+        {% endif %}
+    </div>
+
+    <!-- Cuentas por Cobrar -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-hand-holding-usd"></i></div>
+            <h3 class="metric-title">Cuentas por Cobrar Vigentes</h3>
+            <div class="metric-value">${{ "{:,.2f}".format(cuentas_cobrar) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <h3 class="metric-title">Cuentas Vencidas</h3>
+            <div class="metric-value">${{ "{:,.2f}".format(cuentas_cobrar_vencidas) }}</div>
         </div>
     </div>
+
+    <!-- Próximos mantenimientos -->
+    <div class="info-container">
+        <h2 class="info-title">Próximos Mantenimientos Vehiculares</h2>
+        <ul>
+            {% for mant in proximos_mantenimientos %}
+            <li>
+                {{ mant.Placa }} – {{ mant.Fecha }} – {{ mant.Tipo }}: ${{ "{:,.2f}".format(mant.Costo) }}
+            </li>
+            {% else %}
+            <li>No hay mantenimientos programados.</li>
+            {% endfor %}
+        </ul>
+    </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const tipos = [{% for tipo in ventas_por_tipo %}'{{ tipo.tipo }}',{% endfor %}];
-        const totales = [{% for tipo in ventas_por_tipo %}{{ tipo.total }},{% endfor %}];
-        
-        const backgroundColors = [
-            'rgba(59, 130, 246, 0.7)',
-            'rgba(16, 185, 129, 0.7)',
-            'rgba(245, 158, 11, 0.7)',
-            'rgba(239, 68, 68, 0.7)',
-            'rgba(139, 92, 246, 0.7)',
-            'rgba(20, 184, 166, 0.7)'
-        ];
-
-        const ctx = document.getElementById('ventasTipoChart').getContext('2d');
-        const chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: tipos,
-                datasets: [{
-                    label: 'Ventas por Tipo ($)',
-                    data: totales,
-                    backgroundColor: backgroundColors,
-                    borderColor: backgroundColors.map(color => color.replace('0.7', '1')),
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return '$' + context.raw.toLocaleString('en-US', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                });
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '$' + value.toLocaleString('en-US');
-                            }
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            autoSkip: true,
-                            maxRotation: 45,
-                            minRotation: 45
-                        }
-                    }
-                }
-            }
-        });
-
-        // Ajustar el gráfico al cambiar el tamaño de la ventana
-        window.addEventListener('resize', function() {
-            chart.resize();
-        });
-    });
-</script>
 {% endblock %}

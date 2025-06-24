@@ -49,47 +49,61 @@
     <!-- Card de bodegas con inventario -->
     <div class="card shadow-sm mx-auto" style="max-width: 900px;">
         <div class="card-body">
-            {% for bodega in bodegas %}
-                {% set inventario_bodega = inventario_por_bodega[bodega.ID_Bodega|string] %}
-                <div class="mb-4">
-                    <h6 class="text-secondary fw-semibold border-bottom pb-2">
-                        <i class="bi bi-box-seam me-2"></i> Bodega: {{ bodega.Nombre }}
-                    </h6>
-                    <p class="text-muted mb-2">Total de productos: 
-                        {{ inventario_bodega | map(attribute='Existencias') | sum if inventario_bodega else 0 }}
-                    </p>
+            {% if not bodegas %}
+                <div class="alert alert-info">No hay bodegas registradas.</div>
+            {% else %}
+                {% for bodega in bodegas %}
+                    {% set bodega_id = bodega.ID_Bodega|string %}
+                    {% set inventario_bodega = inventario_por_bodega.get(bodega_id, []) %}
+                    <div class="mb-4">
+                        <h6 class="text-secondary fw-semibold border-bottom pb-2">
+                            <i class="bi bi-box-seam me-2"></i> Bodega: {{ bodega.Nombre }}
+                            <small class="text-muted">({{ bodega.Ubicacion or 'Sin ubicación' }})</small>
+                        </h6>
+                        <p class="text-muted mb-2">Total de productos: 
+                            {{ inventario_bodega | sum(attribute='Existencias') | default(0, true) | round(2) }}
+                        </p>
 
-                    <div class="table-responsive" style="max-height: 320px;">
-                        <table class="table table-sm table-striped table-bordered align-middle text-center mb-0">
-                            <thead class="table-dark sticky-top small">
-                                <tr>
-                                    <th>Código</th>
-                                    <th class="text-start">Descripción</th>
-                                    <th>Existencias</th>
-                                    <th>Unidad</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% if inventario_bodega %}
-                                    {% for prod in inventario_bodega %}
-                                        <tr class="{% if prod.Existencias < 10 %}table-warning{% endif %}">
-                                            <td>{{ prod.COD_Producto }}</td>
-                                            <td class="text-start">{{ prod.Descripcion }}</td>
-                                            <td>{{ "%.2f"|format(prod.Existencias) }}</td>
-                                            <td>{{ prod.Abreviatura or 'Sin unidad' }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                {% else %}
+                        <div class="table-responsive" style="max-height: 320px;">
+                            <table class="table table-sm table-striped table-bordered align-middle text-center mb-0">
+                                <thead class="table-dark sticky-top small">
                                     <tr>
-                                        <td colspan="4" class="text-muted">No hay productos en esta bodega.</td>
+                                        <th>Código</th>
+                                        <th class="text-start">Descripción</th>
+                                        <th>Existencias</th>
+                                        <th>Unidad</th>
                                     </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {% if inventario_bodega %}
+                                        {% for prod in inventario_bodega %}
+                                            <tr class="{% if prod.Existencias < 10 %}table-warning{% endif %}">
+                                                <td>{{ prod.COD_Producto or 'N/A' }}</td>
+                                                <td class="text-start">{{ prod.Descripcion or 'Sin descripción' }}</td>
+                                                <td>{{ "%.2f"|format(prod.Existencias|default(0)) }}</td>
+                                                <td>{{ prod.Abreviatura or 'Sin unidad' }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="4" class="text-muted">No hay productos en esta bodega.</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
-            {% endfor %}
+                {% endfor %}
+            {% endif %}
         </div>
     </div>
 </div>
+<style>
+    /* Estilo adicional para asegurar que el dropdown se muestre correctamente */
+    .dropdown-menu {
+        z-index: 1060; /* Mayor que el z-index de las tarjetas */
+        transform: none !important; /* Evita transformaciones no deseadas */
+    }
+
+</style>
 {% endblock %}
