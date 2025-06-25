@@ -2,67 +2,284 @@
 
 {% block main %}
 <style>
-    .card-container {
-        max-width: 900px;
-        margin: 2rem auto;
-        padding: 1rem;
-    }
-    
-    .table-warning td {
-        background-color: rgba(255, 193, 7, 0.3) !important;
-    }
-    
-    #total_factura {
-        color: #0d6efd;
-        min-width: 80px;
-        display: inline-block;
-        text-align: right;
-    }
-    
-    .cursor-pointer {
-        cursor: pointer;
-    }
-    
-    .search-container {
-        position: relative;
-        margin-bottom: 1rem;
-    }
-    
-    .search-results {
-        position: absolute;
-        width: 100%;
-        z-index: 1000;
-        background: white;
-        border: 1px solid #ddd;
-        max-height: 300px;
-        overflow-y: auto;
-        display: none;
-    }
-    
-    .search-item {
-        padding: 8px 12px;
-        border-bottom: 1px solid #eee;
-    }
-    
-    .search-item:hover {
-        background-color: #f8f9fa;
+    :root {
+        --card-max-width: 900px;
+        --card-padding-lg: 1.5rem;
+        --card-padding-md: 1rem;
+        --card-padding-sm: 0.75rem;
+        --card-padding-xs: 0.5rem;
+        --navbar-height-lg: 80px;
+        --navbar-height-sm: 100px;
     }
 
-    @media (max-width: 576px) {
+    /* Estilos base */
+    .card-container {
+        max-width: var(--card-max-width);
+        margin: 2rem auto;
+        padding: var(--card-padding-lg);
+        margin-top: calc(var(--navbar-height-lg) + 1rem);
+    }
+
+    .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: none;
+    }
+
+    .card-body {
+        padding: var(--card-padding-lg);
+    }
+
+    .card-title {
+        font-size: clamp(1.5rem, 2.5vw, 2rem);
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-size: clamp(0.85rem, 1vw, 0.9rem);
+        margin-bottom: 0.3rem;
+        font-weight: 500;
+    }
+
+    .form-control,
+    .form-select {
+        font-size: clamp(0.85rem, 1vw, 0.9rem);
+        padding: 0.5rem 0.75rem;
+    }
+
+    .form-control-sm,
+    .form-select-sm {
+        padding: 0.35rem 0.65rem;
+        font-size: clamp(0.8rem, 0.9vw, 0.85rem);
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1.5rem 0;
+        border-radius: 0.5rem;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    }
+
+    #tabla-productos {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    #tabla-productos th {
+        white-space: nowrap;
+        background-color: #f8f9fa;
+        font-weight: 600;
+        font-size: clamp(0.8rem, 1vw, 0.85rem);
+        padding: 0.75rem;
+    }
+
+    #tabla-productos td {
+        padding: 0.75rem;
+        vertical-align: middle;
+        font-size: clamp(0.8rem, 1vw, 0.85rem);
+    }
+
+    #tabla-productos .btn-sm {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    .btn-action {
+        margin-bottom: 1rem;
+    }
+
+    .stock-info {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+
+    .stock-disponible {
+        color: #28a745;
+        font-weight: bold;
+    }
+
+    .stock-insuficiente {
+        color: #dc3545;
+        font-weight: bold;
+    }
+
+    /* Estilos para pantallas grandes (desktop) */
+    @media (min-width: 1200px) {
         .card-container {
-            margin: 1rem;
+            max-width: 1000px;
+        }
+    }
+
+    /* Estilos para tablets */
+    @media (max-width: 992px) {
+        .card-container {
+            padding: var(--card-padding-md);
+            margin-left: 1rem;
+            margin-right: 1rem;
+        }
+
+        .row.g-3>[class^="col-"] {
+            margin-bottom: 0.75rem;
+        }
+
+        #tabla-productos th,
+        #tabla-productos td {
+            padding: 0.6rem;
+        }
+    }
+
+    /* Estilos para móviles grandes */
+    @media (max-width: 768px) {
+        .card-container {
+            margin: 0.75rem;
+            padding: var(--card-padding-sm);
+            margin-top: calc(var(--navbar-height-lg) + 0.75rem);
+        }
+
+        #tabla-productos th,
+        #tabla-productos td {
+            min-width: 90px;
             padding: 0.5rem;
         }
-        h1, h4 {
-            font-size: 1.5rem;
+    }
+
+    /* Estilos para móviles pequeños */
+    @media (max-width: 576px) {
+        .card-container {
+            margin: 0.5rem;
+            padding: var(--card-padding-xs);
+            margin-top: calc(var(--navbar-height-sm) + 0.5rem);
         }
-        .btn {
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        /* Tabla responsiva para móviles */
+        #tabla-productos {
+            display: block;
             width: 100%;
-            margin-bottom: 0.5rem;
+            border: 0;
         }
-        #tabla-productos th, #tabla-productos td {
-            font-size: 0.85rem;
-            padding: 0.3rem;
+
+        #tabla-productos thead {
+            display: none;
+        }
+
+        #tabla-productos tbody,
+        #tabla-productos tr,
+        #tabla-productos td {
+            display: block;
+            width: 100%;
+            text-align: left;
+        }
+
+        #tabla-productos tr {
+            margin-bottom: 1.25rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            position: relative;
+            padding-top: 2.5rem;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        #tabla-productos td {
+            border: none;
+            padding: 0.5rem 0.75rem;
+            padding-left: 45%;
+            position: relative;
+            min-height: 2.5rem;
+        }
+
+        #tabla-productos td::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40%;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #495057;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #tabla-productos td:first-child {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+        }
+
+        #tabla-productos td:last-child {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: auto;
+            padding: 0;
+            text-align: right;
+        }
+
+        #tabla-productos td:last-child::before {
+            display: none;
+        }
+
+        #tabla-productos select,
+        #tabla-productos input {
+            position: absolute;
+            left: 45%;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: auto;
+            margin-left: 0;
+            max-width: 100%;
+        }
+
+        #tabla-productos .btn {
+            width: auto;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .btn-action,
+        .btn-submit {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .stock-info {
+            position: absolute;
+            left: 45%;
+            top: 70%;
+            transform: translateY(-50%);
+            width: 55%;
+            font-size: 0.65rem;
+        }
+    }
+
+    /* Ajustes para pantallas muy pequeñas */
+    @media (max-width: 400px) {
+        .card-container {
+            margin: 0.25rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.25rem);
+        }
+
+        .card-body {
+            padding: 0.75rem;
+        }
+
+        #tabla-productos td {
+            padding-left: 50%;
+        }
+
+        #tabla-productos td::before {
+            width: 45%;
         }
     }
 </style>
@@ -70,29 +287,26 @@
 <div class="container card-container">
     <div class="card shadow-sm">
         <div class="card-body">
-            <h1 class="card-title text-center mb-4">Factura Alterna <span class="badge bg-primary">v6.0</span></h1>
-            <form action="/factura_alterna" method="post" onsubmit="return validarFactura()">
+            <h1 class="card-title text-center mb-4">Factura Alterna</h1>
+            <div id="error-message" class="alert alert-danger d-none" role="alert"></div>
+            <form action="/factura_alterna" method="post" onsubmit="return validarFormulario()">
 
-                <!-- Sección de cabecera -->
+                <!-- Primera fila -->
                 <div class="row g-3">
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <label for="fecha" class="form-label">Fecha:</label>
                         <input type="date" class="form-control form-control-sm" id="fecha" name="fecha" required>
                     </div>
                     <div class="col-12 col-md-5">
                         <label for="cliente" class="form-label">Cliente:</label>
-                        <div class="search-container">
-                            <select class="form-select form-select-sm" id="cliente" name="cliente" required>
-                                <option value="" disabled selected>Seleccione un cliente</option>
-                                {% for cliente in clientes %}
-                                <option value="{{ cliente.id }}">{{ cliente.nombre }} - {{ cliente.identificacion }}</option>
-                                {% endfor %}
-                            </select>
-                            <input type="text" class="form-control mt-2" id="buscarCliente" placeholder="Buscar cliente...">
-                            <div class="search-results" id="resultadosCliente"></div>
-                        </div>
+                        <select class="form-select form-select-sm" id="cliente" name="cliente" required>
+                            <option value="" disabled selected>Seleccione un cliente</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <div class="col-6 col-md-4">
+                    <div class="col-12 col-md-4">
                         <label for="id_bodega" class="form-label">Bodega:</label>
                         <select class="form-select form-select-sm" id="id_bodega" name="id_bodega" required>
                             <option value="" disabled selected>Seleccione una bodega</option>
@@ -103,12 +317,13 @@
                     </div>
                 </div>
 
+                <!-- Segunda fila -->
                 <div class="row g-3 mt-2">
-                    <div class="col-6 col-md-4">
+                    <div class="col-12 col-md-4">
                         <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
-                        <select id="tipo_pago" name="tipo_pago" class="form-select form-select-sm">
+                        <select id="tipo_pago" name="tipo_pago" class="form-select form-select-sm" required>
                             <option value="0">Contado</option>
-                            <option value="1">Crédito (30 días)</option>
+                            <option value="1">Crédito</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-8">
@@ -117,431 +332,427 @@
                     </div>
                 </div>
 
-                <!-- Sección de productos -->
-                <div class="mb-3 mt-3">
-                    <h4>Productos <small class="text-muted">(Buscar por código o descripción)</small></h4>
-                    
-                    <div class="search-container mb-3">
-                        <input type="text" class="form-control" id="buscarProducto" placeholder="Escriba código o nombre del producto...">
-                        <div class="search-results" id="resultadosProducto"></div>
-                    </div>
-                    
+                <!-- Tabla de productos -->
+                <div class="mb-3">
+                    <h4 class="section-title">Productos</h4>
+                    <button type="button" class="btn btn-secondary btn-sm btn-action" onclick="agregarFila()">
+                        <i class="bi bi-plus-circle"></i> Agregar Producto
+                    </button>
+
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm text-center" id="tabla-productos">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Código</th>
-                                    <th>Descripción</th>
-                                    <th style="width: 6rem;">Cantidad</th>
-                                    <th style="width: 7rem;">P. Unitario</th>
-                                    <th style="width: 7rem;">Subtotal</th>
-                                    <th style="width: 5rem;">Acción</th>
+                                    <th data-label="Producto">Producto</th>
+                                    <th data-label="Cantidad" style="width: 6rem;">Cantidad</th>
+                                    <th data-label="Precio Unitario" style="width: 7rem;">Precio Unitario</th>
+                                    <th data-label="IVA" style="width: 6rem;">IVA</th>
+                                    <th data-label="Descuento" style="width: 7rem;">Descuento</th>
+                                    <th data-label="Total" style="width: 7rem;">Total</th>
+                                    <th style="width: 6rem;">Acción</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Las filas se agregarán dinámicamente -->
+                                <tr>
+                                    <td data-label="Producto">
+                                        <select name="productos[]" class="form-select form-select-sm producto-select" required>
+                                            <option value="" disabled selected>Seleccione un producto</option>
+                                            {% for producto in productos %}
+                                            <option value="{{ producto.id }}">{{ producto.descripcion }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="stock-info d-none"></div>
+                                    </td>
+                                    <td data-label="Cantidad">
+                                        <input type="number" name="cantidades[]" step="0.01" min="0.01" 
+                                            class="form-control form-control-sm cantidad" required 
+                                            onchange="calcularTotal(this)">
+                                    </td>
+                                    <td data-label="Precio Unitario">
+                                        <input type="number" name="precio_unitarios[]" step="0.01" min="0.01" 
+                                            class="form-control form-control-sm precio" required 
+                                            onchange="calcularTotal(this)">
+                                    </td>
+                                    <td data-label="IVA">
+                                        <input type="number" name="ivas[]" step="0.01" min="0" value="0"
+                                            class="form-control form-control-sm iva" 
+                                            onchange="calcularTotal(this)">
+                                    </td>
+                                    <td data-label="Descuento">
+                                        <input type="number" name="descuentos[]" step="0.01" min="0" value="0"
+                                            class="form-control form-control-sm descuento" 
+                                            onchange="calcularTotal(this)">
+                                    </td>
+                                    <td data-label="Total">
+                                        <input type="number" name="totales[]" step="0.01" min="0" 
+                                            class="form-control form-control-sm total" readonly>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)">
+                                            <i class="bi bi-trash"></i> Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Resumen de factura -->
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h5 class="card-title">Detalles Adicionales</h5>
-                                <textarea class="form-control" id="notas" rows="2" placeholder="Notas internas (opcional)"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>Subtotal:</span>
-                                    <span id="subtotal">0.00</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>IVA (12%):</span>
-                                    <span id="iva">0.00</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>Descuento:</span>
-                                    <input type="number" class="form-control form-control-sm w-50" id="descuento" value="0" min="0" step="0.01" onchange="calcularTotales()">
-                                </div>
-                                <hr>
-                                <div class="d-flex justify-content-between fw-bold fs-5">
-                                    <span>TOTAL:</span>
-                                    <span id="total_factura">0.00</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="d-flex justify-content-end mb-3">
+                    <h4>Total: <span id="total-venta">0.00</span></h4>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center mt-3 p-2 bg-light rounded">
-                    <span class="fw-bold">N° Factura:</span>
-                    <span id="num_factura_temp" class="badge bg-primary"></span>
-                    
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save"></i> Registrar Factura
-                    </button>
-                </div>
+                <button type="submit" class="btn btn-primary btn-submit w-100 py-2">
+                    <i class="bi bi-save"></i> Registrar Factura Alterna
+                </button>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal para confirmación -->
-<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirmar Factura</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>¿Está seguro que desea registrar esta factura por un total de <span id="modalTotal"></span>?</p>
-                <div id="resumenProductos"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="document.querySelector('form').submit()">Confirmar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
-    // Datos iniciales
-    const productosData = [
-        {% for producto in productos %}
-        {
-            id: {{ producto.id }},
-            codigo: "{{ producto.codigo }}",
-            descripcion: "{{ producto.descripcion }}",
-            precio: {{ producto.precio_venta|default(0) }},
-            stock: 0,
-            iva: {{ producto.iva|default(0) }}
-        },
-        {% endfor %}
-    ];
-    
-    const clientesData = [
-        {% for cliente in clientes %}
-        {
-            id: {{ cliente.id }},
-            nombre: "{{ cliente.nombre }}",
-            identificacion: "{{ cliente.identificacion }}"
-        },
-        {% endfor %}
-    ];
-
-    // Inicialización al cargar la página
-    document.addEventListener('DOMContentLoaded', function() {
-        // Generar número de factura temporal
-        const fecha = new Date();
-        const numFactura = `FA-${fecha.getFullYear()}${(fecha.getMonth()+1).toString().padStart(2, '0')}XXX`;
-        document.getElementById('num_factura_temp').textContent = numFactura;
-        
+    // Configuración inicial
+    document.addEventListener("DOMContentLoaded", function () {
         // Establecer fecha actual por defecto
-        document.getElementById('fecha').valueAsDate = fecha;
-        
-        // Configurar búsqueda de productos
-        document.getElementById('buscarProducto').addEventListener('input', buscarProductos);
-        document.getElementById('buscarCliente').addEventListener('input', buscarClientes);
-        
-        // Actualizar stock cuando cambia la bodega
-        document.getElementById('id_bodega').addEventListener('change', function() {
-            actualizarStocks();
+        const fechaInput = document.getElementById("fecha");
+        if (fechaInput && !fechaInput.value) {
+            const today = new Date();
+            const formattedDate = today.toISOString().substr(0, 10);
+            fechaInput.value = formattedDate;
+        }
+
+        // Validar fecha futura
+        fechaInput.addEventListener('change', function() {
+            const fechaSeleccionada = new Date(this.value);
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            if (fechaSeleccionada > hoy) {
+                mostrarAlerta('warning', 'Fecha inválida', 'No puede seleccionar una fecha futura');
+                this.value = hoy.toISOString().substr(0, 10);
+            }
         });
-        
-        // Configurar submit del formulario
-        document.querySelector('form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            mostrarConfirmacion();
+
+        // Configurar eventos para productos
+        document.querySelectorAll('.producto-select').forEach(select => {
+            select.addEventListener('change', function() {
+                if (productoYaExiste(this)) {
+                    mostrarAlerta('warning', 'Advertencia', 'Este producto ya fue agregado');
+                    this.value = '';
+                    return;
+                }
+                
+                // Actualizar información de stock
+                actualizarInfoStock(this);
+            });
+        });
+
+        // Configurar eventos para cantidades
+        document.querySelectorAll('.cantidad').forEach(input => {
+            input.addEventListener('blur', function() {
+                formatDecimal(this);
+                calcularTotal(this);
+                verificarStockFila(this.closest('tr'));
+            });
+        });
+
+        // Configurar eventos para precios, IVA y descuentos
+        document.querySelectorAll('.precio, .iva, .descuento').forEach(input => {
+            input.addEventListener('blur', function() {
+                formatDecimal(this);
+                calcularTotal(this);
+            });
+        });
+
+        // Configurar evento para cambio de bodega
+        document.getElementById('id_bodega').addEventListener('change', function() {
+            document.querySelectorAll('#tabla-productos tbody tr').forEach(fila => {
+                actualizarInfoStock(fila.querySelector('.producto-select'));
+            });
         });
     });
 
-    // Funciones de búsqueda
-    function buscarProductos() {
-        const termino = this.value.toLowerCase();
-        const resultados = document.getElementById('resultadosProducto');
+    // Función para verificar si un producto ya existe en la tabla
+    function productoYaExiste(select) {
+        const productoId = select.value;
+        if (!productoId) return false;
         
-        if (termino.length < 2) {
-            resultados.style.display = 'none';
-            return;
-        }
+        const selects = document.querySelectorAll('.producto-select');
+        let count = 0;
         
-        const encontrados = productosData.filter(p => 
-            p.codigo.toLowerCase().includes(termino) || 
-            p.descripcion.toLowerCase().includes(termino)
-        );
-        
-        mostrarResultadosBusqueda(encontrados, resultados, 'producto');
-    }
-    
-    function buscarClientes() {
-        const termino = this.value.toLowerCase();
-        const resultados = document.getElementById('resultadosCliente');
-        
-        if (termino.length < 2) {
-            resultados.style.display = 'none';
-            return;
-        }
-        
-        const encontrados = clientesData.filter(c => 
-            c.nombre.toLowerCase().includes(termino) || 
-            c.identificacion.toLowerCase().includes(termino)
-        );
-        
-        mostrarResultadosBusqueda(encontrados, resultados, 'cliente');
-    }
-    
-    function mostrarResultadosBusqueda(items, contenedor, tipo) {
-        contenedor.innerHTML = '';
-        
-        if (items.length === 0) {
-            contenedor.innerHTML = '<div class="search-item">No se encontraron resultados</div>';
-            contenedor.style.display = 'block';
-            return;
-        }
-        
-        items.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'search-item cursor-pointer';
-            
-            if (tipo === 'producto') {
-                div.innerHTML = `
-                    <strong>${item.codigo}</strong> - ${item.descripcion}
-                    <small class="text-muted d-block">Precio: $${item.precio.toFixed(2)}</small>
-                `;
-                div.onclick = () => agregarProductoATabla(item);
-            } else {
-                div.innerHTML = `
-                    <strong>${item.nombre}</strong>
-                    <small class="text-muted d-block">ID: ${item.identificacion}</small>
-                `;
-                div.onclick = () => seleccionarCliente(item);
-            }
-            
-            contenedor.appendChild(div);
+        selects.forEach(s => {
+            if (s.value === productoId) count++;
         });
         
-        contenedor.style.display = 'block';
-    }
-    
-    function seleccionarCliente(cliente) {
-        document.getElementById('cliente').value = cliente.id;
-        document.getElementById('buscarCliente').value = `${cliente.nombre} - ${cliente.identificacion}`;
-        document.getElementById('resultadosCliente').style.display = 'none';
+        return count > 1;
     }
 
-    // Funciones para manejar productos
-    function agregarProductoATabla(producto) {
-        // Ocultar resultados de búsqueda
-        document.getElementById('resultadosProducto').style.display = 'none';
-        document.getElementById('buscarProducto').value = '';
-        
-        // Verificar si el producto ya está en la tabla
-        const tabla = document.getElementById('tabla-productos').getElementsByTagName('tbody')[0];
-        const filaExistente = Array.from(tabla.rows).find(row => 
-            row.getAttribute('data-producto-id') == producto.id
-        );
-        
-        if (filaExistente) {
-            // Incrementar cantidad si ya existe
-            const inputCantidad = filaExistente.querySelector('input[name="cantidades[]"]');
-            inputCantidad.value = parseFloat(inputCantidad.value) + 1;
-            calcularSubtotal(inputCantidad);
-            return;
+    // Formatear decimales a 2 dígitos
+    function formatDecimal(input) {
+        if (input.value) {
+            const value = parseFloat(input.value);
+            input.value = value.toFixed(2);
         }
-        
-        // Crear nueva fila
-        const nuevaFila = tabla.insertRow();
-        nuevaFila.setAttribute('data-producto-id', producto.id);
-        nuevaFila.setAttribute('data-producto-iva', producto.iva);
-        
-        // Celdas
-        nuevaFila.innerHTML = `
-            <td>${producto.codigo}</td>
-            <td>${producto.descripcion}</td>
-            <td>
-                <input type="number" name="cantidades[]" value="1" min="0.01" step="0.01" 
-                       class="form-control form-control-sm" required
-                       oninput="calcularSubtotal(this); calcularTotales()">
-            </td>
-            <td>
-                <input type="number" name="precio_unitarios[]" value="${producto.precio.toFixed(2)}" 
-                       min="0.01" step="0.01" class="form-control form-control-sm" required
-                       oninput="calcularSubtotal(this); calcularTotales()">
-            </td>
-            <td class="subtotal">${producto.precio.toFixed(2)}</td>
-            <td>
-                <button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-        `;
-        
-        // Actualizar stocks
-        actualizarStockDisponible(nuevaFila);
-        calcularTotales();
     }
-    
-    function eliminarFila(boton) {
-        const fila = boton.closest('tr');
-        fila.remove();
-        calcularTotales();
-    }
-    
-    function actualizarStockDisponible(fila) {
-        const productoId = fila.getAttribute('data-producto-id');
+
+    // Actualizar información de stock para un producto
+    async function actualizarInfoStock(select) {
+        const fila = select.closest('tr');
+        const stockInfo = fila.querySelector('.stock-info');
+        const productoId = select.value;
         const bodegaId = document.getElementById('id_bodega').value;
         
-        if (!productoId || !bodegaId) return;
+        if (!productoId || !bodegaId) {
+            stockInfo.classList.add('d-none');
+            return;
+        }
         
-        fetch(`/stock_disponible?bodega=${bodegaId}&producto=${productoId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.stock !== undefined) {
-                    fila.setAttribute('data-stock', data.stock);
-                    verificarStock(fila);
+        try {
+            const response = await fetch(`/api/stock?producto=${productoId}&bodega=${bodegaId}`);
+            const data = await response.json();
+            
+            stockInfo.textContent = `Stock: ${data.existencias}`;
+            stockInfo.classList.remove('d-none', 'stock-disponible', 'stock-insuficiente');
+            
+            // Verificar si hay cantidad ingresada
+            const cantidadInput = fila.querySelector('.cantidad');
+            if (cantidadInput.value) {
+                const cantidad = parseFloat(cantidadInput.value);
+                if (cantidad > data.existencias) {
+                    stockInfo.classList.add('stock-insuficiente');
+                    cantidadInput.classList.add('is-invalid');
+                } else {
+                    stockInfo.classList.add('stock-disponible');
+                    cantidadInput.classList.remove('is-invalid');
                 }
-            })
-            .catch(error => console.error("Error al obtener stock:", error));
+            }
+        } catch (error) {
+            console.error('Error obteniendo stock:', error);
+            stockInfo.textContent = 'Error verificando stock';
+            stockInfo.classList.remove('d-none');
+        }
     }
-    
-    function verificarStock(fila) {
-        const stock = parseFloat(fila.getAttribute('data-stock')) || 0;
-        const inputCantidad = fila.querySelector('input[name="cantidades[]"]');
-        const cantidad = parseFloat(inputCantidad.value) || 0;
+
+    // Verificar stock para una fila específica
+    async function verificarStockFila(fila) {
+        const productoId = fila.querySelector('.producto-select').value;
+        const bodegaId = document.getElementById('id_bodega').value;
+        const cantidad = parseFloat(fila.querySelector('.cantidad').value) || 0;
         
-        if (cantidad > stock) {
-            fila.classList.add('table-warning');
-            inputCantidad.setCustomValidity(`Stock: ${stock}`);
+        if (!productoId || !bodegaId || cantidad <= 0) return;
+        
+        try {
+            const response = await fetch(`/api/stock?producto=${productoId}&bodega=${bodegaId}`);
+            const data = await response.json();
+            
+            const stockInfo = fila.querySelector('.stock-info');
+            stockInfo.textContent = `Stock: ${data.existencias}`;
+            stockInfo.classList.remove('d-none', 'stock-disponible', 'stock-insuficiente');
+            
+            if (cantidad > data.existencias) {
+                stockInfo.classList.add('stock-insuficiente');
+                fila.querySelector('.cantidad').classList.add('is-invalid');
+            } else {
+                stockInfo.classList.add('stock-disponible');
+                fila.querySelector('.cantidad').classList.remove('is-invalid');
+            }
+        } catch (error) {
+            console.error('Error verificando stock:', error);
+        }
+    }
+
+    // Agregar nueva fila a la tabla
+    function agregarFila() {
+        const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
+        const nuevaFila = tabla.rows[0].cloneNode(true);
+
+        // Limpiar valores
+        nuevaFila.querySelectorAll("input").forEach(input => input.value = "");
+        nuevaFila.querySelector("select").selectedIndex = 0;
+        nuevaFila.querySelector(".stock-info").classList.add("d-none");
+
+        // Configurar eventos
+        nuevaFila.querySelector(".producto-select").addEventListener("change", function() {
+            if (productoYaExiste(this)) {
+                mostrarAlerta('warning', 'Advertencia', 'Este producto ya fue agregado');
+                this.value = '';
+                return;
+            }
+            actualizarInfoStock(this);
+        });
+
+        nuevaFila.querySelector(".cantidad").addEventListener("blur", function() {
+            formatDecimal(this);
+            calcularTotal(this);
+            verificarStockFila(this.closest('tr'));
+        });
+
+        nuevaFila.querySelector(".precio").addEventListener("blur", function() {
+            formatDecimal(this);
+            calcularTotal(this);
+        });
+
+        nuevaFila.querySelector(".iva").addEventListener("blur", function() {
+            formatDecimal(this);
+            calcularTotal(this);
+        });
+
+        nuevaFila.querySelector(".descuento").addEventListener("blur", function() {
+            formatDecimal(this);
+            calcularTotal(this);
+        });
+
+        // Asegurar data-labels
+        const celdas = nuevaFila.querySelectorAll("td");
+        const etiquetas = ["Producto", "Cantidad", "Precio Unitario", "IVA", "Descuento", "Total"];
+        celdas.forEach((celda, index) => {
+            if (index < etiquetas.length) {
+                celda.setAttribute("data-label", etiquetas[index]);
+            }
+        });
+
+        tabla.appendChild(nuevaFila);
+
+        // Desplazarse a la nueva fila en móviles
+        if (window.innerWidth <= 576) {
+            nuevaFila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    // Eliminar fila de la tabla
+    function eliminarFila(boton) {
+        const fila = boton.closest("tr");
+        const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
+        if (tabla.rows.length > 1) {
+            fila.remove();
+            calcularTotalVenta();
         } else {
-            fila.classList.remove('table-warning');
-            inputCantidad.setCustomValidity('');
+            mostrarAlerta('warning', 'Advertencia', 'Debe haber al menos un producto en la factura.');
         }
     }
-    
-    function actualizarStocks() {
-        const tabla = document.getElementById('tabla-productos').getElementsByTagName('tbody')[0];
-        Array.from(tabla.rows).forEach(fila => {
-            actualizarStockDisponible(fila);
-        });
+
+    // Calcular total para una fila
+    function calcularTotal(input) {
+        const fila = input.closest("tr");
+        const cantidad = parseFloat(fila.querySelector(".cantidad").value) || 0;
+        const precio = parseFloat(fila.querySelector(".precio").value) || 0;
+        const iva = parseFloat(fila.querySelector(".iva").value) || 0;
+        const descuento = parseFloat(fila.querySelector(".descuento").value) || 0;
+        
+        const subtotal = cantidad * precio;
+        const total = subtotal - descuento + iva;
+        
+        fila.querySelector(".total").value = total.toFixed(2);
+        calcularTotalVenta();
     }
 
-    // Funciones de cálculo
-    function calcularSubtotal(input) {
-        const fila = input.closest('tr');
-        const cantidad = parseFloat(fila.querySelector('input[name="cantidades[]"]').value) || 0;
-        const precio = parseFloat(fila.querySelector('input[name="precio_unitarios[]"]').value) || 0;
-        fila.querySelector('.subtotal').textContent = (cantidad * precio).toFixed(2);
-        verificarStock(fila);
-    }
-    
-    function calcularTotales() {
-        let subtotal = 0;
-        let iva = 0;
-        
-        // Calcular subtotal e IVA
-        document.querySelectorAll("#tabla-productos tbody tr").forEach(fila => {
-            const subtotalFila = parseFloat(fila.querySelector('.subtotal').textContent) || 0;
-            const tasaIVA = parseFloat(fila.getAttribute('data-producto-iva')) || 0;
-            
-            subtotal += subtotalFila;
-            iva += subtotalFila * (tasaIVA / 100);
+    // Calcular total general de la venta
+    function calcularTotalVenta() {
+        let totalVenta = 0;
+        document.querySelectorAll(".total").forEach(input => {
+            totalVenta += parseFloat(input.value) || 0;
         });
-        
-        // Aplicar descuento
-        const descuento = parseFloat(document.getElementById('descuento').value) || 0;
-        const total = subtotal + iva - descuento;
-        
-        // Actualizar UI
-        document.getElementById('subtotal').textContent = subtotal.toFixed(2);
-        document.getElementById('iva').textContent = iva.toFixed(2);
-        document.getElementById('total_factura').textContent = total.toFixed(2);
+        document.getElementById("total-venta").textContent = totalVenta.toFixed(2);
     }
 
-    // Validación y confirmación
-    function validarFactura() {
-        const cantidades = document.querySelectorAll('input[name="cantidades[]"]');
-        
-        // Validar que haya al menos un producto
-        if (cantidades.length === 0) {
-            alert("Debe agregar al menos un producto a la factura.");
+    // Mostrar alerta flotante
+    function mostrarAlerta(tipo, titulo, mensaje) {
+        const alerta = document.createElement('div');
+        alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
+        alerta.style.zIndex = '1100';
+        alerta.innerHTML = `
+            <strong>${titulo}</strong> ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alerta);
+
+        setTimeout(() => {
+            if (alerta.parentNode) {
+                alerta.remove();
+            }
+        }, 4000);
+    }
+
+    // Validar todo el formulario antes de enviar
+    async function validarFormulario() {
+        let valido = true;
+
+        // Validar campos principales
+        document.querySelectorAll('form [required]').forEach(campo => {
+            if (!campo.value) {
+                campo.classList.add("is-invalid");
+                valido = false;
+            } else {
+                campo.classList.remove("is-invalid");
+            }
+        });
+
+        // Validar productos
+        const filas = document.querySelectorAll("#tabla-productos tbody tr");
+        if (filas.length === 0) {
+            mostrarAlerta('danger', 'Error', 'Debe agregar al menos un producto a la factura.');
             return false;
         }
-        
-        // Validar cantidades y stocks
-        let errores = [];
-        document.querySelectorAll("#tabla-productos tbody tr").forEach(fila => {
-            const cantidad = parseFloat(fila.querySelector('input[name="cantidades[]"]').value) || 0;
-            const precio = parseFloat(fila.querySelector('input[name="precio_unitarios[]"]').value) || 0;
-            const stock = parseFloat(fila.getAttribute('data-stock')) || 0;
-            const producto = fila.cells[1].textContent;
-            
-            if (cantidad <= 0) {
-                errores.push(`La cantidad para ${producto} debe ser mayor que cero.`);
-            }
-            
-            if (precio <= 0) {
-                errores.push(`El precio para ${producto} debe ser mayor que cero.`);
-            }
-            
-            if (cantidad > stock) {
-                errores.push(`No hay suficiente stock de ${producto} (Stock: ${stock}).`);
-            }
-        });
-        
-        if (errores.length > 0) {
-            alert("Errores encontrados:\n\n" + errores.join("\n"));
-            return false;
-        }
-        
-        return true;
-    }
-    
-    function mostrarConfirmacion() {
-        if (!validarFactura()) return;
-        
-        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-        const total = document.getElementById('total_factura').textContent;
-        
-        // Llenar resumen de productos
-        const resumen = document.getElementById('resumenProductos');
-        resumen.innerHTML = '<ul class="list-group">';
-        
-        document.querySelectorAll("#tabla-productos tbody tr").forEach(fila => {
-            const producto = fila.cells[1].textContent;
-            const cantidad = fila.querySelector('input[name="cantidades[]"]').value;
-            const precio = fila.querySelector('input[name="precio_unitarios[]"]').value;
-            const subtotal = fila.querySelector('.subtotal').textContent;
-            
-            resumen.innerHTML += `
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>${producto} (${cantidad} x $${precio})</span>
-                    <span>$${subtotal}</span>
-                </li>
-            `;
-        });
-        
-        resumen.innerHTML += '</ul>';
-        document.getElementById('modalTotal').textContent = `$${total}`;
-        modal.show();
-    }
 
-    // Cerrar mensajes flash automáticamente
-    setTimeout(function() {
-        const flashMessages = document.getElementById('flash-messages');
-        if (flashMessages) {
-            flashMessages.style.transition = 'opacity 0.5s ease-out';
-            flashMessages.style.opacity = '0';
-            setTimeout(() => flashMessages.remove(), 500);
+        // Validar cada fila de producto
+        for (const fila of filas) {
+            const select = fila.querySelector("select");
+            const cantidadInput = fila.querySelector(".cantidad");
+            const precioInput = fila.querySelector(".precio");
+
+            if (!select.value) {
+                select.classList.add("is-invalid");
+                valido = false;
+            } else {
+                select.classList.remove("is-invalid");
+            }
+
+            if (!cantidadInput.value || parseFloat(cantidadInput.value) <= 0) {
+                cantidadInput.classList.add("is-invalid");
+                valido = false;
+            } else {
+                cantidadInput.classList.remove("is-invalid");
+            }
+
+            if (!precioInput.value || parseFloat(precioInput.value) <= 0) {
+                precioInput.classList.add("is-invalid");
+                valido = false;
+            } else {
+                precioInput.classList.remove("is-invalid");
+            }
+
+            // Verificar stock para cada producto
+            if (select.value && cantidadInput.value) {
+                const productoId = select.value;
+                const bodegaId = document.getElementById('id_bodega').value;
+                const cantidad = parseFloat(cantidadInput.value);
+                
+                if (bodegaId) {
+                    try {
+                        const response = await fetch(`/api/stock?producto=${productoId}&bodega=${bodegaId}`);
+                        const data = await response.json();
+                        
+                        if (cantidad > data.existencias) {
+                            cantidadInput.classList.add('is-invalid');
+                            fila.querySelector('.stock-info').classList.add('stock-insuficiente');
+                            valido = false;
+                        }
+                    } catch (error) {
+                        console.error('Error verificando stock:', error);
+                    }
+                }
+            }
         }
-    }, 4000);
+
+        if (!valido) {
+            const primerError = document.querySelector(".is-invalid");
+            if (primerError) {
+                primerError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            mostrarAlerta('danger', 'Error', 'Por favor complete todos los campos requeridos correctamente.');
+        }
+
+        return valido;
+    }
 </script>
 {% endblock %}
