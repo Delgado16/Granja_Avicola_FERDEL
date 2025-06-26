@@ -12,12 +12,98 @@
         --navbar-height-sm: 100px;
     }
 
-    /* Estilos base */
+    /* Layout dividido */
+    .split-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        margin-top: calc(var(--navbar-height-lg) + 1rem);
+        padding: 0 1rem;
+    }
+
+    .form-container {
+        flex: 1;
+        min-width: 300px;
+    }
+
+    .stock-container {
+        flex: 0 0 350px;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        max-height: 80vh;
+        overflow-y: auto;
+        position: sticky;
+        top: calc(var(--navbar-height-lg) + 1rem);
+    }
+
+    .stock-title {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #dee2e6;
+        color: #495057;
+        font-weight: 600;
+    }
+
+    .stock-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .stock-table th {
+        background-color: #e9ecef;
+        font-weight: 600;
+        color: #495057;
+        position: sticky;
+        top: 0;
+    }
+
+    .stock-table th,
+    .stock-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .stock-table tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    .stock-low {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .stock-warning {
+        color: #fd7e14;
+        font-weight: 600;
+    }
+
+    .stock-good {
+        color: #28a745;
+    }
+
+    #stock-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100px;
+        color: #6c757d;
+    }
+
+    #stock-content {
+        display: none;
+    }
+
+    /* Estilos base del formulario */
     .card-container {
         max-width: var(--card-max-width);
-        margin: 2rem auto;
+        margin: 0 auto;
         padding: var(--card-padding-lg);
-        margin-top: calc(var(--navbar-height-lg) + 1rem);
     }
 
     .card {
@@ -94,14 +180,31 @@
         .card-container {
             max-width: 1000px;
         }
+
+        .stock-container {
+            flex: 0 0 380px;
+        }
     }
 
     /* Estilos para tablets */
     @media (max-width: 992px) {
+        .split-container {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .stock-container {
+            flex: 1;
+            max-height: none;
+            order: -1;
+            position: static;
+            max-height: 300px;
+        }
+
         .card-container {
             padding: var(--card-padding-md);
-            margin-left: 1rem;
-            margin-right: 1rem;
+            margin-left: 0;
+            margin-right: 0;
         }
 
         .row.g-3>[class^="col-"] {
@@ -116,10 +219,15 @@
 
     /* Estilos para móviles grandes */
     @media (max-width: 768px) {
-        .card-container {
+        .split-container {
             margin: 0.75rem;
-            padding: var(--card-padding-sm);
+            padding: 0;
             margin-top: calc(var(--navbar-height-lg) + 0.75rem);
+        }
+
+        .card-container {
+            margin: 0;
+            padding: var(--card-padding-sm);
         }
 
         #tabla-productos th,
@@ -127,14 +235,22 @@
             min-width: 90px;
             padding: 0.5rem;
         }
+
+        .stock-container {
+            padding: var(--card-padding-sm);
+        }
     }
 
     /* Estilos para móviles pequeños */
     @media (max-width: 576px) {
-        .card-container {
+        .split-container {
             margin: 0.5rem;
-            padding: var(--card-padding-xs);
             margin-top: calc(var(--navbar-height-sm) + 0.5rem);
+        }
+
+        .card-container {
+            margin: 0;
+            padding: var(--card-padding-xs);
         }
 
         .card-body {
@@ -224,13 +340,23 @@
             width: 100%;
             margin-bottom: 1rem;
         }
+
+        .stock-table th,
+        .stock-table td {
+            padding: 0.5rem;
+            font-size: 0.8rem;
+        }
     }
 
     /* Ajustes para pantallas muy pequeñas */
     @media (max-width: 400px) {
-        .card-container {
+        .split-container {
             margin: 0.25rem;
             margin-top: calc(var(--navbar-height-sm) + 0.25rem);
+        }
+
+        .card-container {
+            margin: 0;
         }
 
         .card-body {
@@ -244,136 +370,166 @@
         #tabla-productos td::before {
             width: 45%;
         }
+
+        .stock-container {
+            padding: 0.75rem;
+        }
     }
 </style>
 
-<div class="container card-container">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h1 class="card-title text-center mb-4">Registrar Venta</h1>
-            <div id="error-message" class="alert alert-danger d-none" role="alert"></div>
-            <form action="/ventas" method="post" onsubmit="return validarVenta()">
+<div class="container split-container">
+    <!-- Contenedor del formulario (izquierda) -->
+    <div class="form-container">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h1 class="card-title text-center mb-4">Registrar Venta</h1>
+                <div id="error-message" class="alert alert-danger d-none" role="alert"></div>
+                <form action="/ventas" method="post" onsubmit="return validarVenta()">
 
-                <!-- Primera fila -->
-                <div class="row g-3">
-                    <div class="col-12 col-md-3">
-                        <label for="fecha" class="form-label">Fecha:</label>
-                        <input type="date" class="form-control form-control-sm" id="fecha" name="fecha" required>
+                    <!-- Primera fila -->
+                    <div class="row g-3">
+                        <div class="col-12 col-md-3">
+                            <label for="fecha" class="form-label">Fecha:</label>
+                            <input type="date" class="form-control form-control-sm" id="fecha" name="fecha" required>
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <label for="cliente" class="form-label">Cliente:</label>
+                            <select class="form-select form-select-sm" id="cliente" name="cliente" required>
+                                <option value="" disabled selected>Seleccione un cliente</option>
+                                {% for cliente in clientes %}
+                                <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="id_bodega" class="form-label">Bodega:</label>
+                            <select class="form-select form-select-sm" id="id_bodega" name="id_bodega" required>
+                                <option value="" disabled selected>Seleccione una bodega</option>
+                                {% for bodega in bodegas %}
+                                <option value="{{ bodega.id }}">{{ bodega.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
-                    <div class="col-12 col-md-5">
-                        <label for="cliente" class="form-label">Cliente:</label>
-                        <select class="form-select form-select-sm" id="cliente" name="cliente" required>
-                            <option value="" disabled selected>Seleccione un cliente</option>
-                            {% for cliente in clientes %}
-                            <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <label for="id_bodega" class="form-label">Bodega:</label>
-                        <select class="form-select form-select-sm" id="id_bodega" name="id_bodega" required>
-                            <option value="" disabled selected>Seleccione una bodega</option>
-                            {% for bodega in bodegas %}
-                            <option value="{{ bodega.id }}">{{ bodega.nombre }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
 
-                <!-- Segunda fila -->
-                <div class="row g-3 mt-2">
-                    <div class="col-12 col-md-4">
-                        <label for="n_factura" class="form-label">Nº Factura:</label>
-                        <input type="text" id="n_factura" name="n_factura" class="form-control form-control-sm"
-                            value="{{ n_factura }}" readonly>
+                    <!-- Segunda fila -->
+                    <div class="row g-3 mt-2">
+                        <div class="col-12 col-md-4">
+                            <label for="n_factura" class="form-label">Nº Factura:</label>
+                            <input type="text" id="n_factura" name="n_factura" class="form-control form-control-sm"
+                                value="{{ n_factura }}" readonly>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
+                            <select id="tipo_pago" name="tipo_pago" class="form-select form-select-sm"
+                                onchange="toggleFechaVencimiento()">
+                                <option value="0">Contado</option>
+                                <option value="1">Crédito</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4" id="fecha_vencimiento_row" style="display: none;">
+                            <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento:</label>
+                            <input type="date" id="fecha_vencimiento" name="fecha_vencimiento"
+                                class="form-control form-control-sm">
+                        </div>
                     </div>
-                    <div class="col-12 col-md-4">
-                        <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
-                        <select id="tipo_pago" name="tipo_pago" class="form-select form-select-sm"
-                            onchange="toggleFechaVencimiento()">
-                            <option value="0">Contado</option>
-                            <option value="1">Crédito</option>
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-4" id="fecha_vencimiento_row" style="display: none;">
-                        <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento:</label>
-                        <input type="date" id="fecha_vencimiento" name="fecha_vencimiento"
-                            class="form-control form-control-sm">
-                    </div>
-                </div>
 
-                <!-- Observación -->
-                <div class="mb-3 mt-3">
-                    <label for="observacion" class="form-label">Observación:</label>
-                    <textarea class="form-control form-control-sm" id="observacion" name="observacion"
-                        rows="2"></textarea>
-                </div>
+                    <!-- Observación -->
+                    <div class="mb-3 mt-3">
+                        <label for="observacion" class="form-label">Observación:</label>
+                        <textarea class="form-control form-control-sm" id="observacion" name="observacion"
+                            rows="2"></textarea>
+                    </div>
 
-                <!-- Tabla de productos -->
-                <div class="mb-3">
-                    <h4 class="section-title">Agregar Productos</h4>
-                    <button type="button" class="btn btn-secondary btn-sm btn-action" onclick="agregarFila()">
-                        <i class="bi bi-plus-circle"></i> Agregar Producto
+                    <!-- Tabla de productos -->
+                    <div class="mb-3">
+                        <h4 class="section-title">Agregar Productos</h4>
+                        <button type="button" class="btn btn-secondary btn-sm btn-action" onclick="agregarFila()">
+                            <i class="bi bi-plus-circle"></i> Agregar Producto
+                        </button>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm text-center" id="tabla-productos">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th data-label="Producto">Producto</th>
+                                        <th data-label="Cantidad" style="width: 6rem;">Cantidad</th>
+                                        <th data-label="Precio" style="width: 7rem;">Precio</th>
+                                        <th data-label="IVA" style="width: 6rem;">IVA</th>
+                                        <th data-label="Descuento" style="width: 8rem;">Descuento</th>
+                                        <th style="width: 6rem;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td data-label="Producto">
+                                            <select name="productos[]"
+                                                class="form-select form-select-sm producto-select" required>
+                                                <option value="" disabled selected>Seleccione un producto</option>
+                                            </select>
+                                        </td>
+                                        <td data-label="Cantidad">
+                                            <input type="number" name="cantidades[]" step="any" min="0"
+                                                class="form-control form-control-sm" required>
+                                        </td>
+                                        <td data-label="Precio">
+                                            <input type="number" name="costos[]" step="any" min="0"
+                                                class="form-control form-control-sm" required>
+                                        </td>
+                                        <td data-label="IVA">
+                                            <input type="number" name="ivas[]" step="any" min="0"
+                                                class="form-control form-control-sm" required>
+                                        </td>
+                                        <td data-label="Descuento">
+                                            <input type="number" name="descuentos[]" step="any" min="0"
+                                                class="form-control form-control-sm" required>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-danger btn-sm"
+                                                onclick="eliminarFila(this)">
+                                                <i class="bi bi-trash"></i> Eliminar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-submit w-100 py-2">
+                        <i class="bi bi-save"></i> Registrar Venta
                     </button>
+                </form>
+            </div>
+        </div>
+    </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm text-center" id="tabla-productos">
-                            <thead class="table-light">
-                                <tr>
-                                    <th data-label="Producto">Producto</th>
-                                    <th data-label="Cantidad" style="width: 6rem;">Cantidad</th>
-                                    <th data-label="Precio" style="width: 7rem;">Precio</th>
-                                    <th data-label="IVA" style="width: 6rem;">IVA</th>
-                                    <th data-label="Descuento" style="width: 8rem;">Descuento</th>
-                                    <th style="width: 6rem;">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td data-label="Producto">
-                                        <select name="productos[]" class="form-select form-select-sm producto-select"
-                                            required>
-                                            <option value="" disabled selected>Seleccione un producto</option>
-                                        </select>
-                                    </td>
-                                    <td data-label="Cantidad">
-                                        <input type="number" name="cantidades[]" step="any" min="0"
-                                            class="form-control form-control-sm" required>
-                                    </td>
-                                    <td data-label="Precio">
-                                        <input type="number" name="costos[]" step="any" min="0"
-                                            class="form-control form-control-sm" required>
-                                    </td>
-                                    <td data-label="IVA">
-                                        <input type="number" name="ivas[]" step="any" min="0"
-                                            class="form-control form-control-sm" required>
-                                    </td>
-                                    <td data-label="Descuento">
-                                        <input type="number" name="descuentos[]" step="any" min="0"
-                                            class="form-control form-control-sm" required>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-danger btn-sm"
-                                            onclick="eliminarFila(this)">
-                                            <i class="bi bi-trash"></i> Eliminar
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-submit w-100 py-2">
-                    <i class="bi bi-save"></i> Registrar Venta
-                </button>
-            </form>
+    <!-- Contenedor del stock (derecha) -->
+    <div class="stock-container">
+        <h3 class="stock-title">Stock por Bodega</h3>
+        <div id="stock-loading" class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Seleccione una bodega para ver el stock</p>
+        </div>
+        <div id="stock-content" style="display: none;">
+            <table class="stock-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Stock</th>
+                    </tr>
+                </thead>
+                <tbody id="stock-body">
+                    <!-- Aquí se cargarán los productos dinámicamente -->
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <script>
-
     // Configuración inicial de data-labels para la tabla
     document.addEventListener("DOMContentLoaded", function () {
         const primeraFila = document.querySelector("#tabla-productos tbody tr");
@@ -506,9 +662,63 @@
         document.getElementById('fecha_vencimiento_row').style.display = tipoPago == "1" ? "block" : "none";
     }
 
-    // Cargar productos al cambiar la bodega
+    // Función para actualizar el stock en el panel derecho
+    function actualizarStockVisual(idBodega) {
+        const loadingElement = document.getElementById('stock-loading');
+        const contentElement = document.getElementById('stock-content');
+        const stockBody = document.getElementById('stock-body');
+
+        loadingElement.style.display = 'block';
+        contentElement.style.display = 'none';
+        stockBody.innerHTML = '';
+
+        if (!idBodega) {
+            loadingElement.innerHTML = '<p>Seleccione una bodega para ver el stock</p>';
+            return;
+        }
+
+        loadingElement.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando stock...</p>
+        `;
+
+        fetch(`/stock_por_bodega/${idBodega}`)
+            .then(res => res.json())
+            .then(data => {
+                loadingElement.style.display = 'none';
+                contentElement.style.display = 'block';
+
+                if (data.length === 0) {
+                    stockBody.innerHTML = '<tr><td colspan="2" class="text-center">No hay productos en esta bodega</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(producto => {
+                    const stockClass = producto.stock <= 5 ? 'stock-low' : '';
+                    html += `
+                        <tr>
+                            <td>${producto.descripcion}</td>
+                            <td class="${stockClass}">${producto.stock}</td>
+                        </tr>
+                    `;
+                });
+
+                stockBody.innerHTML = html;
+            })
+            .catch(err => {
+                console.error("Error al cargar stock:", err);
+                loadingElement.innerHTML = '<p class="text-danger">Error al cargar el stock</p>';
+            });
+    }
+
+    // Cargar productos al cambiar la bodega (para el formulario)
     document.getElementById("id_bodega").addEventListener("change", function () {
         const idBodega = this.value;
+
+        // Actualizar el select de productos en el formulario
         if (!idBodega) return;
 
         fetch(`/productos_por_bodega/${idBodega}`)
@@ -527,6 +737,117 @@
                 console.error("Error al cargar productos:", err);
                 mostrarAlerta('danger', 'Error', 'No se pudieron cargar los productos para la bodega seleccionada.');
             });
+
+        // Actualizar el panel de stock
+        actualizarStockVisual(idBodega);
+    });
+
+    // Actualizar el stock cuando se selecciona un producto
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.classList.contains('producto-select')) {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            const stock = selectedOption.getAttribute('data-stock');
+            const cantidadInput = e.target.closest('tr').querySelector('input[name="cantidades[]"]');
+
+            if (stock && cantidadInput) {
+                cantidadInput.setAttribute('max', stock);
+                cantidadInput.setAttribute('title', `Máximo disponible: ${stock}`);
+            }
+        }
+    });
+
+    // Función para actualizar el stock en el panel derecho
+    function actualizarStockVisual(idBodega) {
+        const loadingElement = document.getElementById('stock-loading');
+        const contentElement = document.getElementById('stock-content');
+        const stockBody = document.getElementById('stock-body');
+
+        loadingElement.style.display = 'block';
+        contentElement.style.display = 'none';
+        stockBody.innerHTML = '';
+
+        if (!idBodega) {
+            loadingElement.innerHTML = '<p>Seleccione una bodega para ver el stock</p>';
+            return;
+        }
+
+        loadingElement.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando stock...</p>
+        `;
+
+        fetch(`/stock_por_bodega/${idBodega}`)
+            .then(res => res.json())
+            .then(data => {
+                loadingElement.style.display = 'none';
+                contentElement.style.display = 'block';
+
+                if (data.length === 0) {
+                    stockBody.innerHTML = '<tr><td colspan="2" class="text-center">No hay productos en esta bodega</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(producto => {
+                    const stockClass = producto.stock <= 5 ? 'stock-low' : '';
+                    html += `
+                        <tr>
+                            <td>${producto.descripcion}</td>
+                            <td class="${stockClass}">${producto.stock}</td>
+                        </tr>
+                    `;
+                });
+
+                stockBody.innerHTML = html;
+            })
+            .catch(err => {
+                console.error("Error al cargar stock:", err);
+                loadingElement.innerHTML = '<p class="text-danger">Error al cargar el stock</p>';
+            });
+    }
+
+    // Cargar productos al cambiar la bodega (para el formulario)
+    document.getElementById("id_bodega").addEventListener("change", function () {
+        const idBodega = this.value;
+
+        // Actualizar el select de productos en el formulario
+        if (!idBodega) return;
+
+        fetch(`/productos_por_bodega/${idBodega}`)
+            .then(res => res.json())
+            .then(data => {
+                const opciones = ['<option value="" disabled selected>Seleccione un producto</option>'];
+                data.forEach(producto => {
+                    opciones.push(`<option value="${producto.id}" data-stock="${producto.stock}">${producto.descripcion}</option>`);
+                });
+
+                document.querySelectorAll(".producto-select").forEach(select => {
+                    select.innerHTML = opciones.join("");
+                });
+            })
+            .catch(err => {
+                console.error("Error al cargar productos:", err);
+                mostrarAlerta('danger', 'Error', 'No se pudieron cargar los productos para la bodega seleccionada.');
+            });
+
+        // Actualizar el panel de stock
+        actualizarStockVisual(idBodega);
+    });
+
+    // Actualizar el stock cuando se selecciona un producto
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.classList.contains('producto-select')) {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            const stock = selectedOption.getAttribute('data-stock');
+            const cantidadInput = e.target.closest('tr').querySelector('input[name="cantidades[]"]');
+
+            if (stock && cantidadInput) {
+                cantidadInput.setAttribute('max', stock);
+                cantidadInput.setAttribute('title', `Máximo disponible: ${stock}`);
+            }
+        }
     });
 </script>
 {% endblock %}

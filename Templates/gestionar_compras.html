@@ -252,7 +252,7 @@
                   <td>${{ "%.2f"|format(compra.total) }}</td>
                   <td>
                     <div class="d-flex flex-wrap">
-                      <a href="{{ url_for('editar_compra', id=compra.id) }}" class="btn btn-sm btn-primary">
+                      <a href="{{ url_for('editar_compra', id_compra=compra.id) }}" class="btn btn-sm btn-primary">
                         Editar
                       </a>
                       <a href="{{ url_for('eliminar_compra', id=compra.id) }}" class="btn btn-sm btn-danger ms-1"

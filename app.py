@@ -763,11 +763,29 @@ def eliminar_compra(id):
 
     flash("Compra eliminada correctamente", "success")
     return redirect(url_for("gestionar_compras"))
-
-
 #fin de gestionar compras
 
 # Ruta de ventas
+@app.route("/stock_por_bodega/<int:id_bodega>")
+@login_required
+def stock_por_bodega(id_bodega):
+    try:
+        stock = db.execute("""
+            SELECT p.ID_Producto AS id, p.Descripcion AS descripcion, 
+                   COALESCE(ib.Existencias, 0) AS stock
+            FROM Productos p
+            LEFT JOIN Inventario_Bodega ib ON p.ID_Producto = ib.ID_Producto AND ib.ID_Bodega = ?
+            WHERE p.Estado = 1
+            ORDER BY p.Descripcion
+        """, id_bodega)
+        
+        return jsonify(stock)
+    except Exception as e:
+        print(f"Error al obtener stock: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Nueva ruta para obtener productos por bodega (para el select)
+
 @app.route("/ventas", methods=["GET", "POST"])
 @login_required
 def ventas():
@@ -856,10 +874,8 @@ def ventas():
                 if not existencia or existencia[0]["Existencias"] < cantidad:
                     nombre_prod = db.execute("SELECT Descripcion FROM Productos WHERE ID_Producto = ?", id_producto)[0]["Descripcion"]
                     db.execute("ROLLBACK")
-                    return jsonify({
-                        "success": False,
-                        "message": f"No hay suficiente stock del producto '{nombre_prod}' en la bodega"
-                    }), 400
+                    flash(f"No hay suficiente stock del producto '{nombre_prod}' en la bodega seleccionada.", "danger")
+                    return redirect(url_for("ventas"))
 
                 total = (cantidad * costo) - descuento + iva
                 total_venta += total
@@ -1528,9 +1544,6 @@ def ver_bodega():
 
     return render_template("bodega.html", bodegas=bodegas, inventario_por_bodega=inventario_por_bodega)
 
-
-
-
 @app.route("/inventario", methods=["GET", "POST"])
 def gestionar_inventario():
     productos = db.execute("SELECT ID_Producto, Descripcion, Existencias FROM Productos ORDER BY Descripcion")
@@ -1582,8 +1595,6 @@ def historial_inventario():
 
     movimientos = db.execute(query, *params)
     return render_template("historial_inventario.html", movimientos=movimientos, productos=productos, tipos=tipos, producto_id=producto_id, tipo_id=tipo_id, fecha=fecha)
-
-
 #fin de ruta de bodega e inventario
 
 #ruta de vehiculos
@@ -1622,8 +1633,6 @@ def vehiculos():
         ORDER BY Placa ASC
     """)
     return render_template("vehiculos.html", vehiculos=vehiculos)
-
-
 
 @app.route("/vehiculos/<int:id>/editar", methods=["GET", "POST"])
 def editar_vehiculo(id):
@@ -1775,11 +1784,10 @@ def editar_cliente(id):
 # Eliminar Cliente
 @app.route("/clientes/<int:id>/eliminar")
 def eliminar_cliente(id):
+
     db.execute("DELETE FROM Clientes WHERE ID_Cliente = ?", id)
     flash("Cliente eliminado correctamente.", "success")
     return redirect(url_for("clientes"))
-
-
 # Añadir Proveedor
 @app.route("/proveedores", methods=["GET", "POST"])
 def proveedores():
@@ -2141,8 +2149,6 @@ def editar_tipo_producto(id):
         flash("Tipo de producto actualizado correctamente.", "success")
         return redirect(url_for("tipo_producto"))
     return render_template("editar_tipo_producto.html", tipo=tipo)
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)

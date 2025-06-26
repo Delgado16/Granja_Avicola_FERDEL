@@ -285,7 +285,7 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <h1 class="card-title text-center">Editar Compra #{{ compra.ID_Movimiento }}</h1>
-            <form action="{{ url_for('editar_compra', id=compra.ID_Movimiento) }}" method="post" onsubmit="return validarCompra()" novalidate>
+            <form action="{{ url_for('editar_compra', id_compra=compra.ID_Movimiento) }}" method="post" onsubmit="return validarCompra()" novalidate>
                 <div class="row g-3">
                     <!-- Fila 1 -->
                     <div class="col-12 col-md-6 col-lg-3">

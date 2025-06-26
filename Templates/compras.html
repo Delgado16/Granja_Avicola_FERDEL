@@ -12,12 +12,102 @@
         --content-top-margin: 1rem;
     }
 
-    /* Ajustes generales */
-    .card-container {
-        max-width: var(--card-max-width);
-        margin: var(--content-top-margin) auto;
-        padding: var(--card-padding-lg);
-        margin-top: calc(var(--navbar-height-lg) + var(--content-top-margin));
+    /* Layout dividido */
+    .split-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        margin-top: calc(var(--navbar-height-lg) + 1rem);
+        padding: 0 1rem;
+    }
+
+    .form-container {
+        flex: 1;
+        min-width: 300px;
+    }
+
+    .stock-container {
+        flex: 0 0 350px;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        max-height: 80vh;
+        overflow-y: auto;
+        position: sticky;
+        top: calc(var(--navbar-height-lg) + 1rem);
+    }
+
+    .stock-title {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #dee2e6;
+        color: #495057;
+        font-weight: 600;
+    }
+
+    .stock-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .stock-table th {
+        background-color: #e9ecef;
+        font-weight: 600;
+        color: #495057;
+        position: sticky;
+        top: 0;
+    }
+
+    .stock-table th,
+    .stock-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .stock-table tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    .stock-low {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .stock-warning {
+        color: #fd7e14;
+        font-weight: 600;
+    }
+
+    .stock-good {
+        color: #28a745;
+    }
+
+    #stock-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100px;
+        color: #6c757d;
+    }
+
+    #stock-content {
+        display: none;
+    }
+
+    /* Ajustes generales del formulario */
+    .card {
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .card-body {
+        background-color: #fff;
+        border-radius: 0.5rem;
     }
 
     .card-title {
@@ -77,21 +167,43 @@
         margin-bottom: 1rem;
     }
 
-    /* Ajustes para pantallas grandes (desktop) */
+    /* Validación */
+    .is-invalid {
+        border-color: #dc3545;
+    }
+
+    .invalid-feedback {
+        display: none;
+        width: 100%;
+        margin-top: 0.25rem;
+        font-size: 0.8rem;
+        color: #dc3545;
+    }
+
+    .is-invalid ~ .invalid-feedback {
+        display: block;
+    }
+
+    /* Estilos para pantallas grandes (desktop) */
     @media (min-width: 1200px) {
-        .card-container {
-            max-width: 1000px;
-            padding: 1.5rem;
+        .stock-container {
+            flex: 0 0 380px;
         }
     }
 
     /* Estilos para pantallas medianas (tablets) */
     @media (max-width: 992px) {
-        .card-container {
-            padding: var(--card-padding-md);
-            margin-left: 1rem;
-            margin-right: 1rem;
-            margin-top: calc(var(--navbar-height-lg) + 0.75rem);
+        .split-container {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .stock-container {
+            flex: 1;
+            max-height: none;
+            order: -1;
+            position: static;
+            max-height: 300px;
         }
 
         .row.g-3 > [class^="col-"] {
@@ -105,32 +217,27 @@
 
     /* Estilos para pantallas pequeñas (móviles grandes) */
     @media (max-width: 768px) {
-        .card-container {
+        .split-container {
             margin: 0.75rem;
-            padding: var(--card-padding-sm);
+            padding: 0;
             margin-top: calc(var(--navbar-height-lg) + 0.75rem);
-        }
-
-        .form-control, .form-select {
-            padding: 0.45rem 0.65rem;
         }
 
         #tabla-productos th, #tabla-productos td {
             min-width: 90px;
             padding: 0.5rem;
         }
+
+        .stock-container {
+            padding: var(--card-padding-sm);
+        }
     }
 
     /* Estilos para móviles pequeños (576px y menos) */
     @media (max-width: 576px) {
-        .card-container {
+        .split-container {
             margin: 0.5rem;
-            padding: 0.5rem;
             margin-top: calc(var(--navbar-height-sm) + 0.5rem);
-        }
-
-        .card-body {
-            padding: 1rem;
         }
 
         /* Tabla responsiva para móviles */
@@ -213,17 +320,19 @@
             width: 100%;
             margin-bottom: 1rem;
         }
+
+        .stock-table th,
+        .stock-table td {
+            padding: 0.5rem;
+            font-size: 0.8rem;
+        }
     }
 
     /* Ajustes para pantallas muy pequeñas (400px y menos) */
     @media (max-width: 400px) {
-        .card-container {
+        .split-container {
             margin: 0.25rem;
             margin-top: calc(var(--navbar-height-sm) + 0.25rem);
-        }
-        
-        .card-body {
-            padding: 0.75rem;
         }
 
         #tabla-productos td {
@@ -233,39 +342,10 @@
         #tabla-productos td::before {
             width: 45%;
         }
-    }
 
-    /* Validación */
-    .is-invalid {
-        border-color: #dc3545;
-    }
-
-    .invalid-feedback {
-        display: none;
-        width: 100%;
-        margin-top: 0.25rem;
-        font-size: 0.8rem;
-        color: #dc3545;
-    }
-
-    .is-invalid ~ .invalid-feedback {
-        display: block;
-    }
-
-    /* Mejoras visuales */
-    .card {
-        border: none;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    }
-
-    .card-body {
-        background-color: #fff;
-        border-radius: 0.5rem;
-    }
-
-    /* Ajustes generales del body */
-    body {
-        padding-top: 0;
+        .stock-container {
+            padding: 0.75rem;
+        }
     }
 
     /* Alertas flotantes */
@@ -281,134 +361,161 @@
     }
 </style>
 
-<div class="container-fluid card-container">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h1 class="card-title text-center">Registrar Compra</h1>
-            <form action="/compras" method="post" onsubmit="return validarCompra()" novalidate>
-                <div class="row g-3">
-                    <!-- Fila 1 -->
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label for="fecha" class="form-label">Fecha:</label>
-                        <input type="date" class="form-control" id="fecha" name="fecha" required>
-                        <div class="invalid-feedback">Por favor ingrese la fecha</div>
+<div class="container split-container">
+    <!-- Contenedor del formulario (izquierda) -->
+    <div class="form-container">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h1 class="card-title text-center">Registrar Compra</h1>
+                <form action="/compras" method="post" onsubmit="return validarCompra()" novalidate>
+                    <div class="row g-3">
+                        <!-- Fila 1 -->
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label for="fecha" class="form-label">Fecha:</label>
+                            <input type="date" class="form-control" id="fecha" name="fecha" required>
+                            <div class="invalid-feedback">Por favor ingrese la fecha</div>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-5">
+                            <label for="proveedor" class="form-label">Proveedor:</label>
+                            <select class="form-select" id="proveedor" name="proveedor" required>
+                                <option value="" disabled selected>Seleccione un proveedor</option>
+                                {% for proveedor in proveedores %}
+                                <option value="{{ proveedor.id }}">{{ proveedor.Nombre }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Por favor seleccione un proveedor</div>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <label for="id_empresa" class="form-label">Empresa:</label>
+                            <select class="form-select" id="id_empresa" name="id_empresa" required>
+                                <option value="" disabled selected>Seleccione una empresa</option>
+                                {% for empresa in empresas %}
+                                <option value="{{ empresa.ID_Empresa }}">{{ empresa.Descripcion }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Por favor seleccione una empresa</div>
+                        </div>
+
+                        <!-- Fila 2 -->
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <label for="id_bodega" class="form-label">Bodega:</label>
+                            <select class="form-select" id="id_bodega" name="id_bodega" required>
+                                <option value="" disabled selected>Seleccione una bodega</option>
+                                {% for bodega in bodegas %}
+                                <option value="{{ bodega.ID_Bodega }}">{{ bodega.Nombre }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Por favor seleccione una bodega</div>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
+                            <select class="form-select" id="tipo_pago" name="tipo_pago" required>
+                                <option value="0">Contado</option>
+                                <option value="1">Crédito</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <label for="n_factura" class="form-label">Nº Factura:</label>
+                            <input type="text" class="form-control" id="n_factura" name="n_factura">
+                        </div>
                     </div>
 
-                    <div class="col-12 col-md-6 col-lg-5">
-                        <label for="proveedor" class="form-label">Proveedor:</label>
-                        <select class="form-select" id="proveedor" name="proveedor" required>
-                            <option value="" disabled selected>Seleccione un proveedor</option>
-                            {% for proveedor in proveedores %}
-                            <option value="{{ proveedor.id }}">{{ proveedor.Nombre }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="invalid-feedback">Por favor seleccione un proveedor</div>
+                    <!-- Observación -->
+                    <div class="mb-3 mt-3">
+                        <label for="observacion" class="form-label">Observación:</label>
+                        <textarea class="form-control" id="observacion" name="observacion" rows="2"></textarea>
                     </div>
 
-                    <div class="col-12 col-md-6 col-lg-4">
-                        <label for="id_empresa" class="form-label">Empresa:</label>
-                        <select class="form-select" id="id_empresa" name="id_empresa" required>
-                            <option value="" disabled selected>Seleccione una empresa</option>
-                            {% for empresa in empresas %}
-                            <option value="{{ empresa.ID_Empresa }}">{{ empresa.Descripcion }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="invalid-feedback">Por favor seleccione una empresa</div>
+                    <!-- Sección de productos -->
+                    <div class="mb-3">
+                        <h4 class="section-title">Agregar Productos</h4>
+                        <button type="button" class="btn btn-secondary btn-action" onclick="agregarFila()">
+                            <i class="bi bi-plus-circle"></i> Agregar Producto
+                        </button>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-bordered text-center" id="tabla-productos">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th data-label="Producto">Producto</th>
+                                        <th data-label="Cantidad" style="width: 6rem;">Cantidad</th>
+                                        <th data-label="Costo" style="width: 7rem;">Costo</th>
+                                        <th data-label="IVA" style="width: 6rem;">IVA</th>
+                                        <th data-label="Descuento" style="width: 8rem;">Descuento</th>
+                                        <th style="width: 6rem;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td data-label="Producto">
+                                            <select name="productos[]" class="form-select producto-select" required>
+                                                <option value="" disabled selected>Productos</option>
+                                                {% for producto in productos %}
+                                                <option value="{{ producto.id }}">{{ producto.Descripcion }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <div class="invalid-feedback">Seleccione un producto</div>
+                                        </td>
+                                        <td data-label="Cantidad">
+                                            <input type="number" name="cantidades[]" step="any" min="0" class="form-control" required>
+                                            <div class="invalid-feedback">Ingrese cantidad</div>
+                                        </td>
+                                        <td data-label="Costo">
+                                            <input type="number" name="costos[]" step="any" min="0" class="form-control" required>
+                                            <div class="invalid-feedback">Ingrese costo</div>
+                                        </td>
+                                        <td data-label="IVA">
+                                            <input type="number" name="ivas[]" step="any" min="0" class="form-control" required>
+                                            <div class="invalid-feedback">Ingrese IVA</div>
+                                        </td>
+                                        <td data-label="Descuento">
+                                            <input type="number" name="descuentos[]" step="any" min="0" class="form-control" required>
+                                            <div class="invalid-feedback">Ingrese descuento</div>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    <!-- Fila 2 -->
-                    <div class="col-12 col-md-6 col-lg-4">
-                        <label for="id_bodega" class="form-label">Bodega:</label>
-                        <select class="form-select" id="id_bodega" name="id_bodega" required>
-                            <option value="" disabled selected>Seleccione una bodega</option>
-                            {% for bodega in bodegas %}
-                            <option value="{{ bodega.ID_Bodega }}">{{ bodega.Nombre }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="invalid-feedback">Por favor seleccione una bodega</div>
-                    </div>
-
-                    <div class="col-12 col-md-6 col-lg-4">
-                        <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
-                        <select class="form-select" id="tipo_pago" name="tipo_pago" required>
-                            <option value="0">Contado</option>
-                            <option value="1">Crédito</option>
-                        </select>
-                    </div>
-
-                    <div class="col-12 col-md-6 col-lg-4">
-                        <label for="n_factura" class="form-label">Nº Factura:</label>
-                        <input type="text" class="form-control" id="n_factura" name="n_factura">
-                    </div>
-                </div>
-
-                <!-- Observación -->
-                <div class="mb-3 mt-3">
-                    <label for="observacion" class="form-label">Observación:</label>
-                    <textarea class="form-control" id="observacion" name="observacion" rows="2"></textarea>
-                </div>
-
-                <!-- Sección de productos -->
-                <div class="mb-3">
-                    <h4 class="section-title">Agregar Productos</h4>
-                    <button type="button" class="btn btn-secondary btn-action" onclick="agregarFila()">
-                        <i class="bi bi-plus-circle"></i> Agregar Producto
+                    <button type="submit" class="btn btn-primary btn-submit w-100 py-2">
+                        <i class="bi bi-save"></i> Registrar Compra
                     </button>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-center" id="tabla-productos">
-                            <thead class="table-light">
-                                <tr>
-                                    <th data-label="Producto">Producto</th>
-                                    <th data-label="Cantidad" style="width: 6rem;">Cantidad</th>
-                                    <th data-label="Costo" style="width: 7rem;">Costo</th>
-                                    <th data-label="IVA" style="width: 6rem;">IVA</th>
-                                    <th data-label="Descuento" style="width: 8rem;">Descuento</th>
-                                    <th style="width: 6rem;">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td data-label="Producto">
-                                        <select name="productos[]" class="form-select producto-select" required>
-                                            <option value="" disabled selected>Productos</option>
-                                            {% for producto in productos %}
-                                            <option value="{{ producto.id }}">{{ producto.Descripcion }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <div class="invalid-feedback">Seleccione un producto</div>
-                                    </td>
-                                    <td data-label="Cantidad">
-                                        <input type="number" name="cantidades[]" step="any" min="0" class="form-control" required>
-                                        <div class="invalid-feedback">Ingrese cantidad</div>
-                                    </td>
-                                    <td data-label="Costo">
-                                        <input type="number" name="costos[]" step="any" min="0" class="form-control" required>
-                                        <div class="invalid-feedback">Ingrese costo</div>
-                                    </td>
-                                    <td data-label="IVA">
-                                        <input type="number" name="ivas[]" step="any" min="0" class="form-control" required>
-                                        <div class="invalid-feedback">Ingrese IVA</div>
-                                    </td>
-                                    <td data-label="Descuento">
-                                        <input type="number" name="descuentos[]" step="any" min="0" class="form-control" required>
-                                        <div class="invalid-feedback">Ingrese descuento</div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-                <button type="submit" class="btn btn-primary btn-submit w-100 py-2">
-                    <i class="bi bi-save"></i> Registrar Compra
-                </button>
-            </form>
+    <!-- Contenedor del stock (derecha) -->
+    <div class="stock-container">
+        <h3 class="stock-title">Stock por Bodega</h3>
+        <div id="stock-loading" class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Seleccione una bodega para ver el stock</p>
+        </div>
+        <div id="stock-content" style="display: none;">
+            <table class="stock-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Stock</th>
+                    </tr>
+                </thead>
+                <tbody id="stock-body">
+                    <!-- Aquí se cargarán los productos dinámicamente -->
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -535,6 +642,58 @@
         return valido;
     }
 
+    // Función para actualizar el stock en el panel derecho
+    function actualizarStockVisual(idBodega) {
+        const loadingElement = document.getElementById('stock-loading');
+        const contentElement = document.getElementById('stock-content');
+        const stockBody = document.getElementById('stock-body');
+
+        loadingElement.style.display = 'block';
+        contentElement.style.display = 'none';
+        stockBody.innerHTML = '';
+
+        if (!idBodega) {
+            loadingElement.innerHTML = '<p>Seleccione una bodega para ver el stock</p>';
+            return;
+        }
+
+        loadingElement.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando stock...</p>
+        `;
+
+        fetch(`/stock_por_bodega/${idBodega}`)
+            .then(res => res.json())
+            .then(data => {
+                loadingElement.style.display = 'none';
+                contentElement.style.display = 'block';
+
+                if (data.length === 0) {
+                    stockBody.innerHTML = '<tr><td colspan="2" class="text-center">No hay productos en esta bodega</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(producto => {
+                    const stockClass = producto.stock <= 5 ? 'stock-low' : '';
+                    html += `
+                        <tr>
+                            <td>${producto.descripcion}</td>
+                            <td class="${stockClass}">${producto.stock}</td>
+                        </tr>
+                    `;
+                });
+
+                stockBody.innerHTML = html;
+            })
+            .catch(err => {
+                console.error("Error al cargar stock:", err);
+                loadingElement.innerHTML = '<p class="text-danger">Error al cargar el stock</p>';
+            });
+    }
+
     // Inicializar los data-labels para la primera fila
     document.addEventListener("DOMContentLoaded", function() {
         const primeraFila = document.querySelector("#tabla-productos tbody tr");
@@ -556,6 +715,11 @@
             const formattedDate = today.toISOString().substr(0, 10);
             fechaInput.value = formattedDate;
         }
+
+        // Event listener para el cambio de bodega
+        document.getElementById("id_bodega").addEventListener("change", function() {
+            actualizarStockVisual(this.value);
+        });
     });
 </script>
 {% endblock %}
