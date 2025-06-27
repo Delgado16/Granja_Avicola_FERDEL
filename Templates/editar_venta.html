@@ -1,0 +1,250 @@
+{% extends "layout.html" %}
+
+{% block title %}Editar Venta{% endblock %}
+
+{% block main %}
+<div class="container">
+    <h2 class="my-4">Editar Venta</h2>
+    
+    <form id="form-editar-venta" method="post" action="{{ url_for('editar_venta', venta_id=venta.ID_Factura) }}">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Información General</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="n_factura">N° Factura:</label>
+                            <input type="text" class="form-control" id="n_factura" value="{{ n_factura }}" readonly>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="fecha">Fecha*:</label>
+                            <input type="date" class="form-control" id="fecha" name="fecha" value="{{ venta.Fecha }}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="cliente">Cliente*:</label>
+                            <select class="form-control select2" id="cliente" name="cliente" required>
+                                <option value="">Seleccione un cliente</option>
+                                {% for cliente in clientes %}
+                                <option value="{{ cliente.id }}" {% if cliente.id == venta.IDCliente %}selected{% endif %}>{{ cliente.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="tipo_pago">Tipo de Pago*:</label>
+                            <select class="form-control" id="tipo_pago" name="tipo_pago" required>
+                                <option value="0" {% if venta.Credito_Contado == 0 %}selected{% endif %}>Contado</option>
+                                <option value="1" {% if venta.Credito_Contado == 1 %}selected{% endif %}>Crédito</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="id_bodega">Bodega*:</label>
+                            <select class="form-control" id="id_bodega" name="id_bodega" required>
+                                <option value="">Seleccione una bodega</option>
+                                {% for bodega in bodegas %}
+                                <option value="{{ bodega.id }}" {% if bodega.id == venta.ID_Bodega %}selected{% endif %}>{{ bodega.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label for="observacion">Observaciones:</label>
+                            <textarea class="form-control" id="observacion" name="observacion" rows="2">{{ venta.Observacion }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>Productos</h5>
+                <button type="button" class="btn btn-primary btn-sm" id="agregar-producto">
+                    <i class="fas fa-plus"></i> Agregar Producto
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="tabla-productos">
+                        <thead>
+                            <tr>
+                                <th width="40%">Producto</th>
+                                <th width="10%">Cantidad</th>
+                                <th width="12%">Costo Unitario</th>
+                                <th width="12%">IVA</th>
+                                <th width="12%">Descuento</th>
+                                <th width="12%">Total</th>
+                                <th width="2%"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="productos-container">
+                            {% for detalle in detalles %}
+                            <tr class="producto-row">
+                                <td>
+                                    <select class="form-control producto-select" name="productos[]" required>
+                                        <option value="">Seleccione</option>
+                                        {% for producto in productos %}
+                                        <option value="{{ producto.id }}" 
+                                                data-precio="{{ producto.precio|default(0) }}" 
+                                                {% if producto.id == detalle.ID_Producto %}selected{% endif %}>
+                                            {{ producto.descripcion }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="hidden" name="detalles_ids[]" value="{{ detalle.ID_Detalle }}">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control cantidad" name="cantidades[]" 
+                                           min="1" step="0.01" value="{{ detalle.Cantidad }}" required>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control costo" name="costos[]" 
+                                           min="0" step="0.01" value="{{ detalle.Costo }}" required>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control iva" name="ivas[]" 
+                                           min="0" step="0.01" value="{{ detalle.IVA }}" required>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control descuento" name="descuentos[]" 
+                                           min="0" step="0.01" value="{{ detalle.Descuento }}" required>
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control total" readonly>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm eliminar-producto">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5" class="text-right"><strong>Total Venta:</strong></td>
+                                <td>
+                                    <input type="text" class="form-control" id="total-venta" readonly>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+                <a href="{{ url_for('gestionar_ventas') }}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Inicializar select2 para búsquedas
+    $('.select2').select2();
+    
+    // Plantilla para nueva fila de producto
+    const nuevaFilaProducto = `
+    <tr class="producto-row">
+        <td>
+            <select class="form-control producto-select" name="productos[]" required>
+                <option value="">Seleccione</option>
+                {% for producto in productos %}
+                <option value="{{ producto.id }}" data-precio="{{ producto.precio|default(0) }}">{{ producto.descripcion }}</option>
+                {% endfor %}
+            </select>
+            <input type="hidden" name="detalles_ids[]" value="0">
+        </td>
+        <td><input type="number" class="form-control cantidad" name="cantidades[]" min="1" step="0.01" required></td>
+        <td><input type="number" class="form-control costo" name="costos[]" min="0" step="0.01" required></td>
+        <td><input type="number" class="form-control iva" name="ivas[]" min="0" step="0.01" required></td>
+        <td><input type="number" class="form-control descuento" name="descuentos[]" min="0" step="0.01" required></td>
+        <td><input type="text" class="form-control total" readonly></td>
+        <td>
+            <button type="button" class="btn btn-danger btn-sm eliminar-producto">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    </tr>`;
+    
+    // Agregar nueva fila de producto
+    $('#agregar-producto').click(function() {
+        $('#productos-container').append(nuevaFilaProducto);
+        $('.producto-select').last().select2();
+        calcularTotales();
+    });
+    
+    // Eliminar fila de producto
+    $(document).on('click', '.eliminar-producto', function() {
+        if ($('.producto-row').length > 1) {
+            $(this).closest('tr').remove();
+            calcularTotales();
+        } else {
+            alert('Debe haber al menos un producto en la venta.');
+        }
+    });
+    
+    // Calcular total cuando cambian los valores
+    $(document).on('change', '.cantidad, .costo, .iva, .descuento', function() {
+        const row = $(this).closest('tr');
+        const cantidad = parseFloat(row.find('.cantidad').val()) || 0;
+        const costo = parseFloat(row.find('.costo').val()) || 0;
+        const iva = parseFloat(row.find('.iva').val()) || 0;
+        const descuento = parseFloat(row.find('.descuento').val()) || 0;
+        
+        const total = (cantidad * costo) - descuento + iva;
+        row.find('.total').val(total.toFixed(2));
+        
+        calcularTotales();
+    });
+    
+    // Autocompletar precio al seleccionar producto
+    $(document).on('change', '.producto-select', function() {
+        const precio = $(this).find('option:selected').data('precio');
+        if (precio) {
+            $(this).closest('tr').find('.costo').val(precio).trigger('change');
+        }
+    });
+    
+    // Calcular total general
+    function calcularTotales() {
+        let totalVenta = 0;
+        $('.producto-row').each(function() {
+            const total = parseFloat($(this).find('.total').val()) || 0;
+            totalVenta += total;
+        });
+        $('#total-venta').val(totalVenta.toFixed(2));
+    }
+    
+    // Calcular totales al cargar la página
+    $('.cantidad, .costo, .iva, .descuento').trigger('change');
+});
+</script>
+{% endblock %}

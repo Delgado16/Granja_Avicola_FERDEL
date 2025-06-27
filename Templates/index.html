@@ -135,6 +135,53 @@
             min-height: 140px;
         }
     }
+
+.section-title {
+        font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #3b82f6;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-title i {
+        color: #3b82f6;
+        font-size: 1.1em;
+    }
+
+    /* Estilos específicos para cada sección */
+    .low-stock-title {
+        border-bottom-color: #ef4444;
+    }
+    .low-stock-title i {
+        color: #ef4444;
+    }
+
+    .last-invoice-title {
+        border-bottom-color: #10b981;
+    }
+    .last-invoice-title i {
+        color: #10b981;
+    }
+
+    .top-clients-title {
+        border-bottom-color: #f59e0b;
+    }
+    .top-clients-title i {
+        color: #f59e0b;
+    }
+
+    .maintenance-title {
+        border-bottom-color: #8b5cf6;
+    }
+    .maintenance-title i {
+        color: #8b5cf6;
+    }
 </style>
 
 <div class="dashboard-container">
@@ -168,7 +215,9 @@
 
     <!-- Productos con stock bajo -->
     <div class="info-container">
-        <h2 class="info-title">Productos con Bajo Stock</h2>
+        <h2 class="section-title low-stock-litle">
+            <i class="fas fa-exclamation-triangle"></i> Productos con Stock Bajo
+        </h2>
         <ul>
             {% for producto in productos_stock_bajo %}
             <li>
@@ -182,7 +231,9 @@
 
     <!-- Top Clientes -->
     <div class="info-container">
-        <h2 class="info-title">Top 5 Clientes</h2>
+        <h2 class="section-title top-clients-title">
+            <i class="fas fa-trophy"></i>Top 5 Clientes
+        </h2>
         <ul>
             {% for cliente in top_clientes %}
             <li>{{ cliente.Nombre }} – ${{ "{:,.2f}".format(cliente.total_comprado) }}</li>
@@ -194,7 +245,9 @@
 
     <!-- Última Factura -->
     <div class="info-container">
-        <h2 class="info-title">Última Factura</h2>
+        <h2 class="section-title last-invoice-title">
+            <i class="fas fa-file-invoice-dollar"></i>Última Factura
+        </h2>
         {% if ultima_factura %}
         <p>
             <strong>Factura #{{ ultima_factura.ID_Factura }}</strong><br>
@@ -223,7 +276,9 @@
 
     <!-- Próximos mantenimientos -->
     <div class="info-container">
-        <h2 class="info-title">Próximos Mantenimientos Vehiculares</h2>
+        <h2 class="section-title maintenance-title">
+            <i class="fas fa-tools"></i>Próximos Mantenimientos Vehiculares
+        </h2>
         <ul>
             {% for mant in proximos_mantenimientos %}
             <li>
