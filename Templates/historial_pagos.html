@@ -2,33 +2,136 @@
 {% block title %}Historial de Pagos{% endblock %}
 
 {% block main %}
-<div class="container mt-5">
-    <h2 class="mb-4">Historial de Pagos - Factura {{ factura.Num_Documento }}</h2>
-    <p><strong>Saldo Actual:</strong> ${{ "%.2f"|format(factura.Monto_Movimiento) }}</p>
+<style>
+    :root {
+        --card-max-width: 800px;
+        --card-padding: 1.5rem;
+    }
 
-    {% if pagos %}
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Monto</th>
-                    <th>Método de Pago</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for pago in pagos %}
-                <tr>
-                    <td>{{ pago.Fecha }}</td>
-                    <td>${{ "%.2f"|format(pago.Monto) }}</td>
-                    <td>{{ pago.Metodo }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No hay pagos registrados para esta factura.</p>
-    {% endif %}
+    .container-fluid.my-3 {
+        max-width: var(--card-max-width);
+        margin: 2rem auto;
+        padding: var(--card-padding);
+    }
 
-    <a href="{{ url_for('cobros') }}" class="btn btn-secondary mt-3">Volver</a>
+    .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.1);
+        border: none;
+    }
+
+    .card-header {
+        background-color: #0d6efd;
+        color: white;
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+        padding: 1rem 1.5rem;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .info-factura {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .table-responsive {
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #343a40;
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .container-fluid.my-3 {
+            padding: 1rem;
+        }
+        
+        .card-body {
+            padding: 1rem;
+        }
+    }
+</style>
+
+<div class="container-fluid my-3">
+    <div class="card shadow-lg">
+        <div class="card-header">
+            <h2 class="mb-0">
+                <i class="bi bi-clock-history me-2"></i>Historial de Pagos
+            </h2>
+        </div>
+        <div class="card-body">
+            <div class="info-factura">
+                <div class="row">
+                    <div class="col-md-6 mb-2">
+                        <strong>Factura:</strong> {{ factura.Num_Documento }}
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong>Monto Total:</strong> 
+                        <span class="fw-bold">
+                            C$ {{ "{:,.2f}".format(factura.Monto_Movimiento).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {% if pagos %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Detalles</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pago in pagos %}
+                        <tr>
+                            <td>{{ pago.Fecha }}</td>
+                            <td>
+                                <span class="fw-bold">
+                                    C$ {{ "{:,.2f}".format(pago.Monto).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                                </span>
+                            </td>
+                            <td>{{ pago.Metodo }}</td>
+                            <td>
+                                {% if pago.Metodo == 'Efectivo' %}
+                                    Recibido: C$ {{ "{:,.2f}".format(pago.Detalles.recibido).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                                {% elif pago.Metodo == 'Transferencia Bancaria' %}
+                                    Ref: {{ pago.Detalles.numero }} ({{ pago.Detalles.banco }})
+                                {% elif pago.Metodo == 'Tarjeta' %}
+                                    {{ 'Crédito' if pago.Detalles.tipo_tarjeta == 'credito' else 'Débito' }} ····{{ pago.Detalles.ultimos_digitos }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                No se han registrado pagos para esta factura.
+            </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end mt-4">
+                <a href="{{ url_for('cobros') }}" class="btn btn-primary">
+                    <i class="bi bi-arrow-left me-1"></i> Volver a Cuentas por Cobrar
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

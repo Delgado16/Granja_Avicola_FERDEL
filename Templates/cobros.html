@@ -218,7 +218,7 @@
                             <td class="d-none d-sm-table-cell" data-label="Vencimiento">{{ cuenta.Fecha_Vencimiento }}</td>
                             <td data-label="Saldo">
                                 <span class="{% if cuenta.Saldo > 0 %}text-danger fw-bold{% else %}text-success fw-bold{% endif %}">
-                                    {{ 'C$ ' ~ "{:,.2f}".format(cuenta.Saldo).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                                    {{'C$ ' ~ "{:,.2f}".format(cuenta.Saldo)}}
                                 </span>
                             </td>
                             <td data-label="Estado">
