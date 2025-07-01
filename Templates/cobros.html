@@ -203,7 +203,7 @@
                     <thead class="table-dark">
                         <tr>
                             <th class="d-none d-md-table-cell" data-label="Cliente">Cliente</th>
-                            <th data-label="Factura">N° Factura</th>
+                            <th data-label="Factura">N° Documento</th>
                             <th class="d-none d-sm-table-cell" data-label="Vencimiento">Vencimiento</th>
                             <th data-label="Saldo">Saldo</th>
                             <th data-label="Estado">Estado</th>
@@ -214,8 +214,14 @@
                         {% for cuenta in cuentas %}
                         <tr>
                             <td class="d-none d-md-table-cell" data-label="Cliente">{{ cuenta.Cliente }}</td>
-                            <td data-label="Factura">{{ cuenta.Factura }}</td>
-                            <td class="d-none d-sm-table-cell" data-label="Vencimiento">{{ cuenta.Fecha_Vencimiento }}</td>
+                            <td data-label="Documento">{{ cuenta.Factura }}</td>
+                            <td class="d-none d-sm-table-cell" data-label="Vencimiento">
+                                {% if cuenta.Fecha_Vencimiento %}
+                                    {{ cuenta.Fecha_Vencimiento }}
+                                {% else %}
+                                    Sin fecha
+                                {% endif %}
+                            </td>
                             <td data-label="Saldo">
                                 <span class="{% if cuenta.Saldo > 0 %}text-danger fw-bold{% else %}text-success fw-bold{% endif %}">
                                     {{'C$ ' ~ "{:,.2f}".format(cuenta.Saldo)}}
@@ -231,23 +237,27 @@
                             <td data-label="Acciones">
                                 <div class="d-flex flex-wrap gap-1 justify-content-center">
                                     {% if cuenta.Saldo > 0 %}
-                                        <a href="{{ url_for('registrar_cobro', id_venta=cuenta.ID_Movimiento) }}" 
+                                        <a href="{{ url_for('registrar_cobro', id_movimiento=cuenta.ID_Movimiento) }}" 
                                            class="btn btn-success btn-sm" 
                                            data-bs-toggle="tooltip" 
                                            title="Registrar cobro">
                                             <i class="bi bi-cash-coin d-none d-md-inline"></i> Abono
                                         </a>
-                                        <a href="{{ url_for('cancelar_deuda', id_venta=cuenta.ID_Movimiento) }}" 
-                                           class="btn btn-danger btn-sm"
-                                           onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');"
-                                           data-bs-toggle="tooltip" 
-                                           title="Cancelar deuda">
-                                            <i class="bi bi-x-octagon d-none d-md-inline"></i> Cancelar
-                                        </a>
+                                        <form action="{{ url_for('cancelar_deuda', id_movimiento=cuenta.ID_Movimiento) }}" 
+                                              method="POST" 
+                                              style="display: inline;">
+                                            <button type="submit" 
+                                                    class="btn btn-danger btn-sm"
+                                                    onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');"
+                                                    data-bs-toggle="tooltip" 
+                                                    title="Cancelar deuda">
+                                                <i class="bi bi-x-octagon d-none d-md-inline"></i> Cancelar
+                                            </button>
+                                        </form>
                                     {% else %}
                                         <span class="text-muted small d-none d-md-inline">Pago completo</span>
                                     {% endif %}
-                                    <a href="{{ url_for('historial_pagos', id_venta=cuenta.ID_Movimiento) }}" 
+                                    <a href="{{ url_for('historial_pagos', id_movimiento=cuenta.ID_Movimiento) }}" 
                                        class="btn btn-info btn-sm"
                                        data-bs-toggle="tooltip" 
                                        title="Historial de pagos">
@@ -282,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.innerWidth <= 768px) {
         document.querySelectorAll('tbody tr').forEach(row => {
             const celdas = row.querySelectorAll('td');
-            const etiquetas = ["Cliente", "Factura", "Vencimiento", "Saldo", "Estado", "Acciones"];
+            const etiquetas = ["Cliente", "Documento", "Vencimiento", "Saldo", "Estado", "Acciones"];
             
             celdas.forEach((celda, index) => {
                 if (index < etiquetas.length) {

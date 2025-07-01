@@ -71,21 +71,21 @@
             </h2>
         </div>
         <div class="card-body">
-            <!-- Información de la factura -->
+            <!-- Información de la cuenta -->
             <div class="alert alert-info mb-4">
                 <div class="row">
                     <div class="col-md-6 mb-2">
-                        <strong>Cliente:</strong> {{ factura.Cliente }}
+                        <strong>Cliente:</strong> {{ cuenta.Cliente }}
                     </div>
                     <div class="col-md-6 mb-2">
-                        <strong>Factura:</strong> {{ factura.Num_Documento }}
+                        <strong>Documento:</strong> {{ cuenta.Num_Documento }}
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-2">
                         <strong>Saldo Pendiente:</strong> 
                         <span class="text-danger fw-bold">
-                            C$ {{ "{:,.2f}".format(factura.Monto_Movimiento).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                            C$ {{ "{:,.2f}".format(cuenta.Monto_Movimiento) }}
                         </span>
                     </div>
                     <div class="col-md-6 mb-2">
@@ -95,16 +95,16 @@
             </div>
 
             <!-- Formulario de abono -->
-            <form method="POST" action="{{ url_for('registrar_cobro', id_venta=factura.ID_Movimiento) }}">
+            <form method="POST" action="{{ url_for('registrar_cobro', id_movimiento=cuenta.ID_Movimiento) }}">
                 <div class="mb-3">
                     <label for="monto" class="form-label required-field">Monto del Abono</label>
                     <div class="input-group">
                         <span class="input-group-text">C$</span>
                         <input type="number" class="form-control" id="monto" name="monto" 
-                               step="0.01" min="0.01" max="{{ factura.Monto_Movimiento }}" 
+                               step="0.01" min="0.01" max="{{ cuenta.Monto_Movimiento }}" 
                                placeholder="Ingrese el monto a abonar" required>
                     </div>
-                    <small class="text-muted">Máximo permitido: C$ {{ "{:,.2f}".format(factura.Monto_Movimiento).replace(",", "X").replace(".", ",").replace("X", ".") }}</small>
+                    <small class="text-muted">Máximo permitido: C$ {{ "{:,.2f}".format(cuenta.Monto_Movimiento) }}</small>
                 </div>
 
                 <div class="mb-3">
@@ -112,9 +112,9 @@
                     <select class="form-select" id="metodo_pago" name="metodo_pago" required 
                             onchange="mostrarCamposAdicionales(this.value)">
                         <option value="" selected disabled>Seleccione un método</option>
-                        <option value="1">Efectivo</option>
-                        <option value="2">Transferencia Bancaria</option>
-                        <option value="3">Tarjeta (Crédito/Débito)</option>
+                        {% for metodo in metodos %}
+                        <option value="{{ metodo.ID_MetodoPago }}">{{ metodo.Nombre }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
@@ -181,11 +181,11 @@ function mostrarCamposAdicionales(metodo) {
     });
     
     // Mostrar los relevantes
-    if (metodo === '1') {
+    if (metodo === '1') { // Efectivo
         document.getElementById('campos-efectivo').style.display = 'block';
-    } else if (metodo === '2') {
+    } else if (metodo === '2') { // Transferencia
         document.getElementById('campos-transferencia').style.display = 'block';
-    } else if (metodo === '3') {
+    } else if (metodo === '3') { // Tarjeta
         document.getElementById('campos-tarjeta').style.display = 'block';
     }
 }
@@ -193,7 +193,7 @@ function mostrarCamposAdicionales(metodo) {
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('form');
     const montoInput = document.getElementById('monto');
-    const maxMonto = parseFloat("{{ factura.Monto_Movimiento }}");
+    const maxMonto = parseFloat("{{ cuenta.Monto_Movimiento }}");
     
     if (form) {
         form.addEventListener('submit', function(e) {
