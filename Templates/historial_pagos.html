@@ -52,6 +52,17 @@
         color: white;
     }
 
+    .saldo-info {
+        background-color: #e9ecef;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .detail-row {
+        margin-top: 0.5rem;
+    }
+
     @media (max-width: 768px) {
         .container-fluid.my-3 {
             padding: 1rem;
@@ -77,10 +88,22 @@
                         <strong>Factura:</strong> {{ factura.Num_Documento }}
                     </div>
                     <div class="col-md-6 mb-2">
+                        <strong>Cliente:</strong> {{ factura.Cliente }}
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong>Fecha Emisión:</strong> {{ factura.Fecha_Emision }}
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong>Fecha Vencimiento:</strong> {{ factura.Fecha_Vencimiento }}
+                    </div>
+                    <div class="col-md-6 mb-2">
                         <strong>Monto Total:</strong> 
                         <span class="fw-bold">
                             C$ {{ "{:,.2f}".format(factura.Monto_Movimiento).replace(",", "X").replace(".", ",").replace("X", ".") }}
                         </span>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong>Empresa:</strong> {{ factura.Empresa }}
                     </div>
                 </div>
             </div>
@@ -107,12 +130,45 @@
                             </td>
                             <td>{{ pago.Metodo }}</td>
                             <td>
-                                {% if pago.Metodo == 'Efectivo' %}
-                                    Recibido: C$ {{ "{:,.2f}".format(pago.Detalles.recibido).replace(",", "X").replace(".", ",").replace("X", ".") }}
-                                {% elif pago.Metodo == 'Transferencia Bancaria' %}
-                                    Ref: {{ pago.Detalles.numero }} ({{ pago.Detalles.banco }})
-                                {% elif pago.Metodo == 'Tarjeta' %}
-                                    {{ 'Crédito' if pago.Detalles.tipo_tarjeta == 'credito' else 'Débito' }} ····{{ pago.Detalles.ultimos_digitos }}
+                                {% if pago.Metodo == 'Efectivo' and pago.Detalles.efectivo %}
+                                    <div class="detail-row">
+                                        {% if pago.Detalles.efectivo.recibido %}
+                                        <div>Recibido: C$ {{ "{:,.2f}".format(pago.Detalles.efectivo.recibido|float).replace(",", "X").replace(".", ",").replace("X", ".") }}</div>
+                                        {% endif %}
+                                        {% if pago.Detalles.efectivo.vuelto %}
+                                        <div>Vuelto: C$ {{ "{:,.2f}".format(pago.Detalles.efectivo.vuelto|float).replace(",", "X").replace(".", ",").replace("X", ".") }}</div>
+                                        {% endif %}
+                                    </div>
+                                {% elif pago.Metodo == 'Transferencia Bancaria' and pago.Detalles.transferencia %}
+                                    <div class="detail-row">
+                                        {% if pago.Detalles.transferencia.numero %}
+                                        <div>Referencia: {{ pago.Detalles.transferencia.numero }}</div>
+                                        {% endif %}
+                                        {% if pago.Detalles.transferencia.banco %}
+                                        <div>Banco: {{ pago.Detalles.transferencia.banco }}</div>
+                                        {% endif %}
+                                        {% if pago.Detalles.transferencia.cuenta %}
+                                        <div>Cuenta: {{ pago.Detalles.transferencia.cuenta }}</div>
+                                        {% endif %}
+                                    </div>
+                                {% elif pago.Metodo == 'Tarjeta' and pago.Detalles.tarjeta %}
+                                    <div class="detail-row">
+                                        {% if pago.Detalles.tarjeta.tipo %}
+                                        <div>Tipo: {{ pago.Detalles.tarjeta.tipo|capitalize }}</div>
+                                        {% endif %}
+                                        {% if pago.Detalles.tarjeta.ultimos_digitos %}
+                                        <div>Terminación: ····{{ pago.Detalles.tarjeta.ultimos_digitos }}</div>
+                                        {% endif %}
+                                        {% if pago.Detalles.tarjeta.autorizacion %}
+                                        <div>Autorización: {{ pago.Detalles.tarjeta.autorizacion }}</div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                                
+                                {% if pago.Comentarios %}
+                                <div class="detail-row">
+                                    <small class="text-muted">{{ pago.Comentarios }}</small>
+                                </div>
                                 {% endif %}
                             </td>
                         </tr>
@@ -120,16 +176,44 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="saldo-info">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Total Factura:</strong> 
+                        <span class="fw-bold">
+                            C$ {{ "{:,.2f}".format(factura.Monto_Movimiento).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                        </span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Total Pagado:</strong> 
+                        <span class="fw-bold">
+                            C$ {{ "{:,.2f}".format(total_pagado).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                        </span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Saldo Pendiente:</strong> 
+                        <span class="fw-bold">
+                            C$ {{ "{:,.2f}".format(saldo_actual).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                        </span>
+                    </div>
+                </div>
+            </div>
             {% else %}
             <div class="alert alert-info">
                 No se han registrado pagos para esta factura.
             </div>
             {% endif %}
 
-            <div class="d-flex justify-content-end mt-4">
+            <div class="d-flex justify-content-between mt-4">
                 <a href="{{ url_for('cobros') }}" class="btn btn-primary">
                     <i class="bi bi-arrow-left me-1"></i> Volver a Cuentas por Cobrar
                 </a>
+                {% if saldo_actual > 0 %}
+                <a href="{{ url_for('registrar_pago', id_movimiento=factura.ID_Movimiento) }}" class="btn btn-success">
+                    <i class="bi bi-cash-coin me-1"></i> Registrar Nuevo Pago
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>

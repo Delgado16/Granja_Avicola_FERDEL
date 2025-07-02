@@ -5,9 +5,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from weasyprint import HTML
 from datetime import datetime, timedelta
-#from helpers import get_current_user
 import traceback
 import os
+import json
 
 app = Flask(__name__)
 
@@ -1235,52 +1235,85 @@ def cobros():
         flash(f"❌ Error al cargar los cobros: {e}", "danger")
         return redirect(url_for("home"))
 
-
 @app.route("/historial_pagos/<int:id_movimiento>")
 def historial_pagos(id_movimiento):
     try:
-        # Obtener historial de pagos
+        # Obtener historial de pagos con detalles
         pagos = db.execute("""
-            SELECT p.Fecha, 
-                   p.Monto, 
-                   mp.Nombre AS Metodo,
-                   p.Comentarios
+            SELECT 
+                p.ID_Pago,
+                p.Fecha, 
+                p.Monto, 
+                mp.Nombre AS Metodo,
+                p.Comentarios,
+                dp.Tipo_Metodo,
+                dp.Campo,
+                dp.Valor
             FROM Pagos_CuentasCobrar p
             JOIN Metodos_Pago mp ON p.ID_MetodoPago = mp.ID_MetodoPago
+            LEFT JOIN Detalles_Pago dp ON p.ID_Pago = dp.ID_Pago
             WHERE p.ID_Movimiento = ?
             ORDER BY p.Fecha DESC
         """, id_movimiento)
 
-        # Obtener información de la cuenta por cobrar
-        cuenta = db.execute("""
-            SELECT dcc.Num_Documento, 
-                   dcc.Monto_Movimiento AS Saldo_Actual,
-                   c.Nombre AS Cliente,
-                   dcc.Fecha AS Fecha_Emision,
-                   dcc.Fecha_Vencimiento,
-                   e.Descripcion AS Empresa
+        # Procesar detalles para cada pago
+        processed_pagos = []
+        current_pago_id = None
+        current_pago = None
+        
+        for row in pagos:
+            if row['ID_Pago'] != current_pago_id:
+                if current_pago:
+                    processed_pagos.append(current_pago)
+                current_pago = {
+                    'ID_Pago': row['ID_Pago'],
+                    'Fecha': row['Fecha'],
+                    'Monto': row['Monto'],
+                    'Metodo': row['Metodo'],
+                    'Comentarios': row['Comentarios'],
+                    'Detalles': {}
+                }
+                current_pago_id = row['ID_Pago']
+            
+            if row['Tipo_Metodo']:
+                if row['Tipo_Metodo'] not in current_pago['Detalles']:
+                    current_pago['Detalles'][row['Tipo_Metodo']] = {}
+                current_pago['Detalles'][row['Tipo_Metodo']][row['Campo']] = row['Valor']
+        
+        if current_pago:
+            processed_pagos.append(current_pago)
+
+        # Obtener información de la factura
+        factura = db.execute("""
+            SELECT 
+                dcc.Num_Documento, 
+                dcc.Monto_Movimiento,
+                c.Nombre AS Cliente,
+                dcc.Fecha AS Fecha_Emision,
+                dcc.Fecha_Vencimiento,
+                e.Descripcion AS Empresa
             FROM Detalle_Cuentas_Por_Cobrar dcc
             JOIN Clientes c ON dcc.ID_Cliente = c.ID_Cliente
             LEFT JOIN Empresa e ON dcc.ID_Empresa = e.ID_Empresa
             WHERE dcc.ID_Movimiento = ?
         """, id_movimiento)[0]
 
-        # Calcular total pagado
-        total_pagado = sum(pago['Monto'] for pago in pagos) if pagos else 0
-        saldo_original = total_pagado + cuenta['Saldo_Actual']
+        # Calcular total pagado y saldo actual
+        total_pagado = sum(pago['Monto'] for pago in processed_pagos) if processed_pagos else 0
+        saldo_actual = factura['Monto_Movimiento'] - total_pagado
 
         return render_template("historial_pagos.html", 
-                            pagos=pagos, 
-                            cuenta=cuenta,
+                            pagos=processed_pagos, 
+                            factura=factura,
                             total_pagado=total_pagado,
-                            saldo_original=saldo_original)
+                            saldo_actual=saldo_actual)
+    
     except IndexError:
-        flash("❌ No se encontró la cuenta por cobrar", "danger")
+        flash("❌ No se encontró la factura", "danger")
         return redirect(url_for("cobros"))
     except Exception as e:
         flash(f"❌ Error al cargar el historial: {e}", "danger")
         return redirect(url_for("cobros"))
-
 
 @app.route("/cancelar_deuda/<int:id_movimiento>", methods=["POST"])
 def cancelar_deuda(id_movimiento):
@@ -1319,7 +1352,6 @@ def cancelar_deuda(id_movimiento):
         except Exception as e:
             flash(f"❌ Error al cancelar la deuda: {e}", "danger")
             return redirect(url_for("cobros"))
-
 
 @app.route("/registrar_cobro/<int:id_movimiento>", methods=["GET", "POST"])
 def registrar_cobro(id_movimiento):
