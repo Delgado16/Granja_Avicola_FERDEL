@@ -175,6 +175,21 @@
         margin-bottom: 1rem;
     }
 
+    /* Nuevos estilos para el total */
+    .total-container {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #dee2e6;
+    }
+
+    .total-display {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #0d6efd;
+    }
+
     /* Estilos para pantallas grandes (desktop) */
     @media (min-width: 1200px) {
         .card-container {
@@ -346,6 +361,10 @@
             padding: 0.5rem;
             font-size: 0.8rem;
         }
+
+        .total-container {
+            padding: 0.75rem;
+        }
     }
 
     /* Ajustes para pantallas muy pequeñas */
@@ -385,6 +404,9 @@
                 <h1 class="card-title text-center mb-4">Registrar Venta</h1>
                 <div id="error-message" class="alert alert-danger d-none" role="alert"></div>
                 <form action="/ventas" method="post" onsubmit="return validarVenta()">
+
+                    <!-- Campo oculto para el total de la factura -->
+                    <input type="hidden" id="total_factura" name="total_factura">
 
                     <!-- Primera fila -->
                     <div class="row g-3">
@@ -457,6 +479,7 @@
                                         <th data-label="Precio" style="width: 7rem;">Precio</th>
                                         <th data-label="IVA" style="width: 6rem;">IVA</th>
                                         <th data-label="Descuento" style="width: 8rem;">Descuento</th>
+                                        <th data-label="Subtotal" style="width: 7rem;">Subtotal</th>
                                         <th style="width: 6rem;">Acción</th>
                                     </tr>
                                 </thead>
@@ -470,20 +493,21 @@
                                         </td>
                                         <td data-label="Cantidad">
                                             <input type="number" name="cantidades[]" step="any" min="0"
-                                                class="form-control form-control-sm" required>
+                                                class="form-control form-control-sm cantidad" required>
                                         </td>
                                         <td data-label="Precio">
                                             <input type="number" name="costos[]" step="any" min="0"
-                                                class="form-control form-control-sm" required>
+                                                class="form-control form-control-sm costo" required>
                                         </td>
                                         <td data-label="IVA">
                                             <input type="number" name="ivas[]" step="any" min="0"
-                                                class="form-control form-control-sm" required>
+                                                class="form-control form-control-sm iva" required>
                                         </td>
                                         <td data-label="Descuento">
                                             <input type="number" name="descuentos[]" step="any" min="0"
-                                                class="form-control form-control-sm" required>
+                                                class="form-control form-control-sm descuento" required>
                                         </td>
+                                        <td data-label="Subtotal" class="subtotal">$0.00</td>
                                         <td>
                                             <button type="button" class="btn btn-danger btn-sm"
                                                 onclick="eliminarFila(this)">
@@ -493,6 +517,18 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Sección del total -->
+                    <div class="total-container">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h4 class="mb-0">Total de la Factura:</h4>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <h3 class="total-display mb-0" id="total-display">$0.00</h3>
+                            </div>
                         </div>
                     </div>
 
@@ -535,7 +571,7 @@
         const primeraFila = document.querySelector("#tabla-productos tbody tr");
         if (primeraFila) {
             const celdas = primeraFila.querySelectorAll("td");
-            const etiquetas = ["Producto", "Cantidad", "Precio", "IVA", "Descuento"];
+            const etiquetas = ["Producto", "Cantidad", "Precio", "IVA", "Descuento", "Subtotal"];
 
             celdas.forEach((celda, index) => {
                 if (index < etiquetas.length) {
@@ -551,6 +587,9 @@
             const formattedDate = today.toISOString().substr(0, 10);
             fechaInput.value = formattedDate;
         }
+
+        // Calcular total inicial
+        calcularTotalFactura();
     });
 
     function agregarFila() {
@@ -560,10 +599,11 @@
         // Limpiar valores
         nuevaFila.querySelectorAll("input").forEach(input => input.value = "");
         nuevaFila.querySelector("select").selectedIndex = 0;
+        nuevaFila.querySelector(".subtotal").textContent = "$0.00";
 
         // Asegurar data-labels
         const celdas = nuevaFila.querySelectorAll("td");
-        const etiquetas = ["Producto", "Cantidad", "Precio", "IVA", "Descuento"];
+        const etiquetas = ["Producto", "Cantidad", "Precio", "IVA", "Descuento", "Subtotal"];
         celdas.forEach((celda, index) => {
             if (index < etiquetas.length) {
                 celda.setAttribute("data-label", etiquetas[index]);
@@ -583,6 +623,7 @@
         const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
         if (tabla.rows.length > 1) {
             fila.remove();
+            calcularTotalFactura();
         } else {
             mostrarAlerta('warning', 'Advertencia', 'Debe haber al menos un producto en la venta.');
         }
@@ -603,6 +644,33 @@
                 alerta.remove();
             }
         }, 4000);
+    }
+
+    // Función para calcular el subtotal de una fila
+    function calcularSubtotal(fila) {
+        const cantidad = parseFloat(fila.querySelector('.cantidad').value) || 0;
+        const costo = parseFloat(fila.querySelector('.costo').value) || 0;
+        const iva = parseFloat(fila.querySelector('.iva').value) || 0;
+        const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
+        
+        const subtotal = (cantidad * costo) + iva - descuento;
+        fila.querySelector('.subtotal').textContent = '$' + subtotal.toFixed(2);
+        return subtotal;
+    }
+
+    // Función para calcular el total de la factura
+    function calcularTotalFactura() {
+        let total = 0;
+        const filas = document.querySelectorAll("#tabla-productos tbody tr");
+        
+        filas.forEach(fila => {
+            total += calcularSubtotal(fila);
+        });
+        
+        // Actualizar el campo oculto y el display
+        document.getElementById('total_factura').value = total.toFixed(2);
+        document.getElementById('total-display').textContent = '$' + total.toFixed(2);
+        return total;
     }
 
     function validarVenta() {
@@ -645,6 +713,13 @@
                 }
             });
         });
+
+        // Validar que el total sea mayor a cero
+        const total = calcularTotalFactura();
+        if (total <= 0) {
+            mostrarAlerta('danger', 'Error', 'El total de la factura debe ser mayor a cero.');
+            return false;
+        }
 
         if (!valido) {
             const primerError = document.querySelector(".is-invalid");
@@ -756,98 +831,32 @@
         }
     });
 
-    // Función para actualizar el stock en el panel derecho
-    function actualizarStockVisual(idBodega) {
-        const loadingElement = document.getElementById('stock-loading');
-        const contentElement = document.getElementById('stock-content');
-        const stockBody = document.getElementById('stock-body');
-
-        loadingElement.style.display = 'block';
-        contentElement.style.display = 'none';
-        stockBody.innerHTML = '';
-
-        if (!idBodega) {
-            loadingElement.innerHTML = '<p>Seleccione una bodega para ver el stock</p>';
-            return;
+    // Escuchar cambios en los campos de productos para calcular totales
+    document.addEventListener('input', function(e) {
+        if (e.target && (
+            e.target.classList.contains('cantidad') || 
+            e.target.classList.contains('costo') || 
+            e.target.classList.contains('iva') || 
+            e.target.classList.contains('descuento')
+        )) {
+            // Calcular subtotal de la fila
+            const fila = e.target.closest('tr');
+            calcularSubtotal(fila);
+            
+            // Calcular total general
+            calcularTotalFactura();
         }
-
-        loadingElement.innerHTML = `
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Cargando...</span>
-            </div>
-            <p class="mt-2">Cargando stock...</p>
-        `;
-
-        fetch(`/stock_por_bodega/${idBodega}`)
-            .then(res => res.json())
-            .then(data => {
-                loadingElement.style.display = 'none';
-                contentElement.style.display = 'block';
-
-                if (data.length === 0) {
-                    stockBody.innerHTML = '<tr><td colspan="2" class="text-center">No hay productos en esta bodega</td></tr>';
-                    return;
-                }
-
-                let html = '';
-                data.forEach(producto => {
-                    const stockClass = producto.stock <= 5 ? 'stock-low' : '';
-                    html += `
-                        <tr>
-                            <td>${producto.descripcion}</td>
-                            <td class="${stockClass}">${producto.stock}</td>
-                        </tr>
-                    `;
-                });
-
-                stockBody.innerHTML = html;
-            })
-            .catch(err => {
-                console.error("Error al cargar stock:", err);
-                loadingElement.innerHTML = '<p class="text-danger">Error al cargar el stock</p>';
-            });
-    }
-
-    // Cargar productos al cambiar la bodega (para el formulario)
-    document.getElementById("id_bodega").addEventListener("change", function () {
-        const idBodega = this.value;
-
-        // Actualizar el select de productos en el formulario
-        if (!idBodega) return;
-
-        fetch(`/productos_por_bodega/${idBodega}`)
-            .then(res => res.json())
-            .then(data => {
-                const opciones = ['<option value="" disabled selected>Seleccione un producto</option>'];
-                data.forEach(producto => {
-                    opciones.push(`<option value="${producto.id}" data-stock="${producto.stock}">${producto.descripcion}</option>`);
-                });
-
-                document.querySelectorAll(".producto-select").forEach(select => {
-                    select.innerHTML = opciones.join("");
-                });
-            })
-            .catch(err => {
-                console.error("Error al cargar productos:", err);
-                mostrarAlerta('danger', 'Error', 'No se pudieron cargar los productos para la bodega seleccionada.');
-            });
-
-        // Actualizar el panel de stock
-        actualizarStockVisual(idBodega);
     });
 
-    // Actualizar el stock cuando se selecciona un producto
-    document.addEventListener('change', function (e) {
-        if (e.target && e.target.classList.contains('producto-select')) {
-            const selectedOption = e.target.options[e.target.selectedIndex];
-            const stock = selectedOption.getAttribute('data-stock');
-            const cantidadInput = e.target.closest('tr').querySelector('input[name="cantidades[]"]');
-
-            if (stock && cantidadInput) {
-                cantidadInput.setAttribute('max', stock);
-                cantidadInput.setAttribute('title', `Máximo disponible: ${stock}`);
-            }
+    // Validar formulario antes de enviar
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const total = calcularTotalFactura();
+        if (total <= 0) {
+            e.preventDefault();
+            mostrarAlerta('danger', 'Error', 'El total de la factura debe ser mayor a cero.');
+            return false;
         }
+        return true;
     });
 </script>
 {% endblock %}

@@ -50,6 +50,21 @@
         border-radius: 0.5rem;
         margin-bottom: 1rem;
         border: 1px solid #dee2e6;
+        transition: all 0.3s ease;
+    }
+
+    .payment-info-card {
+        border-left: 4px solid #0d6efd;
+    }
+
+    .payment-method-icon {
+        font-size: 1.2rem;
+        margin-right: 8px;
+    }
+
+    .change-display {
+        font-size: 1.1rem;
+        font-weight: bold;
     }
 
     @media (max-width: 768px) {
@@ -72,37 +87,38 @@
         </div>
         <div class="card-body">
             <!-- Información de la cuenta -->
-            <div class="alert alert-info mb-4">
+            <div class="alert payment-info-card mb-4">
                 <div class="row">
                     <div class="col-md-6 mb-2">
-                        <strong>Cliente:</strong> {{ cuenta.Cliente }}
+                        <strong><i class="bi bi-person-fill me-1"></i>Cliente:</strong> {{ cuenta.Cliente }}
                     </div>
                     <div class="col-md-6 mb-2">
-                        <strong>Documento:</strong> {{ cuenta.Num_Documento }}
+                        <strong><i class="bi bi-file-text-fill me-1"></i>Documento:</strong> {{ cuenta.Num_Documento }}
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-2">
-                        <strong>Saldo Pendiente:</strong> 
+                        <strong><i class="bi bi-currency-exchange me-1"></i>Saldo Pendiente:</strong> 
                         <span class="text-danger fw-bold">
                             C$ {{ "{:,.2f}".format(cuenta.Monto_Movimiento) }}
                         </span>
                     </div>
                     <div class="col-md-6 mb-2">
-                        <strong>Fecha:</strong> {{ fecha_actual }}
+                        <strong><i class="bi bi-calendar-fill me-1"></i>Fecha:</strong> {{ fecha_actual }}
                     </div>
                 </div>
             </div>
 
             <!-- Formulario de abono -->
-            <form method="POST" action="{{ url_for('registrar_cobro', id_movimiento=cuenta.ID_Movimiento) }}">
+            <form method="POST" action="{{ url_for('registrar_cobro', id_factura=cuenta.ID_Factura) }}" id="paymentForm">
                 <div class="mb-3">
                     <label for="monto" class="form-label required-field">Monto del Abono</label>
                     <div class="input-group">
                         <span class="input-group-text">C$</span>
                         <input type="number" class="form-control" id="monto" name="monto" 
                                step="0.01" min="0.01" max="{{ cuenta.Monto_Movimiento }}" 
-                               placeholder="Ingrese el monto a abonar" required>
+                               placeholder="Ingrese el monto a abonar" required
+                               oninput="calculateChange()">
                     </div>
                     <small class="text-muted">Máximo permitido: C$ {{ "{:,.2f}".format(cuenta.Monto_Movimiento) }}</small>
                 </div>
@@ -120,37 +136,63 @@
 
                 <!-- Campos adicionales dinámicos -->
                 <div id="campos-efectivo" class="campos-adicionales" style="display: none;">
-                    <h6><i class="bi bi-cash-coin me-1"></i> Detalles de Pago en Efectivo</h6>
+                    <h6><i class="bi bi-cash-coin payment-method-icon"></i> Detalles de Pago en Efectivo</h6>
                     <div class="mb-3">
                         <label for="efectivo_recibido" class="form-label">Efectivo Recibido</label>
-                        <input type="number" class="form-control" id="efectivo_recibido" name="efectivo_recibido" step="0.01">
+                        <div class="input-group">
+                            <span class="input-group-text">C$</span>
+                            <input type="number" class="form-control" id="efectivo_recibido" name="efectivo_recibido" 
+                                   step="0.01" min="0" oninput="calculateChange()">
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Cambio:</label>
+                        <div class="alert alert-secondary py-2 change-display" id="cambio-display">C$ 0.00</div>
                     </div>
                 </div>
 
                 <div id="campos-transferencia" class="campos-adicionales" style="display: none;">
-                    <h6><i class="bi bi-bank me-1"></i> Detalles de Transferencia</h6>
+                    <h6><i class="bi bi-bank payment-method-icon"></i> Detalles de Transferencia</h6>
                     <div class="mb-3">
-                        <label for="numero_transferencia" class="form-label">Número de Transferencia</label>
-                        <input type="text" class="form-control" id="numero_transferencia" name="numero_transferencia">
+                        <label for="numero_transferencia" class="form-label">Número de Transferencia/Referencia</label>
+                        <input type="text" class="form-control" id="numero_transferencia" name="numero_transferencia"
+                               placeholder="Número de confirmación o referencia">
                     </div>
                     <div class="mb-3">
                         <label for="banco" class="form-label">Banco Emisor</label>
-                        <input type="text" class="form-control" id="banco" name="banco">
+                        <input type="text" class="form-control" id="banco" name="banco" 
+                               placeholder="Nombre del banco origen">
+                    </div>
+                    <div class="mb-3">
+                        <label for="fecha_transferencia" class="form-label">Fecha de Transferencia</label>
+                        <input type="date" class="form-control" id="fecha_transferencia" name="fecha_transferencia">
                     </div>
                 </div>
 
                 <div id="campos-tarjeta" class="campos-adicionales" style="display: none;">
-                    <h6><i class="bi bi-credit-card me-1"></i> Detalles de Tarjeta</h6>
+                    <h6><i class="bi bi-credit-card payment-method-icon"></i> Detalles de Tarjeta</h6>
                     <div class="mb-3">
                         <label for="tipo_tarjeta" class="form-label">Tipo de Tarjeta</label>
                         <select class="form-select" id="tipo_tarjeta" name="tipo_tarjeta">
+                            <option value="" disabled selected>Seleccione tipo</option>
                             <option value="credito">Crédito</option>
                             <option value="debito">Débito</option>
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label for="nombre_tarjeta" class="form-label">Nombre en Tarjeta</label>
+                        <input type="text" class="form-control" id="nombre_tarjeta" name="nombre_tarjeta"
+                               placeholder="Como aparece en la tarjeta">
+                    </div>
+                    <div class="mb-3">
                         <label for="ultimos_digitos" class="form-label">Últimos 4 dígitos</label>
-                        <input type="text" class="form-control" id="ultimos_digitos" name="ultimos_digitos" maxlength="4" pattern="\d{4}">
+                        <input type="text" class="form-control" id="ultimos_digitos" name="ultimos_digitos" 
+                               maxlength="4" pattern="\d{4}" placeholder="1234">
+                    </div>
+                    <div class="mb-3">
+                        <label for="autorizacion_tarjeta" class="form-label">Número de Autorización</label>
+                        <input type="text" class="form-control" id="autorizacion_tarjeta" name="autorizacion_tarjeta"
+                               placeholder="Código de autorización">
                     </div>
                 </div>
 
@@ -190,47 +232,81 @@ function mostrarCamposAdicionales(metodo) {
     }
 }
 
+function calculateChange() {
+    const monto = parseFloat(document.getElementById('monto').value) || 0;
+    const recibido = parseFloat(document.getElementById('efectivo_recibido').value) || 0;
+    
+    if (recibido > 0 && monto > 0) {
+        const cambio = recibido - monto;
+        const cambioDisplay = document.getElementById('cambio-display');
+        cambioDisplay.textContent = `C$ ${cambio.toFixed(2)}`;
+        
+        if (cambio < 0) {
+            cambioDisplay.className = 'alert alert-danger py-2 change-display';
+        } else {
+            cambioDisplay.className = 'alert alert-secondary py-2 change-display';
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
+    const form = document.getElementById('paymentForm');
     const montoInput = document.getElementById('monto');
     const maxMonto = parseFloat("{{ cuenta.Monto_Movimiento }}");
     
     if (form) {
         form.addEventListener('submit', function(e) {
+            let isValid = true;
+            
+            // Validar monto
             const monto = parseFloat(montoInput.value);
-            
-            if (isNaN(monto)) {
-                e.preventDefault();
-                alert('Por favor ingrese un monto válido');
+            if (isNaN(monto) || monto <= 0) {
+                alert('Por favor ingrese un monto válido mayor a cero');
                 montoInput.focus();
-                return false;
-            }
-            
-            if (monto <= 0) {
-                e.preventDefault();
-                alert('El monto debe ser mayor a cero');
-                montoInput.focus();
-                return false;
-            }
-            
-            if (monto > maxMonto) {
-                e.preventDefault();
+                isValid = false;
+            } else if (monto > maxMonto) {
                 alert('El monto no puede ser mayor al saldo pendiente');
                 montoInput.focus();
-                return false;
+                isValid = false;
             }
             
-            // Validar método de pago seleccionado
-            const metodoPago = document.getElementById('metodo_pago').value;
-            if (!metodoPago) {
-                e.preventDefault();
+            // Validar método de pago
+            const metodoPago = document.getElementById('metodo_pago');
+            if (!metodoPago.value) {
                 alert('Por favor seleccione un método de pago');
-                return false;
+                metodoPago.focus();
+                isValid = false;
             }
             
-            return true;
+            // Validaciones específicas por método de pago
+            if (metodoPago.value === '1') { // Efectivo
+                const recibido = parseFloat(document.getElementById('efectivo_recibido').value) || 0;
+                if (recibido < monto) {
+                    alert('El efectivo recibido no puede ser menor que el monto del abono');
+                    document.getElementById('efectivo_recibido').focus();
+                    isValid = false;
+                }
+            } else if (metodoPago.value === '3') { // Tarjeta
+                const ultimosDigitos = document.getElementById('ultimos_digitos').value;
+                if (!ultimosDigitos || ultimosDigitos.length !== 4 || !/^\d+$/.test(ultimosDigitos)) {
+                    alert('Por favor ingrese los últimos 4 dígitos de la tarjeta');
+                    document.getElementById('ultimos_digitos').focus();
+                    isValid = false;
+                }
+            }
+            
+            if (!isValid) {
+                e.preventDefault();
+            }
         });
     }
+
+    // Formatear el monto al perder el foco
+    montoInput.addEventListener('blur', function() {
+        if (this.value) {
+            this.value = parseFloat(this.value).toFixed(2);
+        }
+    });
 });
 </script>
 {% endblock %}

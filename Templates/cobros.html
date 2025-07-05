@@ -13,7 +13,6 @@
         --content-top-margin: 1rem;
     }
 
-    /* Estilos base */
     .container-fluid.my-3 {
         max-width: var(--card-max-width);
         margin: var(--content-top-margin) auto;
@@ -77,7 +76,6 @@
         white-space: nowrap;
     }
 
-    /* Estilos para móviles */
     @media (max-width: 768px) {
         .container-fluid.my-3 {
             padding: 0.5rem;
@@ -120,8 +118,8 @@
             justify-content: center;
         }
 
-        .table tbody td > span,
-        .table tbody td > div {
+        .table tbody td>span,
+        .table tbody td>div {
             flex: 2;
             text-align: right;
         }
@@ -138,7 +136,6 @@
         }
     }
 
-    /* Media queries para tablets */
     @media (max-width: 992px) and (min-width: 769px) {
         .container-fluid.my-3 {
             padding: var(--card-padding-md);
@@ -167,7 +164,6 @@
         }
     }
 
-    /* Media queries para desktop */
     @media (min-width: 993px) {
         .container-fluid.my-3 {
             padding: var(--card-padding-lg);
@@ -186,28 +182,54 @@
                 <i class="bi bi-cash-stack"></i> Cuentas por Cobrar
             </h2>
 
+            <!-- Filtros -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('cobros') }}?filter=all"
+                            class="btn btn-outline-secondary {% if request.args.get('filter') != 'pending' %}active{% endif %}">
+                            Todos los cobros
+                        </a>
+                        <a href="{{ url_for('cobros') }}?filter=pending"
+                            class="btn btn-outline-secondary {% if request.args.get('filter') == 'pending' %}active{% endif %}">
+                            Solo pendientes
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <span class="badge bg-primary">
+                        Total registros: {{ cuentas|length }}
+                    </span>
+                    <span class="badge bg-warning text-dark ms-2">
+                        Pendientes: {{ cuentas|selectattr('Saldo', '>', 0)|list|length }}
+                    </span>
+                </div>
+            </div>
+
             <!-- Mensajes Flash -->
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
             {% endwith %}
 
+            
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-dark">
                         <tr>
-                            <th class="d-none d-md-table-cell" data-label="Cliente">Cliente</th>
-                            <th data-label="Factura">N° Documento</th>
-                            <th class="d-none d-sm-table-cell" data-label="Vencimiento">Vencimiento</th>
-                            <th data-label="Saldo">Saldo</th>
-                            <th data-label="Estado">Estado</th>
-                            <th data-label="Acciones">Acciones</th>
+                            <th class="d-none d-md-table-cell">Cliente</th>
+                            <th>N° Documento</th>
+                            <th class="d-none d-sm-table-cell">Vencimiento</th>
+                            <th>Saldo</th>
+                            <th>Estado</th>
+                            <th>Empresa</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -217,58 +239,79 @@
                             <td data-label="Documento">{{ cuenta.Factura }}</td>
                             <td class="d-none d-sm-table-cell" data-label="Vencimiento">
                                 {% if cuenta.Fecha_Vencimiento %}
-                                    {{ cuenta.Fecha_Vencimiento }}
+                                {% if cuenta.Fecha_Vencimiento is string %}
+                                {# Si es string, mostrarlo directamente o formatear si tiene formato conocido #}
+                                {% if '-' in cuenta.Fecha_Vencimiento %}
+                                {{ cuenta.Fecha_Vencimiento[:10] }} {# Para formato YYYY-MM-DD #}
                                 {% else %}
-                                    Sin fecha
+                                {{ cuenta.Fecha_Vencimiento }}
+                                {% endif %}
+                                {% else %}
+                                {# Si es objeto fecha, usar strftime #}
+                                {{ cuenta.Fecha_Vencimiento.strftime('%d/%m/%Y') }}
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">Sin fecha</span>
                                 {% endif %}
                             </td>
                             <td data-label="Saldo">
-                                <span class="{% if cuenta.Saldo > 0 %}text-danger fw-bold{% else %}text-success fw-bold{% endif %}">
-                                    {{'C$ ' ~ "{:,.2f}".format(cuenta.Saldo)}}
+                                <span
+                                    class="{% if cuenta.Saldo > 0 %}text-danger fw-bold{% else %}text-success fw-bold{% endif %}">
+                                    {{ 'C$ ' ~ "{:,.2f}".format(cuenta.Saldo) }}
                                 </span>
                             </td>
+                            <!-- Resto de las celdas permanecen igual -->
                             <td data-label="Estado">
                                 {% if cuenta.Saldo > 0 %}
-                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Pendiente
+                                </span>
                                 {% else %}
-                                    <span class="badge bg-success">Pagado</span>
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle-fill"></i> Pagado
+                                </span>
                                 {% endif %}
+                            </td>
+                            <td data-label="Empresa">
+                                {{ cuenta.Empresa or 'N/A' }}
                             </td>
                             <td data-label="Acciones">
                                 <div class="d-flex flex-wrap gap-1 justify-content-center">
                                     {% if cuenta.Saldo > 0 %}
-                                        <a href="{{ url_for('registrar_cobro', id_movimiento=cuenta.ID_Movimiento) }}" 
-                                           class="btn btn-success btn-sm" 
-                                           data-bs-toggle="tooltip" 
-                                           title="Registrar cobro">
-                                            <i class="bi bi-cash-coin d-none d-md-inline"></i> Abono
-                                        </a>
-                                        <form action="{{ url_for('cancelar_deuda', id_movimiento=cuenta.ID_Movimiento) }}" 
-                                              method="POST" 
-                                              style="display: inline;">
-                                            <button type="submit" 
-                                                    class="btn btn-danger btn-sm"
-                                                    onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');"
-                                                    data-bs-toggle="tooltip" 
-                                                    title="Cancelar deuda">
-                                                <i class="bi bi-x-octagon d-none d-md-inline"></i> Cancelar
-                                            </button>
-                                        </form>
+                                    <a href="{{ url_for('registrar_cobro', id_factura=cuenta.ID_Factura) }}"
+                                        class="btn btn-success btn-sm" data-bs-toggle="tooltip" title="Registrar cobro">
+                                        <i class="bi bi-cash-coin"></i>
+                                        <span class="d-none d-md-inline">Abono</span>
+                                    </a>
+                                    <form action="{{ url_for('cancelar_deuda', id_factura=cuenta.ID_Factura) }}"
+                                        method="POST" style="display: inline;">
+                                        <button type="submit" class="btn btn-danger btn-sm"
+                                            onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');"
+                                            data-bs-toggle="tooltip" title="Cancelar deuda">
+                                            <i class="bi bi-x-octagon"></i>
+                                            <span class="d-none d-md-inline">Cancelar</span>
+                                        </button>
+                                    </form>
                                     {% else %}
-                                        <span class="text-muted small d-none d-md-inline">Pago completo</span>
+                                    <span class="badge bg-light text-dark">
+                                        <i class="bi bi-check2-all"></i> Completo
+                                    </span>
                                     {% endif %}
-                                    <a href="{{ url_for('historial_pagos', id_movimiento=cuenta.ID_Movimiento) }}" 
-                                       class="btn btn-info btn-sm"
-                                       data-bs-toggle="tooltip" 
-                                       title="Historial de pagos">
-                                        <i class="bi bi-clock-history d-none d-md-inline"></i> Historial
+                                    <a href="{{ url_for('historial_pagos', id_factura=cuenta.ID_Factura) }}"
+                                        class="btn btn-info btn-sm" data-bs-toggle="tooltip" title="Historial de pagos">
+                                        <i class="bi bi-clock-history"></i>
+                                        <span class="d-none d-md-inline">Historial</span>
                                     </a>
                                 </div>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="text-center">No hay cuentas por cobrar registradas.</td>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="alert alert-info m-0">
+                                    <i class="bi bi-info-circle-fill"></i> No hay cuentas por cobrar registradas
+                                </div>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -279,21 +322,21 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Activar tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl, {
-            trigger: 'hover focus'
+    document.addEventListener('DOMContentLoaded', function () {
+        // Activar tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl, {
+                trigger: 'hover focus'
+            });
         });
-    });
 
-    // Ajustar tabla en móviles
-    if (window.innerWidth <= 768px) {
+        // Ajustar tabla en móviles
+        if (window.innerWidth <= 768px) {
         document.querySelectorAll('tbody tr').forEach(row => {
             const celdas = row.querySelectorAll('td');
-            const etiquetas = ["Cliente", "Documento", "Vencimiento", "Saldo", "Estado", "Acciones"];
-            
+            const etiquetas = ["Cliente", "Documento", "Vencimiento", "Saldo", "Estado", "Empresa", "Acciones"];
+
             celdas.forEach((celda, index) => {
                 if (index < etiquetas.length) {
                     celda.setAttribute('data-label', etiquetas[index]);
