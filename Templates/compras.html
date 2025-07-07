@@ -185,14 +185,14 @@
     }
 
     /* Estilos para pantallas grandes (desktop) */
-    @media (min-width: 1200px) {
+    @media (min-width: 992px) {
         .stock-container {
             flex: 0 0 380px;
         }
     }
 
     /* Estilos para pantallas medianas (tablets) */
-    @media (max-width: 992px) {
+    @media (max-width: 991.98px) {
         .split-container {
             flex-direction: column;
             gap: 1rem;
@@ -201,9 +201,9 @@
         .stock-container {
             flex: 1;
             max-height: none;
-            order: -1;
             position: static;
             max-height: 300px;
+            order: 1; /* Cambiado a order: 1 para que aparezca después del formulario */
         }
 
         .row.g-3 > [class^="col-"] {
@@ -216,7 +216,7 @@
     }
 
     /* Estilos para pantallas pequeñas (móviles grandes) */
-    @media (max-width: 768px) {
+    @media (max-width: 767.98px) {
         .split-container {
             margin: 0.75rem;
             padding: 0;
@@ -234,7 +234,7 @@
     }
 
     /* Estilos para móviles pequeños (576px y menos) */
-    @media (max-width: 576px) {
+    @media (max-width: 575.98px) {
         .split-container {
             margin: 0.5rem;
             margin-top: calc(var(--navbar-height-sm) + 0.5rem);
@@ -354,7 +354,7 @@
         z-index: 1100;
     }
 
-    @media (max-width: 576px) {
+    @media (max-width: 575.98px) {
         .alert.position-fixed {
             top: calc(var(--navbar-height-sm) + 1rem);
         }
@@ -495,7 +495,7 @@
         </div>
     </div>
 
-    <!-- Contenedor del stock (derecha) -->
+    <!-- Contenedor del stock (derecha en desktop, debajo en móvil) -->
     <div class="stock-container">
         <h3 class="stock-title">Stock por Bodega</h3>
         <div id="stock-loading" class="text-center py-3">
