@@ -1,0 +1,183 @@
+{% extends "layout.html" %}
+{% block title %}Productos{% endblock %}
+{% block main %}
+
+<div class="container">
+
+    <!-- Botón para mostrar/ocultar el formulario -->
+    <div class="d-flex justify-content-center mb-4">
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#formularioProducto" aria-expanded="false" aria-controls="formularioProducto">
+            ➕ Agregar Nuevo Producto
+        </button>
+    </div>
+
+    <!-- Card: Formulario Agregar Producto (colapsable) -->
+    <div class="collapse" id="formularioProducto">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h3 class="card-title text-center text-primary mb-4">Agregar Producto</h3>
+
+                <form method="post" class="row g-2 p-3 bg-light rounded-3 border">
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label">Código</label>
+                        <input type="text" name="cod_producto" class="form-control" placeholder="Código">
+                    </div>
+
+                    <div class="col-md-5 col-sm-6">
+                        <label class="form-label">Descripción</label>
+                        <input type="text" name="descripcion" class="form-control" placeholder="Nombre/Descripción" required>
+                    </div>
+
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label">Unidad</label>
+                        <select name="unidad" class="form-select" required>
+                            <option value="">Seleccionar</option>
+                            {% for u in unidades %}
+                                <option value="{{ u.ID_Unidad }}">{{ u.Descripcion }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label">Familia</label>
+                        <select name="familia" class="form-select">
+                            <option value="">Seleccionar</option>
+                            {% for f in familias %}
+                                <option value="{{ f.ID_Familia }}">{{ f.Descripcion }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label">Tipo</label>
+                        <select name="tipo" class="form-select">
+                            <option value="">Seleccionar</option>
+                            {% for t in tipos %}
+                                <option value="{{ t.ID_TipoProducto }}">{{ t.Descripcion }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label">Costo Promedio</label>
+                        <input type="number" step="0.01" name="costo_promedio" class="form-control" value="0">
+                    </div>
+
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label">Precio Venta</label>
+                        <input type="number" step="0.01" name="precio_venta" class="form-control" value="0">
+                    </div>
+
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label">Stock Inicial</label>
+                        <input type="number" step="0.01" name="existencias" class="form-control" value="0">
+                    </div>
+
+                    <!-- Nuevo campo: Bodega -->
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label">Bodega</label>
+                        <select name="bodega" class="form-select" required>
+                            <option value="">Seleccionar</option>
+                            {% for b in bodegas %}
+                                <option value="{{ b.ID_Bodega }}">{{ b.Nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 col-sm-6 d-flex align-items-end">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="iva" value="1" id="ivaCheck">
+                            <label class="form-check-label" for="ivaCheck">IVA</label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label">Estado</label>
+                        <select name="estado" class="form-select">
+                            <option value="1" selected>Activo</option>
+                            <option value="0">Inactivo</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 col-sm-12 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success w-100">Agregar</button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Tabla de Productos Registrados -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h3 class="card-title text-center text-primary mb-4">Productos Registrados</h3>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead class="table-dark text-center">
+                        <tr>
+                            <th>Código</th>
+                            <th>Descripción</th>
+                            <th>Unidad</th>
+                            <th>Stock</th>
+                            <th>Familia</th>
+                            <th>Tipo</th>
+                            <th>Costo</th>
+                            <th>Precio</th>
+                            <th>IVA</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in productos %}
+                        <tr>
+                            <td>{{ p.COD_Producto or '-' }}</td>
+                            <td>{{ p.Descripcion }}</td>
+                            <td>{{ p.Unidad or '-' }}</td>
+                            <td class="text-end">{{ p.Existencias }}</td>
+                            <td>{{ p.FamiliaDesc or '-' }}</td>
+                            <td>{{ p.TipoDesc or '-' }}</td>
+                            <td class="text-end">{{ p.Costo_Promedio }}</td>
+                            <td class="text-end">{{ p.Precio_Venta }}</td>
+                            <td class="text-center">
+                                {% if p.IVA %}
+                                    <span class="badge bg-success">Sí</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">No</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if p.Estado == 1 %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-2">
+                                    <a href="{{ url_for('editar_producto', id=p.ID_Producto) }}" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil-square"></i> Editar
+                                    </a>
+                                    <a href="{{ url_for('eliminar_producto', id=p.ID_Producto) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Seguro de eliminar?');">
+                                        <i class="bi bi-trash3"></i> Eliminar
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="12" class="text-center text-muted">No hay productos registrados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

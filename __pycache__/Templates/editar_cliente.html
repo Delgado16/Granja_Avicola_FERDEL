@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block title %}Editar Cliente{% endblock %}
+{% block main %}
+<div class="container mt-4">
+    <h3 class="mb-3 text-warning text-center">Editar Cliente</h3>
+    <form method="post" class="row g-3 border rounded-3 p-3 bg-light mx-auto" style="max-width: 700px;">
+        <div class="col-md-6">
+            <label class="form-label">Nombre:</label>
+            <input type="text" name="nombre" class="form-control" value="{{ cliente.Nombre }}" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Teléfono:</label>
+            <input type="text" name="telefono" class="form-control" value="{{ cliente.Telefono or '' }}">
+        </div>
+        <div class="col-md-8">
+            <label class="form-label">Dirección:</label>
+            <input type="text" name="direccion" class="form-control" value="{{ cliente.Direccion or '' }}">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">RUC/Cédula:</label>
+            <input type="text" name="ruc_cedula" class="form-control" value="{{ cliente.RUC_CEDULA or '' }}">
+        </div>
+        <div class="col-12 text-center">
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <a href="{{ url_for('clientes') }}" class="btn btn-secondary ms-2">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

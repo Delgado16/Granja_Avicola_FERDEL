@@ -5,9 +5,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from weasyprint import HTML
 from datetime import datetime, timedelta
+#from helpers import get_current_user
 import traceback
 import os
-import json
 
 app = Flask(__name__)
 
@@ -262,7 +262,7 @@ def register():
     return render_template("register.html")
 
 
-#Ruta de Compra
+#Ruta de Compra ################################################################################
 # Registrar Compra
 @app.route("/compras", methods=["GET", "POST"])
 @login_required
@@ -392,14 +392,34 @@ def compras():
             if tipo_pago == 1:
                 fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
                 db.execute("""
-                    INSERT INTO Cuentas_Por_Pagar (
-                        Fecha, ID_Proveedor, Num_Documento,
-                        Observacion, Fecha_Vencimiento, Tipo_Movimiento,
-                        Monto_Movimiento, IVA, Retencion, ID_Empresa
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
-                """, fecha, proveedor_id, n_factura, observacion,
-                    fecha_vencimiento.strftime("%Y-%m-%d"), tipo_movimiento,
-                    total_compra, id_empresa)
+                        INSERT INTO Cuentas_Por_Pagar (
+                            ID_Movimiento,  # ¡Asegúrate de incluir este campo!
+                            Fecha,
+                            ID_Proveedor,
+                            Num_Documento,
+                            Observacion,
+                            Fecha_Vencimiento,
+                            Tipo_Movimiento,
+                            Monto_Movimiento,
+                            IVA,
+                            Retencion,
+                            ID_Empresa,
+                            Saldo_Pendiente
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, 
+                    movimiento_id,  # Este valor lo obtienes del INSERT en Movimientos_Inventario
+                    fecha,
+                    proveedor_id,
+                    n_factura,
+                    observacion,
+                    fecha_vencimiento.strftime("%Y-%m-%d"),
+                    tipo_movimiento,  # Asegúrate que esto sea un ID numérico
+                    total_compra,
+                    0,  # IVA
+                    0,  # Retención
+                    id_empresa,
+                    total_compra  # Saldo pendiente inicial = monto total
+                    )
 
             flash("✅ Compra registrada correctamente.", "success")
             return redirect(url_for("gestionar_compras"))
@@ -415,8 +435,11 @@ def compras():
     productos = db.execute("SELECT ID_Producto AS id, Descripcion FROM Productos")
     bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
     empresas = db.execute("SELECT ID_Empresa, Descripcion FROM Empresa")
-    return render_template("compras.html", proveedores=proveedores, productos=productos, bodegas=bodegas, empresas=empresas)
-
+    return render_template("compras.html", proveedores=proveedores, 
+                           productos=productos, 
+                           bodegas=bodegas, 
+                           empresas=empresas)
+#################################################################################################
 # Gestionar compras
 @app.route("/gestionar_compras")
 def gestionar_compras():
@@ -523,6 +546,7 @@ def gestionar_compras():
                            productos=productos,
                            inventario_por_bodega=inventario_por_bodega)
 
+##############################################################
 # Editar compra (corregido para manejar los productos del formulario)
 @app.route("/editar_compra/<int:id_compra>", methods=["GET", "POST"])
 @login_required
@@ -750,8 +774,8 @@ def editar_compra(id_compra):
                          empresas=empresas)
 
 
-
-    # Eliminar compra
+###################################################################################
+# Eliminar compra
 
 @app.route("/compras/<int:id>/eliminar")
 def eliminar_compra(id):
@@ -765,6 +789,7 @@ def eliminar_compra(id):
     flash("Compra eliminada correctamente", "success")
     return redirect(url_for("gestionar_compras"))
 #fin de gestionar compras
+###################################################################################
 
 # Ruta de ventas
 @app.route("/stock_por_bodega/<int:id_bodega>")
@@ -786,7 +811,7 @@ def stock_por_bodega(id_bodega):
         return jsonify({"error": str(e)}), 500
 
 # Nueva ruta para obtener productos por bodega (para el select)
-
+#####################################################################################
 @app.route("/ventas", methods=["GET", "POST"])
 @login_required
 def ventas():
@@ -825,21 +850,11 @@ def ventas():
             # === INICIO DE TRANSACCIÓN ===
             db.execute("BEGIN")
 
-            # Calcular el total de la factura primero
-            for i in range(len(productos)):
-                cantidad = float(cantidades[i])
-                costo = float(costos[i])
-                iva = float(ivas[i])
-                descuento = float(descuentos[i])
-                total_venta += (cantidad * costo) - descuento + iva
-
-            # Insertar la factura con el total calculado
+            # Insertar la factura
             db.execute("""
-                INSERT INTO Facturacion (
-                    Fecha, IDCliente, Credito_Contado, Observacion, 
-                    Total_Factura, ID_Empresa
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            """, fecha, cliente_id, tipo_pago, observacion, total_venta, id_empresa)
+                INSERT INTO Facturacion (Fecha, IDCliente, Credito_Contado, Observacion, ID_Empresa)
+                VALUES (?, ?, ?, ?, ?)
+            """, fecha, cliente_id, tipo_pago, observacion, id_empresa)
 
             factura_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
 
@@ -889,6 +904,7 @@ def ventas():
                     return redirect(url_for("ventas"))
 
                 total = (cantidad * costo) - descuento + iva
+                total_venta += total
 
                 # Detalle de facturación
                 db.execute("""
@@ -949,6 +965,7 @@ def ventas():
 
     return render_template("ventas.html", clientes=clientes, productos=productos, bodegas=bodegas, n_factura=n_factura)
 
+############################################################################
 @app.route("/gestionar_ventas", methods=["GET"])
 def gestionar_ventas():
     try:
@@ -985,6 +1002,7 @@ def gestionar_ventas():
         flash(f"❌ Error al cargar las ventas: {e}", "danger")
         return redirect(url_for("ventas"))
 
+######################################################################
 @app.route("/productos_por_bodega/<int:id_bodega>")
 def productos_por_bodega(id_bodega):
     try:
@@ -1000,8 +1018,7 @@ def productos_por_bodega(id_bodega):
         print(f"Error al obtener productos por bodega: {e}")
         return jsonify([])
 
-
-
+########################################################################
 @app.route("/editar_venta/<int:venta_id>", methods=["GET", "POST"])
 @login_required
 def editar_venta(venta_id):
@@ -1221,262 +1238,128 @@ def editar_venta(venta_id):
                          bodegas=bodegas, 
                          n_factura=n_factura)
 #fin de ruta de ventas
-
+#####################################################################################################
 # ruta de cobros
 @app.route("/cobros", methods=["GET"])
 def cobros():
     try:
-        filter_type = request.args.get('filter', 'all')
-        
-        query = """
-            SELECT 
-                dcc.ID_Factura,
-                dcc.Num_Documento AS Factura,
-                c.Nombre AS Cliente,
-                dcc.Monto_Movimiento AS Saldo,
-                strftime('%d/%m/%Y', dcc.Fecha_Vencimiento) AS Fecha_Vencimiento,
-                e.Descripcion AS Empresa
+        cuentas = db.execute("""
+            SELECT dcc.ID_Movimiento, dcc.Num_Documento AS Factura,
+                   c.Nombre AS Cliente,
+                   dcc.Monto_Movimiento AS Saldo,
+                   dcc.Fecha_Vencimiento
             FROM Detalle_Cuentas_Por_Cobrar dcc
-            JOIN Facturacion f ON dcc.ID_Factura = f.ID_Factura
-            JOIN Clientes c ON f.IDCliente = c.ID_Cliente
-            LEFT JOIN Empresa e ON f.ID_Empresa = e.ID_Empresa
-        """
-        
-        if filter_type == 'pending':
-            query += " WHERE dcc.Monto_Movimiento > 0"
-            
-        query += " ORDER BY dcc.Fecha_Vencimiento ASC"
-        
-        cuentas = db.execute(query)
+            JOIN Clientes c ON dcc.ID_Cliente = c.ID_Cliente
+        """)
         return render_template("cobros.html", cuentas=cuentas)
     except Exception as e:
         flash(f"❌ Error al cargar los cobros: {e}", "danger")
-        return redirect(url_for("home"))
-
-@app.route("/historial_pagos/<int:id_factura>")
-def historial_pagos(id_factura):
+        return redirect(url_for("index"))
+    
+@app.route("/historial_pagos/<int:id_venta>")
+def historial_pagos(id_venta):
     try:
-        # 1. Obtener información de la factura con validación
-        factura_data = db.execute("""
-            SELECT 
-                dcc.Num_Documento,
-                dcc.Monto_Movimiento AS Deuda_Original,
-                c.Nombre AS Cliente,
-                dcc.Fecha_Vencimiento
-            FROM Detalle_Cuentas_Por_Cobrar dcc
-            JOIN Clientes c ON dcc.ID_Cliente = c.ID_Cliente
-            WHERE dcc.ID_Factura = ?
-        """, id_factura)
-
-        if not factura_data:
-            flash("La factura no existe", "danger")
-            return redirect(url_for("cobros"))
-
-        factura = factura_data[0]
-
-        # 2. Obtener pagos con detalles en una sola consulta optimizada
         pagos = db.execute("""
-            SELECT 
-                p.ID_Pago,
-                p.Fecha, 
-                p.Monto, 
-                mp.Nombre AS Metodo,
-                p.Comentarios,
-                GROUP_CONCAT(dp.Tipo_Metodo || '|' || dp.Campo || '|' || dp.Valor, ';;') AS Detalles
+            SELECT Fecha, Monto, mp.Nombre AS Metodo
             FROM Pagos_CuentasCobrar p
             JOIN Metodos_Pago mp ON p.ID_MetodoPago = mp.ID_MetodoPago
-            LEFT JOIN Detalles_Pago dp ON p.ID_Pago = dp.ID_Pago
-            WHERE p.ID_Factura = ?
-            GROUP BY p.ID_Pago
-            ORDER BY p.Fecha DESC
-        """, id_factura)
+            WHERE p.ID_Movimiento = ?
+            ORDER BY Fecha DESC
+        """, id_venta)
 
-        # Procesar detalles de pagos
-        processed_pagos = []
-        for pago in pagos:
-            detalles = {}
-            if pago['Detalles']:
-                for detalle in pago['Detalles'].split(';;'):
-                    if detalle:
-                        tipo, campo, valor = detalle.split('|')
-                        if tipo not in detalles:
-                            detalles[tipo] = {}
-                        detalles[tipo][campo] = valor
-            
-            processed_pagos.append({
-                'ID_Pago': pago['ID_Pago'],
-                'Fecha': pago['Fecha'],
-                'Monto': pago['Monto'],
-                'Metodo': pago['Metodo'],
-                'Comentarios': pago['Comentarios'],
-                'Detalles': detalles
-            })
+        factura = db.execute("""
+            SELECT Num_Documento, Monto_Movimiento
+            FROM Detalle_Cuentas_Por_Cobrar
+            WHERE ID_Movimiento = ?
+        """, id_venta)[0]
 
-        # 3. Cálculos exactos
-        total_pagado = sum(pago['Monto'] for pago in processed_pagos)
-        saldo_pendiente = factura['Deuda_Original'] - total_pagado
-        
-        # Validación de consistencia
-        if saldo_pendiente < 0:
-            flash("¡Advertencia! Los pagos exceden la deuda original", "warning")
-
-        print(f"""
-                    DEBUG:
-                    Deuda original: {factura['Deuda_Original']}
-                    Total pagado: {total_pagado}
-                    Saldo calculado: {saldo_pendiente}
-                    """)
-
-        return render_template(
-            "historial_pagos.html",
-            factura=factura,
-            pagos=processed_pagos,
-            total_pagado=total_pagado,
-            saldo_pendiente=saldo_pendiente,
-            deuda_original=factura['Deuda_Original']  # Asegúrate que esto es correcto
-        )
-
+        return render_template("historial_pagos.html", pagos=pagos, factura=factura)
     except Exception as e:
-        flash(f"Error al cargar el historial: {str(e)}", "danger")
+        flash(f"❌ Error al cargar el historial: {e}", "danger")
         return redirect(url_for("cobros"))
 
+# Cancelar manualmente una deuda (deja el saldo en 0)
+@app.route("/cancelar_deuda/<int:id_venta>")
+def cancelar_deuda(id_venta):
+    try:
+        db.execute("""
+            UPDATE Detalle_Cuentas_Por_Cobrar
+            SET Monto_Movimiento = 0
+            WHERE ID_Movimiento = ?
+        """, id_venta)
 
-@app.route("/cancelar_deuda/<int:id_factura>", methods=["POST"])
-def cancelar_deuda(id_factura):
-    if request.method == "POST":
-        try:
-            # Verificar que existe la factura con saldo pendiente
-            factura = db.execute("""
-                SELECT ID_Factura, Monto_Movimiento 
-                FROM Detalle_Cuentas_Por_Cobrar
-                WHERE ID_Factura = ? AND Monto_Movimiento > 0
-            """, id_factura)
-            
-            if not factura:
-                flash("❌ La factura no existe o ya está cancelada", "warning")
-                return redirect(url_for("cobros"))
+        flash("✅ Deuda marcada como cancelada manualmente.", "success")
+        return redirect(url_for("cobros"))
+    except Exception as e:
+        flash(f"❌ Error al cancelar la deuda: {e}", "danger")
+        return redirect(url_for("cobros"))
 
-            # Registrar el pago como "Cancelación manual"
-            db.execute("""
-                INSERT INTO Pagos_CuentasCobrar 
-                (ID_Factura, Fecha, Monto, ID_MetodoPago, Comentarios)
-                VALUES (?, datetime('now'), 
-                       (SELECT Monto_Movimiento FROM Detalle_Cuentas_Por_Cobrar WHERE ID_Factura = ?),
-                       (SELECT ID_MetodoPago FROM Metodos_Pago WHERE Nombre = 'Cancelación Manual' LIMIT 1),
-                       'Cancelación manual de deuda')
-            """, id_factura, id_factura)
-
-            # Actualizar saldo a cero
-            db.execute("""
-                UPDATE Detalle_Cuentas_Por_Cobrar
-                SET Monto_Movimiento = 0
-                WHERE ID_Factura = ?
-            """, id_factura)
-
-            flash("✅ Deuda cancelada manualmente con éxito", "success")
-            return redirect(url_for("historial_pagos", id_factura=id_factura))
-            
-        except Exception as e:
-            flash(f"❌ Error al cancelar la deuda: {e}", "danger")
-            return redirect(url_for("cobros"))
-
-@app.route("/registrar_cobro/<int:id_factura>", methods=["GET", "POST"])
-def registrar_cobro(id_factura):
+# Registrar un nuevo abono/cobro
+@app.route("/registrar_cobro/<int:id_venta>", methods=["GET", "POST"])
+def registrar_cobro(id_venta):
     if request.method == "POST":
         try:
             monto = float(request.form.get("monto", 0))
-            metodo_pago_id = int(request.form.get("metodo_pago"))
+            metodo_pago = request.form.get("metodo_pago")
             comentarios = request.form.get("comentarios", "").strip()
             
-            # Validaciones
+            # Validaciones básicas
             if monto <= 0:
                 flash("❌ El monto debe ser mayor a cero", "danger")
-                return redirect(url_for("registrar_cobro", id_factura=id_factura))
+                return redirect(url_for("registrar_cobro", id_venta=id_venta))
                 
-            # Obtener saldo actual de la factura
+            if not metodo_pago:
+                flash("❌ Debe seleccionar un método de pago", "danger")
+                return redirect(url_for("registrar_cobro", id_venta=id_venta))
+            
+            # Obtener saldo actual
             factura = db.execute("""
-                SELECT Monto_Movimiento 
-                FROM Detalle_Cuentas_Por_Cobrar
-                WHERE ID_Factura = ?
-            """, id_factura)
+                SELECT Monto_Movimiento FROM Detalle_Cuentas_Por_Cobrar
+                WHERE ID_Movimiento = ?
+            """, id_venta)[0]
             
-            if not factura:
-                flash("❌ La factura no existe", "danger")
-                return redirect(url_for("cobros"))
-                
-            saldo_actual = factura[0]["Monto_Movimiento"]
-            
-            if monto > saldo_actual:
-                flash(f"❌ El monto excede el saldo pendiente (${saldo_actual:.2f})", "danger")
-                return redirect(url_for("registrar_cobro", id_factura=id_factura))
-            
-            # Verificar que el método de pago existe
-            metodo = db.execute("""
-                SELECT ID_MetodoPago FROM Metodos_Pago 
-                WHERE ID_MetodoPago = ?
-            """, metodo_pago_id)
-            
-            if not metodo:
-                flash("❌ Método de pago no válido", "danger")
-                return redirect(url_for("registrar_cobro", id_factura=id_factura))
+            if monto > factura["Monto_Movimiento"]:
+                flash("❌ El monto excede el saldo pendiente", "danger")
+                return redirect(url_for("registrar_cobro", id_venta=id_venta))
             
             # Registrar pago
             db.execute("""
                 INSERT INTO Pagos_CuentasCobrar 
-                (ID_Factura, Fecha, Monto, ID_MetodoPago, Comentarios)
+                (ID_Movimiento, Fecha, Monto, ID_MetodoPago, Comentarios)
                 VALUES (?, datetime('now'), ?, ?, ?)
-            """, id_factura, monto, metodo_pago_id, comentarios)
+            """, id_venta, monto, metodo_pago, comentarios)
             
-            # Actualizar saldo de la factura
+            # Actualizar saldo
             db.execute("""
                 UPDATE Detalle_Cuentas_Por_Cobrar
                 SET Monto_Movimiento = Monto_Movimiento - ?
-                WHERE ID_Factura = ?
-            """, monto, id_factura)
+                WHERE ID_Movimiento = ?
+            """, monto, id_venta)
             
             flash("✅ Pago registrado correctamente", "success")
-            return redirect(url_for("historial_pagos", id_factura=id_factura))
+            return redirect(url_for("historial_pagos", id_venta=id_venta))
             
-        except ValueError:
-            flash("❌ Datos del formulario no válidos", "danger")
-            return redirect(url_for("registrar_cobro", id_factura=id_factura))
         except Exception as e:
             flash(f"❌ Error al procesar el pago: {str(e)}", "danger")
-            return redirect(url_for("registrar_cobro", id_factura=id_factura))
+            return redirect(url_for("registrar_cobro", id_venta=id_venta))
     
-    else:  # GET
+    else:
         try:
             # Obtener datos de la factura
             factura = db.execute("""
-                SELECT 
-                    f.ID_Factura,
-                    dcc.Num_Documento, 
-                    dcc.Monto_Movimiento,
-                    c.Nombre AS Cliente,
-                    dcc.Fecha_Vencimiento,
-                    e.Descripcion AS Empresa
-                FROM Facturacion f
-                JOIN Detalle_Cuentas_Por_Cobrar dcc ON f.ID_Factura = dcc.ID_Factura
-                JOIN Clientes c ON f.IDCliente = c.ID_Cliente
-                LEFT JOIN Empresa e ON f.ID_Empresa = e.ID_Empresa
-                WHERE f.ID_Factura = ?
-            """, id_factura)[0]
+                SELECT dcc.ID_Movimiento, dcc.Num_Documento, dcc.Monto_Movimiento,
+                       c.Nombre AS Cliente
+                FROM Detalle_Cuentas_Por_Cobrar dcc
+                JOIN Clientes c ON dcc.ID_Cliente = c.ID_Cliente
+                WHERE dcc.ID_Movimiento = ?
+            """, id_venta)[0]
 
-            # Consulta corregida (Nombre en lugar de Nomre)
-            metodos = db.execute("""
-                SELECT ID_MetodoPago, Nombre 
-                FROM Metodos_Pago 
-                WHERE Nombre != 'Cancelación Manual'
-                ORDER BY Nombre
-            """)
-
-            from datetime import datetime
-            fecha_actual = datetime.now().strftime("%d/%m/%Y")
+            # Obtener métodos de pago disponibles
+            metodos = db.execute("SELECT ID_MetodoPago, Nombre FROM Metodos_Pago ORDER BY Nombre")
 
             return render_template("registrar_cobro.html", 
-                                 cuenta=factura,
-                                 metodos=metodos,
-                                 fecha_actual=fecha_actual)
+                                 factura=factura, 
+                                 metodos=metodos)
 
         except IndexError:
             flash("❌ Factura no encontrada", "danger")
@@ -1484,6 +1367,8 @@ def registrar_cobro(id_factura):
         except Exception as e:
             flash(f"❌ Error al cargar el formulario: {str(e)}", "danger")
             return redirect(url_for("cobros"))
+        
+
 #fin de rutas de cobros
 
 # ruta de pagos
@@ -1497,7 +1382,7 @@ def pagos():
                    cpp.Fecha_Vencimiento
             FROM Cuentas_Por_Pagar cpp
             JOIN Proveedores p ON cpp.ID_Proveedor = p.ID_Proveedor
-            ORDER BY cpp.Fecha_Vencimiento DESC
+            ORDER BY ID_Cuenta DESC
             
         """)
         return render_template("pagos.html", cuentas=cuentas)
@@ -2148,7 +2033,6 @@ def eliminar_cliente(id):
     db.execute("DELETE FROM Clientes WHERE ID_Cliente = ?", id)
     flash("Cliente eliminado correctamente.", "success")
     return redirect(url_for("clientes"))
-
 # Añadir Proveedor
 @app.route("/proveedores", methods=["GET", "POST"])
 def proveedores():

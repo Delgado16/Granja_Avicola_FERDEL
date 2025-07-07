@@ -1,0 +1,73 @@
+{% extends "layout.html" %}
+{% block title %}Editar Producto{% endblock %}
+{% block main %}
+<div class="container mt-4">
+    <h3 class="mb-3 text-warning text-center">Editar Producto</h3>
+    <form method="post" class="row g-3 border rounded-3 p-3 bg-light mx-auto" style="max-width: 900px;">
+        <div class="col-md-3">
+            <label class="form-label">Código:</label>
+            <input type="text" name="cod_producto" class="form-control" value="{{ producto.COD_Producto or '' }}">
+        </div>
+        <div class="col-md-5">
+            <label class="form-label">Descripción:</label>
+            <input type="text" name="descripcion" class="form-control" value="{{ producto.Descripcion }}" required>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Unidad:</label>
+            <select name="unidad" class="form-select" required>
+                <option value="">Unidad</option>
+                {% for u in unidades %}
+                    <option value="{{ u.ID_Unidad }}" {% if producto.Unidad_Medida == u.ID_Unidad %}selected{% endif %}>{{ u.Descripcion }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Familia:</label>
+            <select name="familia" class="form-select">
+                <option value="">Familia</option>
+                {% for f in familias %}
+                    <option value="{{ f.ID_Familia }}" {% if producto.Familia == f.ID_Familia %}selected{% endif %}>{{ f.Descripcion }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Tipo:</label>
+            <select name="tipo" class="form-select">
+                <option value="">Tipo</option>
+                {% for t in tipos %}
+                    <option value="{{ t.ID_TipoProducto }}" {% if producto.Tipo == t.ID_TipoProducto %}selected{% endif %}>{{ t.Descripcion }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Costo Promedio:</label>
+            <input type="number" step="0.01" name="costo_promedio" class="form-control" value="{{ producto.Costo_Promedio }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Precio Venta:</label>
+            <input type="number" step="0.01" name="precio_venta" class="form-control" value="{{ producto.Precio_Venta }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Stock:</label>
+            <input type="number" step="0.01" name="existencias" class="form-control" value="{{ producto.Existencias }}">
+        </div>
+        <div class="col-md-1 d-flex align-items-center">
+            <div class="form-check mt-4">
+                <input class="form-check-input" type="checkbox" name="iva" value="1" id="ivaCheck" {% if producto.IVA %}checked{% endif %}>
+                <label class="form-check-label" for="ivaCheck">IVA</label>
+            </div>
+        </div>
+        <div class="col-md-1">
+            <label class="form-label">Estado:</label>
+            <select name="estado" class="form-select">
+                <option value="1" {% if producto.Estado == 1 %}selected{% endif %}>Activo</option>
+                <option value="0" {% if producto.Estado == 0 %}selected{% endif %}>Inactivo</option>
+            </select>
+        </div>
+        <div class="col-12 text-center">
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <a href="{{ url_for('productos') }}" class="btn btn-secondary ms-2">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
