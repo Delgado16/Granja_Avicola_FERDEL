@@ -7,7 +7,7 @@ from weasyprint import HTML
 from datetime import datetime, timedelta
 #from helpers import get_current_user
 import traceback
-import os
+import json
 
 app = Flask(__name__)
 
@@ -1376,81 +1376,290 @@ def registrar_cobro(id_venta):
 def pagos():
     try:
         cuentas = db.execute("""
-            SELECT cpp.ID_Movimiento, cpp.Num_Documento AS Factura,
-                   p.Nombre AS Proveedor,
-                   cpp.Monto_Movimiento AS Saldo,
-                   cpp.Fecha_Vencimiento
+            SELECT 
+                cpp.ID_Cuenta,
+                cpp.ID_Movimiento,
+                cpp.Num_Documento AS Factura,
+                p.Nombre AS Proveedor,
+                cpp.Monto_Movimiento,
+                cpp.Saldo_Pendiente,  # Usa el campo que YA EXISTE en tu tabla
+                strftime('%d/%m/%Y', cpp.Fecha_Vencimiento) AS Fecha_Vencimiento,
+                CASE 
+                    WHEN cpp.Saldo_Pendiente <= 0 THEN 'Pagado'
+                    WHEN cpp.Saldo_Pendiente < cpp.Monto_Movimiento THEN 'Abonado'
+                    ELSE 'Pendiente'
+                END AS Estado
             FROM Cuentas_Por_Pagar cpp
             JOIN Proveedores p ON cpp.ID_Proveedor = p.ID_Proveedor
-            ORDER BY ID_Cuenta DESC
-            
+            ORDER BY cpp.ID_Cuenta DESC
         """)
         return render_template("pagos.html", cuentas=cuentas)
-
     except Exception as e:
-        flash(f"❌ Error al cargar los pagos: {e}", "danger")
+        flash(f"❌ Error al cargar los pagos: {str(e)}", "danger")
+        app.logger.error(f"Error en pagos: {str(e)}")
         return redirect(url_for("home"))
+    
+@app.route("/actualizar_saldos", methods=["GET"])
+def actualizar_saldos():
+    try:
+        cuentas = db.execute("""
+            SELECT 
+                cpp.ID_Cuenta,
+                cpp.Monto_Movimiento,
+                cpp.Saldo_Pendiente,
+                CASE 
+                    WHEN cpp.Saldo_Pendiente <= 0 THEN 'Pagado'
+                    WHEN cpp.Saldo_Pendiente < cpp.Monto_Movimiento THEN 'Abonado'
+                    ELSE 'Pendiente'
+                END AS Estado
+            FROM Cuentas_Por_Pagar cpp
+            ORDER BY cpp.ID_Cuenta DESC
+        """)
+        return jsonify(cuentas)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
-@app.route("/registrar_pago/<int:id_pago>", methods=["GET", "POST"])
-def registrar_pago(id_pago):
+@app.route("/registrar_pago/<int:id_cuenta>", methods=["GET", "POST"])
+def registrar_pago(id_cuenta):
     if request.method == "POST":
-        monto = request.form["monto"]
-        metodo = request.form["metodo_pago"]
-        fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         try:
+            # Validación y captura de datos básicos
+            monto = float(request.form["monto"])
+            metodo = int(request.form["metodo_pago"])
+            comentarios = request.form.get("comentarios", "").strip()
+
+            # Captura de detalles específicos del método de pago
+            datos_especificos = {}
+            
+            # Efectivo
+            if metodo == 1:
+                datos_especificos = {
+                    'tipo': 'efectivo',
+                    'efectivo_recibido': request.form.get("efectivo_recibido"),
+                    'cambio': float(request.form.get("efectivo_recibido", 0)) - monto if request.form.get("efectivo_recibido") else None
+                }
+            
+            # Transferencia Bancaria
+            elif metodo == 2:
+                datos_especificos = {
+                    'tipo': 'transferencia',
+                    'numero_transferencia': request.form.get("numero_transferencia"),
+                    'banco': request.form.get("banco"),
+                    'referencia': request.form.get("referencia", "")
+                }
+            
+            # Tarjeta
+            elif metodo == 3:
+                datos_especificos = {
+                    'tipo': 'tarjeta',
+                    'tipo_tarjeta': request.form.get("tipo_tarjeta"),
+                    'ultimos_digitos': request.form.get("ultimos_digitos"),
+                    'autorizacion': request.form.get("autorizacion", "")
+                }
+
+            # Serialización de detalles específicos
+            detalles_metodo = json.dumps(datos_especificos, ensure_ascii=False)
+
+            # Verificación de saldo disponible
+            factura = db.execute("""
+                SELECT Monto_Movimiento, Saldo_Pendiente 
+                FROM Cuentas_Por_Pagar 
+                WHERE ID_Cuenta = ?
+            """, id_cuenta)
+            
+            if not factura:
+                flash("❌ Factura no encontrada", "danger")
+                return redirect(url_for("pagos"))
+                
+            factura = factura[0]
+            saldo_actual = float(factura["Saldo_Pendiente"] or factura["Monto_Movimiento"])
+
+            # Validaciones de negocio
+            if monto <= 0:
+                flash("❌ El monto debe ser mayor a cero", "danger")
+                return redirect(url_for("registrar_pago", id_cuenta=id_cuenta))
+                
+            if monto > saldo_actual:
+                flash(f"❌ El monto excede el saldo pendiente (${saldo_actual:.2f})", "danger")
+                return redirect(url_for("registrar_pago", id_cuenta=id_cuenta))
+
+            # Registro del pago
+            fecha_pago = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
             db.execute("""
-                INSERT INTO Pagos_CuentasPagar (ID_Movimiento, Fecha, Monto, ID_MetodoPago)
-                VALUES (?, ?, ?, ?)
-            """, id_pago, fecha, monto, metodo)
+                INSERT INTO Pagos_CuentasPagar 
+                (ID_Cuenta, Fecha, Monto, ID_MetodoPago, Comentarios, Detalles_Metodo)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, id_cuenta, fecha_pago, monto, metodo, comentarios, detalles_metodo)
+
+            # Actualización del saldo pendiente
+            nuevo_saldo = saldo_actual - monto
+            estado_pago = 2 if nuevo_saldo <= 0 else 1  # 2 = Pagado, 1 = Parcial
 
             db.execute("""
-                UPDATE Cuentas_Por_Pagar
-                SET Monto_Movimiento = Monto_Movimiento - ?
-                WHERE ID_Movimiento = ?
-            """, monto, id_pago)
+                UPDATE Cuentas_Por_Pagar 
+                SET Saldo_Pendiente = ?
+                WHERE ID_Cuenta = ?
+            """, max(0, nuevo_saldo), id_cuenta)
 
             flash("✅ Pago registrado correctamente", "success")
-            return redirect(url_for("pagos"))
+            return redirect(url_for("detalle_cuenta", id_cuenta=id_cuenta))
+            
+        except ValueError as e:
+            flash(f"❌ Error en los datos numéricos: {str(e)}", "danger")
+            return redirect(url_for("registrar_pago", id_cuenta=id_cuenta))
         except Exception as e:
-            flash(f"❌ Error al registrar el pago: {e}", "danger")
-            return redirect(url_for("pagos"))
-
-    else:
+            flash(f"❌ Error al registrar pago: {str(e)}", "danger")
+            app.logger.error(f"Error en registrar_pago: {str(e)}")
+            return redirect(url_for("registrar_pago", id_cuenta=id_cuenta))
+    
+    # Método GET - Mostrar formulario
+    try:
+        # Obtener datos de la cuenta/proveedor
         factura = db.execute("""
-            SELECT cpp.ID_Movimiento, cpp.Num_Documento, cpp.Monto_Movimiento,
-                   p.Nombre AS Proveedor
+            SELECT 
+                cpp.ID_Cuenta, 
+                cpp.ID_Movimiento, 
+                cpp.Num_Documento, 
+                cpp.Monto_Movimiento,
+                cpp.Saldo_Pendiente,
+                p.Nombre AS Proveedor,
+                p.ID_Proveedor
             FROM Cuentas_Por_Pagar cpp
             JOIN Proveedores p ON cpp.ID_Proveedor = p.ID_Proveedor
-            WHERE cpp.ID_Movimiento = ?
-        """, id_pago)[0]
-
-        metodos = db.execute("SELECT ID_MetodoPago, Nombre FROM Metodos_Pago")
-
-        return render_template("registrar_pago.html", factura=factura, metodos=metodos)
-
-@app.route("/historial_pagos_pagar/<int:id_pago>")
-def historial_pagos_pagar(id_pago):
-    try:
-        pagos = db.execute("""
-            SELECT Fecha, Monto, mp.Nombre AS Metodo
+            WHERE cpp.ID_Cuenta = ?
+        """, id_cuenta)[0]
+        
+        # Obtener métodos de pago disponibles
+        metodos_pago = db.execute("""
+            SELECT ID_MetodoPago, Nombre 
+            FROM Metodos_Pago 
+            ORDER BY Nombre
+        """)
+        
+        # Obtener historial de pagos anteriores
+        historial_pagos = db.execute("""
+            SELECT 
+                p.ID_Pago,
+                p.Fecha,
+                p.Monto,
+                mp.Nombre AS MetodoPago,
+                p.Comentarios
             FROM Pagos_CuentasPagar p
             JOIN Metodos_Pago mp ON p.ID_MetodoPago = mp.ID_MetodoPago
-            WHERE p.ID_Movimiento = ?
-            ORDER BY Fecha DESC
-        """, id_pago)
+            WHERE p.ID_Cuenta = ?
+            ORDER BY p.Fecha DESC
+        """, id_cuenta)
 
-        factura = db.execute("""
-            SELECT Num_Documento, Monto_Movimiento
-            FROM Cuentas_Por_Pagar
-            WHERE ID_Movimiento = ?
-        """, id_pago)[0]
-
-        return render_template("historial_pagos_pagar.html", pagos=pagos, factura=factura)
-
+        return render_template(
+            "registrar_pago.html",
+            factura=factura,
+            metodos=metodos_pago,
+            historial=historial_pagos
+        )
+        
+    except IndexError:
+        flash("❌ Factura no encontrada", "danger")
+        return redirect(url_for("pagos"))
     except Exception as e:
-        flash(f"❌ Error al cargar historial de pagos: {e}", "danger")
+        flash(f"❌ Error al cargar datos: {str(e)}", "danger")
+        app.logger.error(f"Error en GET registrar_pago: {str(e)}")
+        return redirect(url_for("pagos"))
+
+# Ruta para ver el detalle de la cuenta con los pagos
+@app.route("/detalle_cuenta/<int:id_cuenta>")
+def detalle_cuenta(id_cuenta):
+    try:
+        # Obtener información de la cuenta
+        cuenta = db.execute("""
+            SELECT 
+                cpp.*,
+                p.Nombre AS Proveedor,
+                p.RFC,
+                p.Telefono
+            FROM Cuentas_Por_Pagar cpp
+            JOIN Proveedores p ON cpp.ID_Proveedor = p.ID_Proveedor
+            WHERE cpp.ID_Cuenta = ?
+        """, id_cuenta)[0]
+        
+        # Obtener todos los pagos asociados
+        pagos = db.execute("""
+            SELECT 
+                p.*,
+                mp.Nombre AS MetodoPago
+            FROM Pagos_CuentasPagar p
+            JOIN Metodos_Pago mp ON p.ID_MetodoPago = mp.ID_MetodoPago
+            WHERE p.ID_Cuenta = ?
+            ORDER BY p.Fecha DESC
+        """, id_cuenta)
+        
+        # Procesar detalles de cada pago
+        for pago in pagos:
+            if pago['Detalles_Metodo']:
+                pago['Detalles'] = json.loads(pago['Detalles_Metodo'])
+            else:
+                pago['Detalles'] = {}
+        
+        return render_template(
+            "detalle_cuenta.html",
+            cuenta=cuenta,
+            pagos=pagos
+        )
+        
+    except IndexError:
+        flash("❌ Cuenta no encontrada", "danger")
+        return redirect(url_for("pagos"))
+    except Exception as e:
+        flash(f"❌ Error al cargar detalles: {str(e)}", "danger")
+        app.logger.error(f"Error en detalle_cuenta: {str(e)}")
+        return redirect(url_for("pagos"))
+
+
+@app.route("/historial_pagos_pagar/<int:id_cuenta>")
+def historial_pagos_pagar(id_cuenta):
+    try:
+        # Obtener información de la cuenta
+        cuenta = db.execute("""
+            SELECT Num_Documento, Monto_Movimiento, Saldo_Pendiente
+            FROM Cuentas_Por_Pagar
+            WHERE ID_Cuenta = ?
+        """, id_cuenta)[0]
+
+        # Obtener historial de pagos
+        pagos = db.execute("""
+            SELECT 
+                p.Fecha, 
+                p.Monto, 
+                mp.Nombre AS Metodo,
+                p.Comentarios,
+                p.Detalles_Metodo
+            FROM Pagos_CuentasPagar p
+            JOIN Metodos_Pago mp ON p.ID_MetodoPago = mp.ID_MetodoPago
+            WHERE p.ID_Cuenta = ?
+            ORDER BY p.Fecha DESC
+        """, id_cuenta)
+
+        # Procesar detalles JSON
+        for pago in pagos:
+            if pago['Detalles_Metodo']:
+                pago['Detalles'] = json.loads(pago['Detalles_Metodo'])
+            else:
+                pago['Detalles'] = {}
+
+        return render_template(
+            "historial_pagos_pagar.html",
+            cuenta=cuenta,
+            pagos=pagos,
+            id_cuenta=id_cuenta
+        )
+
+    except IndexError:
+        flash("❌ Cuenta no encontrada", "danger")
+        return redirect(url_for("pagos"))
+    except Exception as e:
+        flash(f"❌ Error al cargar historial de pagos: {str(e)}", "danger")
+        app.logger.error(f"Error en historial_pagos_pagar: {str(e)}")
         return redirect(url_for("pagos"))
 #fin de ruta de pagos
 
