@@ -167,6 +167,27 @@
         margin-bottom: 1rem;
     }
 
+    /* Total de la compra */
+    .total-container {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #dee2e6;
+    }
+
+    .total-label {
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .total-value {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #0d6efd;
+    }
+
     /* Validación */
     .is-invalid {
         border-color: #dc3545;
@@ -230,6 +251,18 @@
 
         .stock-container {
             padding: var(--card-padding-sm);
+        }
+
+        .total-container {
+            padding: 0.75rem;
+        }
+
+        .total-label {
+            font-size: 1rem;
+        }
+
+        .total-value {
+            font-size: 1.1rem;
         }
     }
 
@@ -461,19 +494,19 @@
                                             <div class="invalid-feedback">Seleccione un producto</div>
                                         </td>
                                         <td data-label="Cantidad">
-                                            <input type="number" name="cantidades[]" step="any" min="0" class="form-control" required>
+                                            <input type="number" name="cantidades[]" step="any" min="0" class="form-control" required oninput="calcularTotal()">
                                             <div class="invalid-feedback">Ingrese cantidad</div>
                                         </td>
                                         <td data-label="Costo">
-                                            <input type="number" name="costos[]" step="any" min="0" class="form-control" required>
+                                            <input type="number" name="costos[]" step="any" min="0" class="form-control" required oninput="calcularTotal()">
                                             <div class="invalid-feedback">Ingrese costo</div>
                                         </td>
                                         <td data-label="IVA">
-                                            <input type="number" name="ivas[]" step="any" min="0" class="form-control" required>
+                                            <input type="number" name="ivas[]" step="any" min="0" class="form-control" required oninput="calcularTotal()">
                                             <div class="invalid-feedback">Ingrese IVA</div>
                                         </td>
                                         <td data-label="Descuento">
-                                            <input type="number" name="descuentos[]" step="any" min="0" class="form-control" required>
+                                            <input type="number" name="descuentos[]" step="any" min="0" class="form-control" required oninput="calcularTotal()">
                                             <div class="invalid-feedback">Ingrese descuento</div>
                                         </td>
                                         <td>
@@ -484,6 +517,14 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Total de la compra -->
+                    <div class="total-container mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="total-label">Total de la compra:</span>
+                            <span class="total-value" id="total-compra">$0.00</span>
                         </div>
                     </div>
 
@@ -529,6 +570,7 @@
         nuevaFila.querySelectorAll("input").forEach(input => {
             input.value = "";
             input.classList.remove("is-invalid");
+            input.oninput = calcularTotal; // Añadir evento para calcular total
         });
         
         // Resetear el select
@@ -556,6 +598,9 @@
         if (window.innerWidth <= 576) {
             nuevaFila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+        
+        // Calcular el total después de agregar la fila
+        calcularTotal();
     }
 
     function eliminarFila(boton) {
@@ -563,9 +608,40 @@
         const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
         if (tabla.rows.length > 1) {
             fila.remove();
+            calcularTotal(); // Recalcular el total después de eliminar
         } else {
             mostrarAlerta('warning', 'Advertencia!', 'Debe haber al menos un producto en la compra.');
         }
+    }
+
+    function calcularTotal() {
+        const filas = document.querySelectorAll("#tabla-productos tbody tr");
+        let total = 0;
+        
+        filas.forEach(fila => {
+            const cantidad = parseFloat(fila.querySelector('input[name="cantidades[]"]').value) || 0;
+            const costo = parseFloat(fila.querySelector('input[name="costos[]"]').value) || 0;
+            const iva = parseFloat(fila.querySelector('input[name="ivas[]"]').value) || 0;
+            const descuento = parseFloat(fila.querySelector('input[name="descuentos[]"]').value) || 0;
+            
+            // Calcular subtotal (costo * cantidad)
+            const subtotal = costo * cantidad;
+            
+            // Calcular IVA (subtotal * iva / 100)
+            const valorIva = subtotal * (iva / 100);
+            
+            // Calcular descuento (subtotal * descuento / 100)
+            const valorDescuento = subtotal * (descuento / 100);
+            
+            // Sumar al total (subtotal + iva - descuento)
+            total += subtotal + valorIva - valorDescuento;
+        });
+        
+        // Formatear el total con 2 decimales y separador de miles
+        document.getElementById('total-compra').textContent = '$' + total.toLocaleString('es-ES', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
     }
 
     function mostrarAlerta(tipo, titulo, mensaje) {
@@ -720,6 +796,9 @@
         document.getElementById("id_bodega").addEventListener("change", function() {
             actualizarStockVisual(this.value);
         });
+
+        // Calcular total inicial
+        calcularTotal();
     });
 </script>
 {% endblock %}
