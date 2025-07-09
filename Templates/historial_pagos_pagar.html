@@ -3,32 +3,63 @@
 
 {% block main %}
 <div class="container mt-5">
-    <h2 class="mb-4">Historial de Pagos - Factura {{ factura.Num_Documento }}</h2>
-    <p><strong>Saldo Actual:</strong> ${{ "%.2f"|format(factura.Monto_Movimiento) }}</p>
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0">Historial de Pagos - Factura {{ cuenta.Num_Documento }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <p><strong>Monto Total:</strong> ${{ "%.2f"|format(cuenta.Monto_Movimiento) }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Saldo Pendiente:</strong> ${{ "%.2f"|format(cuenta.Saldo_Pendiente) }}</p>
+                </div>
+            </div>
 
-    {% if pagos %}
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Monto</th>
-                    <th>Método de Pago</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for pago in pagos %}
-                <tr>
-                    <td>{{ pago.Fecha }}</td>
-                    <td>${{ "%.2f"|format(pago.Monto) }}</td>
-                    <td>{{ pago.Metodo }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No hay pagos registrados para esta factura.</p>
-    {% endif %}
+            {% if pagos %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Monto</th>
+                                <th>Método de Pago</th>
+                                <th>Comentarios</th>
+                                <th>Detalles</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pago in pagos %}
+                            <tr>
+                                <td>{{ pago.Fecha }}</td>
+                                <td>${{ "%.2f"|format(pago.Monto) }}</td>
+                                <td>{{ pago.Metodo }}</td>
+                                <td>{{ pago.Comentarios or '' }}</td>
+                                <td>
+                                    {% if pago.Detalles %}
+                                        {% for key, value in pago.Detalles.items() %}
+                                            <strong>{{ key }}:</strong> {{ value }}<br>
+                                        {% endfor %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    No hay pagos registrados para esta factura.
+                </div>
+            {% endif %}
 
-    <a href="{{ url_for('pagos') }}" class="btn btn-secondary mt-3">Volver</a>
+            <div class="mt-4">
+                <a href="{{ url_for('pagos') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver al listado
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

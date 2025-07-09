@@ -1382,8 +1382,9 @@ def pagos():
                 cpp.Num_Documento AS Factura,
                 p.Nombre AS Proveedor,
                 cpp.Monto_Movimiento,
-                cpp.Saldo_Pendiente,  # Usa el campo que YA EXISTE en tu tabla
-                strftime('%d/%m/%Y', cpp.Fecha_Vencimiento) AS Fecha_Vencimiento,
+                cpp.Saldo_Pendiente,
+                cpp.Fecha_Vencimiento AS Fecha_Vencimiento_Original,
+                strftime('%d/%m/%Y', cpp.Fecha_Vencimiento) AS Fecha_Vencimiento_Formateada,
                 CASE 
                     WHEN cpp.Saldo_Pendiente <= 0 THEN 'Pagado'
                     WHEN cpp.Saldo_Pendiente < cpp.Monto_Movimiento THEN 'Abonado'
@@ -1538,11 +1539,11 @@ def registrar_pago(id_cuenta):
             ORDER BY Nombre
         """)
         
-        # Obtener historial de pagos anteriores
+        # Obtener historial de pagos anteriores (corregido)
         historial_pagos = db.execute("""
             SELECT 
                 p.ID_Pago,
-                p.Fecha,
+                p.Fecha,  # Obtenemos directamente el campo Fecha
                 p.Monto,
                 mp.Nombre AS MetodoPago,
                 p.Comentarios
@@ -1551,6 +1552,14 @@ def registrar_pago(id_cuenta):
             WHERE p.ID_Cuenta = ?
             ORDER BY p.Fecha DESC
         """, id_cuenta)
+
+        # Convertir fechas string a datetime si es necesario
+        for pago in historial_pagos:
+            if isinstance(pago['Fecha'], str):
+                try:
+                    pago['Fecha'] = datetime.strptime(pago['Fecha'], '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    pago['Fecha'] = None
 
         return render_template(
             "registrar_pago.html",
@@ -1603,6 +1612,7 @@ def detalle_cuenta(id_cuenta):
         
         return render_template(
             "detalle_cuenta.html",
+            factura=cuenta,
             cuenta=cuenta,
             pagos=pagos
         )

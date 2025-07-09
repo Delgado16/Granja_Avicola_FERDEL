@@ -38,7 +38,7 @@
                 </div>
             </div>
 
-            <!-- Historial de pagos (nuevo) -->
+            <!-- Historial de pagos -->
             {% if historial %}
             <div class="mb-4">
                 <h6 class="d-flex align-items-center mb-3">
@@ -57,7 +57,17 @@
                         <tbody>
                             {% for pago in historial %}
                             <tr>
-                                <td>{{ pago.Fecha.strftime('%d/%m/%Y %H:%M') if pago.Fecha else pago.Fecha }}</td>
+                                <td>
+                                    {% if pago.Fecha %}
+                                        {% if pago.Fecha is string %}
+                                            {{ pago.Fecha[:16] }}
+                                        {% else %}
+                                            {{ pago.Fecha.strftime('%d/%m/%Y %H:%M') }}
+                                        {% endif %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
                                 <td>${{ "%0.2f"|format(pago.Monto) }}</td>
                                 <td>{{ pago.MetodoPago }}</td>
                                 <td>{{ pago.Comentarios|truncate(20) if pago.Comentarios else '-' }}</td>
