@@ -195,6 +195,7 @@
                             <th data-label="Cliente">Cliente</th>
                             <th data-label="Pago">Tipo de Pago</th>
                             <th data-label="Productos">Productos</th>
+                            <th data-label="Total">Total</th>
                             <th data-label="Acciones">Acciones</th>
                         </tr>
                     </thead>
@@ -212,6 +213,7 @@
                                     {% endfor %}
                                 </ul>
                             </td>
+                            <td data-label="Total" class="font-weight-bold">{{ venta.TotalFormateado }}</td>
                             <td data-label="Acciones">
                                 <div class="d-flex flex-wrap justify-content-center">
                                     <a href="/ventas/{{ venta.ID_Movimiento }}"
@@ -238,7 +240,7 @@
         // Configurar data-labels para la tabla en móviles
         document.querySelectorAll("tbody tr").forEach(row => {
             const celdas = row.querySelectorAll("td");
-            const etiquetas = ["Fecha", "Factura", "Cliente", "Pago", "Productos", "Acciones"];
+            const etiquetas = ["Fecha", "Factura", "Cliente", "Pago", "Productos", "Total", "Acciones"];
 
             celdas.forEach((celda, index) => {
                 if (index < etiquetas.length) {

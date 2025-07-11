@@ -231,13 +231,13 @@
                             <td data-label="Acciones">
                                 <div class="d-flex flex-wrap gap-1 justify-content-center">
                                     {% if cuenta.Saldo > 0 %}
-                                        <a href="{{ url_for('registrar_cobro', id_venta=cuenta.ID_Movimiento) }}" 
+                                        <a href="{{ url_for('registrar_cobro', id_movimiento=cuenta.ID_Movimiento) }}" 
                                            class="btn btn-success btn-sm" 
                                            data-bs-toggle="tooltip" 
                                            title="Registrar cobro">
                                             <i class="bi bi-cash-coin d-none d-md-inline"></i> Abono
                                         </a>
-                                        <a href="{{ url_for('cancelar_deuda', id_venta=cuenta.ID_Movimiento) }}" 
+                                        <a href="{{ url_for('historial_pagos', id_movimiento=cuenta.ID_Movimiento) }}" 
                                            class="btn btn-danger btn-sm"
                                            onclick="return confirm('¿Estás seguro que quieres cancelar esta deuda manualmente?');"
                                            data-bs-toggle="tooltip" 
@@ -247,7 +247,7 @@
                                     {% else %}
                                         <span class="text-muted small d-none d-md-inline">Pago completo</span>
                                     {% endif %}
-                                    <a href="{{ url_for('historial_pagos', id_venta=cuenta.ID_Movimiento) }}" 
+                                    <a href="#" 
                                        class="btn btn-info btn-sm"
                                        data-bs-toggle="tooltip" 
                                        title="Historial de pagos">

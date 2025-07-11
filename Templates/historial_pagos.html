@@ -79,7 +79,16 @@
                     <div class="col-md-6 mb-2">
                         <strong>Monto Total:</strong> 
                         <span class="fw-bold">
-                            C$ {{ "{:,.2f}".format(factura.Monto_Movimiento).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                            C$ {{ "%.2f"|format(factura.Monto_Movimiento|float) }}
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Cliente:</strong> {{ factura.Cliente }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Total Pagado:</strong> 
+                        <span class="fw-bold">
+                            C$ {{ "%.2f"|format(total_pagado|float) }}
                         </span>
                     </div>
                 </div>
@@ -94,6 +103,7 @@
                             <th>Monto</th>
                             <th>Método</th>
                             <th>Detalles</th>
+                            <th>Comentarios</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -102,19 +112,22 @@
                             <td>{{ pago.Fecha }}</td>
                             <td>
                                 <span class="fw-bold">
-                                    C$ {{ "{:,.2f}".format(pago.Monto).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                                    C$ {{ "%.2f"|format(pago.Monto|float) }}
                                 </span>
                             </td>
                             <td>{{ pago.Metodo }}</td>
                             <td>
-                                {% if pago.Metodo == 'Efectivo' %}
-                                    Recibido: C$ {{ "{:,.2f}".format(pago.Detalles.recibido).replace(",", "X").replace(".", ",").replace("X", ".") }}
-                                {% elif pago.Metodo == 'Transferencia Bancaria' %}
-                                    Ref: {{ pago.Detalles.numero }} ({{ pago.Detalles.banco }})
-                                {% elif pago.Metodo == 'Tarjeta' %}
-                                    {{ 'Crédito' if pago.Detalles.tipo_tarjeta == 'credito' else 'Débito' }} ····{{ pago.Detalles.ultimos_digitos }}
+                                {% if pago.Metodo == 'Efectivo' and pago.Detalles.efectivo_recibido %}
+                                    Recibido: C$ {{ "%.2f"|format(pago.Detalles.efectivo_recibido|float) }}
+                                {% elif pago.Metodo == 'Transferencia' and pago.Detalles.numero_transferencia %}
+                                    Ref: {{ pago.Detalles.numero_transferencia }}
+                                {% elif pago.Metodo == 'Tarjeta' and pago.Detalles.ultimos_digitos %}
+                                    ····{{ pago.Detalles.ultimos_digitos }}
+                                {% else %}
+                                    {{ pago.Detalles.raw if pago.Detalles.raw else 'Sin detalles' }}
                                 {% endif %}
                             </td>
+                            <td>{{ pago.Comentarios }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -1,171 +1,134 @@
 {% extends "layout.html" %}
-{% block title %}Registrar Abono{% endblock %}
+{% block title %}Registrar Cobro{% endblock %}
 
 {% block main %}
-<style>
-    :root {
-        --card-max-width: 800px;
-        --card-padding: 1.5rem;
-    }
-
-    .container-fluid.my-3 {
-        max-width: var(--card-max-width);
-        margin: 2rem auto;
-        padding: var(--card-padding);
-    }
-
-    .card {
-        border-radius: 0.5rem;
-        box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.1);
-        border: none;
-    }
-
-    .card-header {
-        background-color: #0d6efd;
-        color: white;
-        border-radius: 0.5rem 0.5rem 0 0 !important;
-        padding: 1rem 1.5rem;
-    }
-
-    .card-body {
-        padding: 1.5rem;
-    }
-
-    .form-label {
-        font-weight: 500;
-    }
-
-    .required-field::after {
-        content: " *";
-        color: #dc3545;
-    }
-
-    .btn-submit {
-        min-width: 120px;
-    }
-
-    .campos-adicionales {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
-        border: 1px solid #dee2e6;
-    }
-
-    @media (max-width: 768px) {
-        .container-fluid.my-3 {
-            padding: 1rem;
-        }
-        
-        .card-body {
-            padding: 1rem;
-        }
-    }
-</style>
-
-<div class="container-fluid my-3">
-    <div class="card shadow-lg">
-        <div class="card-header">
-            <h2 class="mb-0">
-                <i class="bi bi-cash-coin me-2"></i>Registrar Abono
-            </h2>
+<div class="container" style="max-width: 700px; margin-top: 30px;">
+    <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-header bg-primary text-white rounded-top-4">
+            <h3 class="text-center my-2" style="font-weight: 600;">
+                <i class="bi bi-cash-coin me-2"></i>Registrar Cobro
+            </h3>
         </div>
-        <div class="card-body">
-            <!-- Información de la factura -->
+        
+        <div class="card-body p-4">
+            <!-- Encabezado informativo -->
             <div class="alert alert-info mb-4">
+                <h5 class="alert-heading d-flex align-items-center">
+                    <i class="bi bi-receipt me-2"></i>
+                    Detalles de la Factura
+                </h5>
+                <hr>
                 <div class="row">
-                    <div class="col-md-6 mb-2">
-                        <strong>Cliente:</strong> {{ factura.Cliente }}
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong><i class="bi bi-person me-2"></i>Cliente:</strong><br>
+                        <span class="ms-4">{{ factura.Cliente }}</span></p>
+                        <p class="mb-2"><strong><i class="bi bi-hash me-2"></i>ID Movimiento:</strong>
+                        <span class="ms-4">{{ factura.ID_Movimiento }}</span></p>
                     </div>
-                    <div class="col-md-6 mb-2">
-                        <strong>Factura:</strong> {{ factura.Num_Documento }}
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong><i class="bi bi-file-text me-2"></i>Factura:</strong><br>
+                        <span class="ms-4">{{ factura.Num_Documento }}</span></p>
+                        <p class="mb-2"><strong><i class="bi bi-calendar-x me-2"></i>Vencimiento:</strong>
+                        <span class="ms-4">{{ factura.Fecha_Vencimiento }}</span></p>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-md-6 mb-2">
-                        <strong>Saldo Pendiente:</strong> 
-                        <span class="text-danger fw-bold">
-                            C$ {{ "{:,.2f}".format(factura.Monto_Movimiento).replace(",", "X").replace(".", ",").replace("X", ".") }}
-                        </span>
-                    </div>
-                    <div class="col-md-6 mb-2">
-                        <strong>Fecha:</strong> {{ fecha_actual }}
-                    </div>
+                <div class="mt-2">
+                    <p class="mb-0"><strong><i class="bi bi-currency-dollar me-2"></i>Saldo Pendiente:</strong>
+                    <span class="badge bg-primary rounded-pill fs-6 ms-2">C${{ "%0.2f"|format(factura.Monto_Movimiento) }}</span></p>
                 </div>
             </div>
 
-            <!-- Formulario de abono -->
-            <form method="POST" action="{{ url_for('registrar_cobro', id_venta=factura.ID_Movimiento) }}">
-                <div class="mb-3">
-                    <label for="monto" class="form-label required-field">Monto del Abono</label>
-                    <div class="input-group">
-                        <span class="input-group-text">C$</span>
-                        <input type="number" class="form-control" id="monto" name="monto" 
-                               step="0.01" min="0.01" max="{{ factura.Monto_Movimiento }}" 
-                               placeholder="Ingrese el monto a abonar" required>
+            <!-- Formulario de cobro -->
+            <form method="post" action="{{ url_for('registrar_cobro', id_movimiento=factura.ID_Movimiento) }}" class="needs-validation" novalidate>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label for="monto" class="form-label fw-bold">
+                            <i class="bi bi-currency-dollar me-2"></i>Monto a Cobrar
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">C$</span>
+                            <input type="number" class="form-control py-2" id="monto" name="monto" 
+                                   step="0.01" min="0.01" max="{{ factura.Monto_Movimiento }}" 
+                                   placeholder="0.00" required>
+                            <div class="invalid-feedback">
+                                Ingrese un monto válido (máximo C${{ "%0.2f"|format(factura.Monto_Movimiento) }})
+                            </div>
+                        </div>
+                        <small class="text-muted">Monto máximo disponible: C${{ "%0.2f"|format(factura.Monto_Movimiento) }}</small>
                     </div>
-                    <small class="text-muted">Máximo permitido: C$ {{ "{:,.2f}".format(factura.Monto_Movimiento).replace(",", "X").replace(".", ",").replace("X", ".") }}</small>
-                </div>
-
-                <div class="mb-3">
-                    <label for="metodo_pago" class="form-label required-field">Método de Pago</label>
-                    <select class="form-select" id="metodo_pago" name="metodo_pago" required 
-                            onchange="mostrarCamposAdicionales(this.value)">
-                        <option value="" selected disabled>Seleccione un método</option>
-                        <option value="1">Efectivo</option>
-                        <option value="2">Transferencia Bancaria</option>
-                        <option value="3">Tarjeta (Crédito/Débito)</option>
-                    </select>
+                    
+                    <div class="col-md-6">
+                        <label for="metodo_pago" class="form-label fw-bold required-field">
+                            <i class="bi bi-credit-card me-2"></i>Método de Pago
+                        </label>
+                        <select class="form-select py-2" id="metodo_pago" name="metodo_pago" 
+                                required onchange="mostrarCamposAdicionales(this.value)">
+                            <option value="" disabled selected>Seleccione...</option>
+                            {% for metodo in metodos %}
+                            <option value="{{ metodo.ID_MetodoPago }}">{{ metodo.Nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">
+                            Seleccione un método de pago
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Campos adicionales dinámicos -->
-                <div id="campos-efectivo" class="campos-adicionales" style="display: none;">
-                    <h6><i class="bi bi-cash-coin me-1"></i> Detalles de Pago en Efectivo</h6>
+                <div id="campos-efectivo" class="campos-adicionales mb-3 p-3 bg-light rounded" style="display: none;">
+                    <h6 class="d-flex align-items-center text-primary">
+                        <i class="bi bi-cash-stack me-2"></i> Detalles de Pago en Efectivo
+                    </h6>
                     <div class="mb-3">
                         <label for="efectivo_recibido" class="form-label">Efectivo Recibido</label>
-                        <input type="number" class="form-control" id="efectivo_recibido" name="efectivo_recibido" step="0.01">
+                        <div class="input-group">
+                            <span class="input-group-text">C$</span>
+                            <input type="number" class="form-control" id="efectivo_recibido" 
+                                   name="efectivo_recibido" step="0.01" min="0">
+                        </div>
+                        <small class="text-muted">Ingrese el monto recibido para calcular cambio</small>
                     </div>
                 </div>
 
-                <div id="campos-transferencia" class="campos-adicionales" style="display: none;">
-                    <h6><i class="bi bi-bank me-1"></i> Detalles de Transferencia</h6>
+                <div id="campos-transferencia" class="campos-adicionales mb-3 p-3 bg-light rounded" style="display: none;">
+                    <h6 class="d-flex align-items-center text-primary">
+                        <i class="bi bi-bank me-2"></i> Detalles de Transferencia
+                    </h6>
                     <div class="mb-3">
-                        <label for="numero_transferencia" class="form-label">Número de Transferencia</label>
-                        <input type="text" class="form-control" id="numero_transferencia" name="numero_transferencia">
-                    </div>
-                    <div class="mb-3">
-                        <label for="banco" class="form-label">Banco Emisor</label>
-                        <input type="text" class="form-control" id="banco" name="banco">
+                        <label for="detalles_transferencia" class="form-label">Número de Transferencia</label>
+                        <input type="text" class="form-control" id="detalles_transferencia" 
+                               name="detalles_metodo" placeholder="Ej: TRX-123456">
                     </div>
                 </div>
 
-                <div id="campos-tarjeta" class="campos-adicionales" style="display: none;">
-                    <h6><i class="bi bi-credit-card me-1"></i> Detalles de Tarjeta</h6>
+                <div id="campos-tarjeta" class="campos-adicionales mb-3 p-3 bg-light rounded" style="display: none;">
+                    <h6 class="d-flex align-items-center text-primary">
+                        <i class="bi bi-credit-card-2-front me-2"></i> Detalles de Tarjeta
+                    </h6>
                     <div class="mb-3">
-                        <label for="tipo_tarjeta" class="form-label">Tipo de Tarjeta</label>
-                        <select class="form-select" id="tipo_tarjeta" name="tipo_tarjeta">
-                            <option value="credito">Crédito</option>
-                            <option value="debito">Débito</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="ultimos_digitos" class="form-label">Últimos 4 dígitos</label>
-                        <input type="text" class="form-control" id="ultimos_digitos" name="ultimos_digitos" maxlength="4" pattern="\d{4}">
+                        <label for="detalles_tarjeta" class="form-label">Últimos 4 dígitos</label>
+                        <input type="text" class="form-control" id="detalles_tarjeta" 
+                               name="detalles_metodo" maxlength="4" pattern="\d{4}"
+                               placeholder="1234">
+                        <small class="text-muted">Solo los últimos 4 dígitos de la tarjeta</small>
                     </div>
                 </div>
 
                 <div class="mb-3">
-                    <label for="comentarios" class="form-label">Comentarios (Opcional)</label>
+                    <label for="comentarios" class="form-label">
+                        <i class="bi bi-chat-left-text me-2"></i>Comentarios (Opcional)
+                    </label>
                     <textarea class="form-control" id="comentarios" name="comentarios" 
-                              rows="3" placeholder="Notas adicionales sobre el pago"></textarea>
+                              rows="2" placeholder="Notas adicionales sobre el cobro"></textarea>
                 </div>
 
-                <div class="d-flex justify-content-between mt-4">
-                    <a href="{{ url_for('cobros') }}" class="btn btn-secondary">
-                        <i class="bi bi-arrow-left me-1"></i> Volver
+                <!-- Botones de acción -->
+                <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <a href="{{ url_for('cobros') }}" class="btn btn-outline-secondary px-4">
+                        <i class="bi bi-arrow-left me-2"></i>Cancelar
                     </a>
-                    <button type="submit" class="btn btn-primary btn-submit">
-                        <i class="bi bi-check-circle me-1"></i> Registrar Abono
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                        <i class="bi bi-check-circle me-2"></i>Registrar Cobro
                     </button>
                 </div>
             </form>
@@ -180,12 +143,12 @@ function mostrarCamposAdicionales(metodo) {
         div.style.display = 'none';
     });
     
-    // Mostrar los relevantes
-    if (metodo === '1') {
+    // Mostrar los relevantes según el método seleccionado
+    if (metodo === '1') { // Efectivo
         document.getElementById('campos-efectivo').style.display = 'block';
-    } else if (metodo === '2') {
+    } else if (metodo === '2') { // Transferencia
         document.getElementById('campos-transferencia').style.display = 'block';
-    } else if (metodo === '3') {
+    } else if (metodo === '3') { // Tarjeta
         document.getElementById('campos-tarjeta').style.display = 'block';
     }
 }
@@ -215,12 +178,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (monto > maxMonto) {
                 e.preventDefault();
-                alert('El monto no puede ser mayor al saldo pendiente');
+                alert('El monto no puede ser mayor al saldo pendiente (C$' + maxMonto.toFixed(2) + ')');
                 montoInput.focus();
                 return false;
             }
             
-            // Validar método de pago seleccionado
             const metodoPago = document.getElementById('metodo_pago').value;
             if (!metodoPago) {
                 e.preventDefault();
@@ -228,9 +190,61 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
             
+            // Validar campos específicos según método de pago
+            if (metodoPago === '1') { // Efectivo
+                const efectivoRecibido = parseFloat(document.getElementById('efectivo_recibido').value);
+                if (isNaN(efectivoRecibido) || efectivoRecibido <= 0) {
+                    e.preventDefault();
+                    alert('Ingrese un monto válido recibido en efectivo');
+                    return false;
+                }
+            }
+            
             return true;
         });
     }
+    
+    // Inicializar campos si hay un método seleccionado (en caso de error)
+    const metodoSeleccionado = document.getElementById('metodo_pago').value;
+    if (metodoSeleccionado) {
+        mostrarCamposAdicionales(metodoSeleccionado);
+    }
 });
 </script>
+
+<style>
+    .card {
+        border: none;
+        overflow: hidden;
+    }
+    .card-header {
+        padding: 1.2rem;
+    }
+    .form-control, .form-select {
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+    }
+    .input-group-text {
+        background-color: #f8f9fa;
+    }
+    .btn {
+        border-radius: 0.5rem;
+        padding: 0.5rem 1.5rem;
+        font-weight: 500;
+    }
+    .invalid-feedback {
+        font-size: 0.85rem;
+    }
+    .required-field::after {
+        content: " *";
+        color: #dc3545;
+    }
+    .campos-adicionales {
+        transition: all 0.3s ease;
+    }
+    .alert-info {
+        background-color: #e7f5ff;
+        border-color: #d0ebff;
+    }
+</style>
 {% endblock %}
