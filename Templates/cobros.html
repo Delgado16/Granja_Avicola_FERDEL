@@ -247,7 +247,7 @@
                                     {% else %}
                                         <span class="text-muted small d-none d-md-inline">Pago completo</span>
                                     {% endif %}
-                                    <a href="#" 
+                                    <a href="{{ url_for('historial_pagos',  id_movimiento=cuenta.ID_Movimiento) }}" 
                                        class="btn btn-info btn-sm"
                                        data-bs-toggle="tooltip" 
                                        title="Historial de pagos">

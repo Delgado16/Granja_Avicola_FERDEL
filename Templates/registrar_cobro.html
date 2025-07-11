@@ -26,7 +26,7 @@
                         <span class="ms-4">{{ factura.ID_Movimiento }}</span></p>
                     </div>
                     <div class="col-md-6">
-                        <p class="mb-2"><strong><i class="bi bi-file-text me-2"></i>Factura:</strong><br>
+                        <p class="mb-2"><strong><i class="bi bi-file-text me-2"></i>Documento:</strong><br>
                         <span class="ms-4">{{ factura.Num_Documento }}</span></p>
                         <p class="mb-2"><strong><i class="bi bi-calendar-x me-2"></i>Vencimiento:</strong>
                         <span class="ms-4">{{ factura.Fecha_Vencimiento }}</span></p>
@@ -34,9 +34,50 @@
                 </div>
                 <div class="mt-2">
                     <p class="mb-0"><strong><i class="bi bi-currency-dollar me-2"></i>Saldo Pendiente:</strong>
-                    <span class="badge bg-primary rounded-pill fs-6 ms-2">C${{ "%0.2f"|format(factura.Monto_Movimiento) }}</span></p>
+                    <span class="badge bg-primary rounded-pill fs-6 ms-2">${{ "%0.2f"|format(factura.Monto_Movimiento) }}</span></p>
                 </div>
             </div>
+
+            <!-- Historial de cobros -->
+            {% if historial %}
+            <div class="mb-4">
+                <h6 class="d-flex align-items-center mb-3">
+                    <i class="bi bi-clock-history me-2"></i> Historial de Cobros
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Monto</th>
+                                <th>Método</th>
+                                <th>Comentarios</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cobro in historial %}
+                            <tr>
+                                <td>
+                                    {% if cobro.Fecha %}
+                                        {% if cobro.Fecha is string %}
+                                            {{ cobro.Fecha[:16] }}
+                                        {% else %}
+                                            {{ cobro.Fecha.strftime('%d/%m/%Y %H:%M') }}
+                                        {% endif %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>${{ "%0.2f"|format(cobro.Monto) }}</td>
+                                <td>{{ cobro.MetodoPago }}</td>
+                                <td>{{ cobro.Comentarios|truncate(20) if cobro.Comentarios else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Formulario de cobro -->
             <form method="post" action="{{ url_for('registrar_cobro', id_movimiento=factura.ID_Movimiento) }}" class="needs-validation" novalidate>
@@ -46,15 +87,15 @@
                             <i class="bi bi-currency-dollar me-2"></i>Monto a Cobrar
                         </label>
                         <div class="input-group">
-                            <span class="input-group-text">C$</span>
+                            <span class="input-group-text">$</span>
                             <input type="number" class="form-control py-2" id="monto" name="monto" 
                                    step="0.01" min="0.01" max="{{ factura.Monto_Movimiento }}" 
                                    placeholder="0.00" required>
                             <div class="invalid-feedback">
-                                Ingrese un monto válido (máximo C${{ "%0.2f"|format(factura.Monto_Movimiento) }})
+                                Ingrese un monto válido (máximo ${{ "%0.2f"|format(factura.Monto_Movimiento) }})
                             </div>
                         </div>
-                        <small class="text-muted">Monto máximo disponible: C${{ "%0.2f"|format(factura.Monto_Movimiento) }}</small>
+                        <small class="text-muted">Monto máximo disponible: ${{ "%0.2f"|format(factura.Monto_Movimiento) }}</small>
                     </div>
                     
                     <div class="col-md-6">
@@ -74,15 +115,15 @@
                     </div>
                 </div>
 
-                <!-- Campos adicionales dinámicos -->
+                                <!-- Campos adicionales dinámicos -->
                 <div id="campos-efectivo" class="campos-adicionales mb-3 p-3 bg-light rounded" style="display: none;">
                     <h6 class="d-flex align-items-center text-primary">
-                        <i class="bi bi-cash-stack me-2"></i> Detalles de Pago en Efectivo
+                        <i class="bi bi-cash-coin me-2"></i> Detalles de Pago en Efectivo
                     </h6>
                     <div class="mb-3">
                         <label for="efectivo_recibido" class="form-label">Efectivo Recibido</label>
                         <div class="input-group">
-                            <span class="input-group-text">C$</span>
+                            <span class="input-group-text">$</span>
                             <input type="number" class="form-control" id="efectivo_recibido" 
                                    name="efectivo_recibido" step="0.01" min="0">
                         </div>
@@ -95,22 +136,44 @@
                         <i class="bi bi-bank me-2"></i> Detalles de Transferencia
                     </h6>
                     <div class="mb-3">
-                        <label for="detalles_transferencia" class="form-label">Número de Transferencia</label>
-                        <input type="text" class="form-control" id="detalles_transferencia" 
-                               name="detalles_metodo" placeholder="Ej: TRX-123456">
+                        <label for="numero_transferencia" class="form-label">Número de Transferencia</label>
+                        <input type="text" class="form-control" id="numero_transferencia" 
+                               name="numero_transferencia" placeholder="Ej: TRX-123456">
+                    </div>
+                    <div class="mb-3">
+                        <label for="banco" class="form-label">Banco Emisor</label>
+                        <input type="text" class="form-control" id="banco" 
+                               name="banco" placeholder="Nombre del banco">
+                    </div>
+                    <div class="mb-3">
+                        <label for="referencia" class="form-label">Referencia (Opcional)</label>
+                        <input type="text" class="form-control" id="referencia" 
+                               name="referencia" placeholder="Referencia adicional">
                     </div>
                 </div>
 
                 <div id="campos-tarjeta" class="campos-adicionales mb-3 p-3 bg-light rounded" style="display: none;">
                     <h6 class="d-flex align-items-center text-primary">
-                        <i class="bi bi-credit-card-2-front me-2"></i> Detalles de Tarjeta
+                        <i class="bi bi-credit-card me-2"></i> Detalles de Tarjeta
                     </h6>
                     <div class="mb-3">
-                        <label for="detalles_tarjeta" class="form-label">Últimos 4 dígitos</label>
-                        <input type="text" class="form-control" id="detalles_tarjeta" 
-                               name="detalles_metodo" maxlength="4" pattern="\d{4}"
+                        <label for="tipo_tarjeta" class="form-label">Tipo de Tarjeta</label>
+                        <select class="form-select" id="tipo_tarjeta" name="tipo_tarjeta">
+                            <option value="credito">Crédito</option>
+                            <option value="debito">Débito</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ultimos_digitos" class="form-label">Últimos 4 dígitos</label>
+                        <input type="text" class="form-control" id="ultimos_digitos" 
+                               name="ultimos_digitos" maxlength="4" pattern="\d{4}"
                                placeholder="1234">
                         <small class="text-muted">Solo los últimos 4 dígitos de la tarjeta</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="autorizacion" class="form-label">Código de Autorización (Opcional)</label>
+                        <input type="text" class="form-control" id="autorizacion" 
+                               name="autorizacion" placeholder="Número de autorización">
                     </div>
                 </div>
 
@@ -119,7 +182,7 @@
                         <i class="bi bi-chat-left-text me-2"></i>Comentarios (Opcional)
                     </label>
                     <textarea class="form-control" id="comentarios" name="comentarios" 
-                              rows="2" placeholder="Notas adicionales sobre el cobro"></textarea>
+                              rows="3" placeholder="Notas adicionales sobre el pago"></textarea>
                 </div>
 
                 <!-- Botones de acción -->
@@ -143,12 +206,12 @@ function mostrarCamposAdicionales(metodo) {
         div.style.display = 'none';
     });
     
-    // Mostrar los relevantes según el método seleccionado
-    if (metodo === '1') { // Efectivo
+    // Mostrar los relevantes
+    if (metodo === '1') {
         document.getElementById('campos-efectivo').style.display = 'block';
-    } else if (metodo === '2') { // Transferencia
+    } else if (metodo === '2') {
         document.getElementById('campos-transferencia').style.display = 'block';
-    } else if (metodo === '3') { // Tarjeta
+    } else if (metodo === '3') {
         document.getElementById('campos-tarjeta').style.display = 'block';
     }
 }
@@ -178,11 +241,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (monto > maxMonto) {
                 e.preventDefault();
-                alert('El monto no puede ser mayor al saldo pendiente (C$' + maxMonto.toFixed(2) + ')');
+                alert('El monto no puede ser mayor al saldo pendiente ($' + maxMonto.toFixed(2) + ')');
                 montoInput.focus();
                 return false;
             }
             
+            // Validar método de pago seleccionado
             const metodoPago = document.getElementById('metodo_pago').value;
             if (!metodoPago) {
                 e.preventDefault();
@@ -190,24 +254,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
             
-            // Validar campos específicos según método de pago
-            if (metodoPago === '1') { // Efectivo
-                const efectivoRecibido = parseFloat(document.getElementById('efectivo_recibido').value);
-                if (isNaN(efectivoRecibido) || efectivoRecibido <= 0) {
-                    e.preventDefault();
-                    alert('Ingrese un monto válido recibido en efectivo');
-                    return false;
-                }
-            }
-            
             return true;
         });
-    }
-    
-    // Inicializar campos si hay un método seleccionado (en caso de error)
-    const metodoSeleccionado = document.getElementById('metodo_pago').value;
-    if (metodoSeleccionado) {
-        mostrarCamposAdicionales(metodoSeleccionado);
     }
 });
 </script>
@@ -242,9 +290,8 @@ document.addEventListener('DOMContentLoaded', function() {
     .campos-adicionales {
         transition: all 0.3s ease;
     }
-    .alert-info {
-        background-color: #e7f5ff;
-        border-color: #d0ebff;
+    .table-sm td, .table-sm th {
+        padding: 0.3rem;
     }
 </style>
 {% endblock %}

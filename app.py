@@ -1383,31 +1383,61 @@ def historial_pagos(id_movimiento):
         app.logger.error(f"Error en historial_pagos: {str(e)}")
         return redirect(url_for("cobros"))
     
-    
 @app.route("/registrar_cobro/<int:id_movimiento>", methods=["GET", "POST"])
 def registrar_cobro(id_movimiento):
     if request.method == "POST":
         try:
-            # Validación de datos
+            # Validación y captura de datos básicos
             monto = float(request.form["monto"])
             metodo = int(request.form["metodo_pago"])
             comentarios = request.form.get("comentarios", "").strip()
-            detalles_metodo = request.form.get("detalles_metodo", "").strip()
 
-            # Verificar factura y saldo
+            # Captura de detalles específicos del método de pago (similar a cuentas por pagar)
+            datos_especificos = {}
+            
+            # Efectivo
+            if metodo == 1:
+                datos_especificos = {
+                    'tipo': 'efectivo',
+                    'efectivo_recibido': float(request.form.get("efectivo_recibido", 0)),
+                    'cambio': float(request.form.get("efectivo_recibido", 0)) - monto
+                }
+            
+            # Transferencia Bancaria
+            elif metodo == 2:
+                datos_especificos = {
+                    'tipo': 'transferencia',
+                    'numero_transferencia': request.form.get("numero_transferencia"),
+                    'banco': request.form.get("banco"),
+                    'referencia': request.form.get("referencia", "")
+                }
+            
+            # Tarjeta
+            elif metodo == 3:
+                datos_especificos = {
+                    'tipo': 'tarjeta',
+                    'tipo_tarjeta': request.form.get("tipo_tarjeta"),
+                    'ultimos_digitos': request.form.get("ultimos_digitos"),
+                    'autorizacion': request.form.get("autorizacion", "")
+                }
+
+            # Serialización de detalles específicos
+            detalles_metodo = json.dumps(datos_especificos, ensure_ascii=False)
+
+            # Verificación de saldo disponible
             factura = db.execute("""
-                SELECT Monto_Movimiento 
-                FROM Detalle_Cuentas_Por_Cobrar 
+                SELECT Monto_Movimiento, ID_Cliente, Num_Documento
+                FROM Detalle_Cuentas_Por_Cobrar
                 WHERE ID_Movimiento = ?
             """, id_movimiento)
             
             if not factura:
                 flash("❌ Factura no encontrada", "danger")
-                return redirect(url_for("registrar_cobro", id_movimiento=id_movimiento))
+                return redirect(url_for("cobros"))
                 
             saldo_actual = float(factura[0]["Monto_Movimiento"])
 
-            # Validaciones
+            # Validaciones de negocio
             if monto <= 0:
                 flash("❌ El monto debe ser mayor a cero", "danger")
                 return redirect(url_for("registrar_cobro", id_movimiento=id_movimiento))
@@ -1416,10 +1446,10 @@ def registrar_cobro(id_movimiento):
                 flash(f"❌ El monto excede el saldo pendiente (${saldo_actual:.2f})", "danger")
                 return redirect(url_for("registrar_cobro", id_movimiento=id_movimiento))
 
-            # Procesar transacción
+            # Registro del cobro
             db.execute("BEGIN TRANSACTION")
             try:
-                # Registrar pago
+                # Insertar pago con detalles estructurados
                 db.execute("""
                     INSERT INTO Pagos_CuentasCobrar 
                     (ID_Movimiento, Fecha, Monto, ID_MetodoPago, Comentarios, Detalles_Metodo)
@@ -1435,44 +1465,82 @@ def registrar_cobro(id_movimiento):
 
                 db.execute("COMMIT")
                 flash("✅ Cobro registrado correctamente", "success")
-                return redirect(url_for("historial_pagos", id_movimiento=id_movimiento))
+                return redirect(url_for("registrar_cobro", id_movimiento=id_movimiento))
                 
             except Exception as e:
                 db.execute("ROLLBACK")
-                raise e
+                flash(f"❌ Error en la transacción: {str(e)}", "danger")
+                app.logger.error(f"Error en transacción de cobro: {str(e)}")
+                return redirect(url_for("registrar_cobro", id_movimiento=id_movimiento))
                 
-        except ValueError:
-            flash("❌ El monto debe ser un número válido", "danger")
+        except ValueError as e:
+            flash(f"❌ Error en los datos numéricos: {str(e)}", "danger")
             return redirect(url_for("registrar_cobro", id_movimiento=id_movimiento))
         except Exception as e:
             flash(f"❌ Error al registrar cobro: {str(e)}", "danger")
+            app.logger.error(f"Error en registrar_cobro: {str(e)}")
             return redirect(url_for("registrar_cobro", id_movimiento=id_movimiento))
     
-    # Método GET
+    # Método GET - Mostrar formulario
     try:
-        # Obtener datos de la factura
+        # Obtener datos de la cuenta/cliente
         factura = db.execute("""
-            SELECT dcc.ID_Movimiento, dcc.Num_Documento, dcc.Monto_Movimiento,
-                   c.Nombre AS Cliente, dcc.Fecha_Vencimiento
+            SELECT 
+                dcc.ID_Movimiento, 
+                dcc.Num_Documento, 
+                dcc.Monto_Movimiento,
+                c.Nombre AS Cliente,
+                c.ID_Cliente
             FROM Detalle_Cuentas_Por_Cobrar dcc
             JOIN Clientes c ON dcc.ID_Cliente = c.ID_Cliente
             WHERE dcc.ID_Movimiento = ?
         """, id_movimiento)[0]
-
-        # Obtener métodos de pago
-        metodos = db.execute("SELECT ID_MetodoPago, Nombre FROM Metodos_Pago ORDER BY Nombre")
         
-        return render_template("registrar_cobro.html", 
-                             factura=factura, 
-                             metodos=metodos)
-            
+        # Obtener métodos de pago disponibles
+        metodos_pago = db.execute("""
+            SELECT ID_MetodoPago, Nombre 
+            FROM Metodos_Pago 
+            ORDER BY Nombre
+        """)
+        
+        # Obtener historial de cobros anteriores
+        historial_cobros = db.execute("""
+            SELECT 
+                p.ID_Pago,
+                p.Fecha,
+                p.Monto,
+                mp.Nombre AS MetodoPago,
+                p.Comentarios,
+                p.Detalles_Metodo
+            FROM Pagos_CuentasCobrar p
+            JOIN Metodos_Pago mp ON p.ID_MetodoPago = mp.ID_MetodoPago
+            WHERE p.ID_Movimiento = ?
+            ORDER BY p.Fecha DESC
+        """, id_movimiento)
+
+        # Convertir detalles de JSON a dict para la vista
+        for cobro in historial_cobros:
+            if cobro['Detalles_Metodo']:
+                try:
+                    cobro['Detalles_Metodo'] = json.loads(cobro['Detalles_Metodo'])
+                except json.JSONDecodeError:
+                    cobro['Detalles_Metodo'] = {'tipo': 'desconocido', 'detalle': cobro['Detalles_Metodo']}
+
+        return render_template(
+            "registrar_cobro.html",
+            factura=factura,
+            metodos=metodos_pago,
+            historial=historial_cobros
+        )
+        
     except IndexError:
         flash("❌ Factura no encontrada", "danger")
         return redirect(url_for("cobros"))
     except Exception as e:
         flash(f"❌ Error al cargar datos: {str(e)}", "danger")
+        app.logger.error(f"Error en GET registrar_cobro: {str(e)}")
         return redirect(url_for("cobros"))
-
+    
 @app.route("/cancelar_deuda/<int:id_movimiento>", methods=["POST"])
 def cancelar_deuda(id_movimiento):
     try:
