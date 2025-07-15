@@ -1,0 +1,199 @@
+{% extends "layout.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block main %}
+<style>
+    :root {
+        --primary-color: #3b82f6;
+        --secondary-color: #6c757d;
+        --success-color: #28a745;
+        --danger-color: #dc3545;
+        --light-color: #f8f9fa;
+        --dark-color: #343a40;
+        --border-radius: 0.375rem;
+        --box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        --transition: all 0.3s ease;
+    }
+
+    body {
+        padding-top: 70px; /* Espacio para el navbar */
+        background-color: #f5f5f5;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+    }
+
+    .login-container {
+        max-width: 450px;
+        width: 100%;
+        padding: 2.5rem;
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        margin: auto;
+    }
+
+    h2 {
+        color: var(--dark-color);
+        margin-bottom: 1.5rem;
+        font-size: clamp(1.5rem, 2.5vw, 2rem);
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .alert {
+        font-size: clamp(0.85rem, 1.2vw, 1rem);
+    }
+
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        font-size: clamp(0.9rem, 1.1vw, 1rem);
+    }
+
+    .form-control {
+        padding: 0.75rem 1rem;
+        font-size: clamp(0.9rem, 1.1vw, 1rem);
+        border-radius: var(--border-radius);
+        transition: var(--transition);
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+    }
+
+    .input-group-text {
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .input-group-text:hover {
+        background-color: var(--light-color);
+    }
+
+    .btn-primary {
+        background-color: var(--primary-color);
+        border: none;
+        padding: 0.75rem;
+        font-size: clamp(0.95rem, 1.2vw, 1.1rem);
+        font-weight: 500;
+        transition: var(--transition);
+    }
+
+    .btn-primary:hover {
+        background-color: #2563eb;
+    }
+
+    .invalid-feedback {
+        font-size: clamp(0.8rem, 1vw, 0.9rem);
+    }
+
+    @media (max-width: 576px) {
+        .login-container {
+            padding: 2rem 1.5rem;
+            margin: 1rem;
+        }
+    }
+
+    @media (min-width: 577px) and (max-width: 768px) {
+        .login-container {
+            padding: 2.5rem 2rem;
+        }
+    }
+</style>
+
+<main>
+    <div class="login-container">
+        <h2 class="mb-4">Iniciar Sesión</h2>
+
+        <!-- Mensajes Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Formulario -->
+        <form action="{{ url_for('login') }}" method="POST" class="needs-validation" novalidate>
+            <!-- Usuario -->
+            <div class="mb-3">
+                <label for="username" class="form-label">Nombre de usuario:</label>
+                <input type="text" id="username" name="username" class="form-control" placeholder="Ingrese su usuario" required>
+                <div class="invalid-feedback">
+                    Por favor, ingrese su nombre de usuario.
+                </div>
+            </div>
+
+            <!-- Contraseña -->
+            <div class="mb-4 position-relative">
+                <label for="password" class="form-label">Contraseña:</label>
+                <div class="input-group">
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Ingrese su contraseña" required>
+                    <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <div class="invalid-feedback">
+                    Por favor, ingrese su contraseña.
+                </div>
+            </div>
+
+            <!-- Botón -->
+            <div class="d-grid mb-3">
+                <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+            </div>
+
+            <!-- Enlace opcional para recuperar contraseña -->
+            <div class="text-center">
+                <a href="#" class="text-decoration-none">¿Olvidó su contraseña?</a>
+            </div>
+        </form>
+    </div>
+</main>
+
+<!-- Scripts -->
+<script>
+    // Mostrar/Ocultar contraseña
+    document.querySelectorAll('.toggle-password').forEach(button => {
+        button.addEventListener('click', () => {
+            const input = document.getElementById(button.dataset.target);
+            const icon = button.querySelector('i');
+            const isPassword = input.type === "password";
+
+            input.type = isPassword ? "text" : "password";
+            icon.classList.toggle('bi-eye');
+            icon.classList.toggle('bi-eye-slash');
+
+            // Cambiar accesibilidad
+            if (isPassword) {
+                button.setAttribute('aria-label', 'Ocultar contraseña');
+            } else {
+                button.setAttribute('aria-label', 'Mostrar contraseña');
+            }
+        });
+    });
+
+    // Validación con Bootstrap
+    (function () {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
+{% endblock %}

@@ -816,6 +816,9 @@ def stock_por_bodega(id_bodega):
 @login_required
 def ventas():
     if request.method == "POST":
+        # Inicializamos la variable de transacción
+        transaction_active = False
+        
         try:
             fecha = request.form.get("fecha")
             cliente_id = request.form.get("cliente")
@@ -842,13 +845,20 @@ def ventas():
                 flash("Error en los datos de productos.", "danger")
                 return redirect(url_for("ventas"))
 
-            tipo_pago = int(tipo_pago)
-            id_bodega = int(id_bodega)
+            # Convertir tipos
+            try:
+                tipo_pago = int(tipo_pago)
+                id_bodega = int(id_bodega)
+            except ValueError:
+                flash("Tipo de pago o bodega inválidos.", "danger")
+                return redirect(url_for("ventas"))
+
             id_empresa = 1  # Ajusta según tu lógica
             total_venta = 0
 
             # === INICIO DE TRANSACCIÓN ===
             db.execute("BEGIN")
+            transaction_active = True
 
             # Insertar la factura
             db.execute("""
@@ -861,7 +871,6 @@ def ventas():
             # Obtener tipo de movimiento de inventario
             tipo_mov = db.execute("SELECT ID_TipoMovimiento FROM Catalogo_Movimientos WHERE Descripcion = 'Venta'")
             if not tipo_mov:
-                db.execute("ROLLBACK")
                 flash("El tipo de movimiento 'Venta' no está definido.", "danger")
                 return redirect(url_for("ventas"))
 
@@ -879,16 +888,25 @@ def ventas():
 
             # === Insertar productos ===
             for i in range(len(productos)):
-                id_producto = int(productos[i])
-                cantidad = float(cantidades[i])
-                costo = float(costos[i])
-                iva = float(ivas[i])
-                descuento = float(descuentos[i])
+                try:
+                    id_producto = int(productos[i])
+                    cantidad = float(cantidades[i])
+                    costo = float(costos[i])
+                    iva = float(ivas[i])
+                    descuento = float(descuentos[i])
+                except ValueError:
+                    if transaction_active:
+                        db.execute("ROLLBACK")
+                        transaction_active = False
+                    flash("Datos de productos inválidos.", "danger")
+                    return redirect(url_for("ventas"))
 
                 # Validación: mínimo 50 cajillas
                 if cantidad < 0:
                     nombre_prod = db.execute("SELECT Descripcion FROM Productos WHERE ID_Producto = ?", id_producto)[0]["Descripcion"]
-                    db.execute("ROLLBACK")
+                    if transaction_active:
+                        db.execute("ROLLBACK")
+                        transaction_active = False
                     flash(f"No se permite vender menos de 50 cajillas del producto '{nombre_prod}'.", "danger")
                     return redirect(url_for("ventas"))
                 
@@ -897,9 +915,12 @@ def ventas():
                     SELECT Existencias FROM Inventario_Bodega
                     WHERE ID_Bodega = ? AND ID_Producto = ?
                 """, id_bodega, id_producto)
+                
                 if not existencia or existencia[0]["Existencias"] < cantidad:
                     nombre_prod = db.execute("SELECT Descripcion FROM Productos WHERE ID_Producto = ?", id_producto)[0]["Descripcion"]
-                    db.execute("ROLLBACK")
+                    if transaction_active:
+                        db.execute("ROLLBACK")
+                        transaction_active = False
                     flash(f"No hay suficiente stock del producto '{nombre_prod}' en la bodega seleccionada.", "danger")
                     return redirect(url_for("ventas"))
 
@@ -944,68 +965,152 @@ def ventas():
                 """, factura_id, fecha, cliente_id, f"F-{factura_id:05d}", observacion,
                     fecha_vencimiento.strftime("%Y-%m-%d"), 2, total_venta, 0, 0, id_empresa, total_venta)
 
+            # Confirmar la transacción si todo salió bien
             db.execute("COMMIT")
+            transaction_active = False
             flash("Venta registrada correctamente.", "success")
             return redirect(url_for("gestionar_ventas"))
 
         except Exception as e:
             print(traceback.format_exc())
-            db.execute("ROLLBACK")
-            flash(f"Error al registrar la venta: {e}", "danger")
+            if transaction_active:
+                try:
+                    db.execute("ROLLBACK")
+                except Exception as rollback_error:
+                    print(f"Error al hacer rollback: {rollback_error}")
+            flash(f"Error al registrar la venta: {str(e)}", "danger")
             return redirect(url_for("ventas"))
 
     # === GET ===
-    clientes = db.execute("SELECT ID_Cliente AS id, Nombre AS nombre FROM Clientes")
-    productos = db.execute("SELECT ID_Producto AS id, Descripcion AS descripcion FROM Productos")
-    bodegas = db.execute("SELECT ID_Bodega AS id, Nombre AS nombre FROM Bodegas")
+    try:
+        clientes = db.execute("SELECT ID_Cliente AS id, Nombre AS nombre FROM Clientes")
+        productos = db.execute("SELECT ID_Producto AS id, Descripcion AS descripcion FROM Productos")
+        bodegas = db.execute("SELECT ID_Bodega AS id, Nombre AS nombre FROM Bodegas")
 
-    last_seq = db.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", "Facturacion")
-    next_id = last_seq[0]["seq"] + 1 if last_seq else 1
-    n_factura = f"F-{next_id:05d}"
+        last_seq = db.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", "Facturacion")
+        next_id = last_seq[0]["seq"] + 1 if last_seq else 1
+        n_factura = f"F-{next_id:05d}"
 
-    return render_template("ventas.html", clientes=clientes, productos=productos, bodegas=bodegas, n_factura=n_factura)
+        return render_template("ventas.html", clientes=clientes, productos=productos, bodegas=bodegas, n_factura=n_factura)
+    except Exception as e:
+        flash(f"Error al cargar datos: {str(e)}", "danger")
+        return redirect(url_for("ventas"))
 
 ############################################################################
 @app.route("/gestionar_ventas", methods=["GET"])
 def gestionar_ventas():
     try:
-        # Obtener las ventas con datos del cliente y el total de cada factura
+        if not session.get("user_id"):
+            flash("❌ Debes iniciar sesión", "danger")
+            return redirect(url_for("login"))
+
+        # Paginación
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        offset = (page - 1) * per_page
+
+        # Consulta principal
         ventas = db.execute("""
-            SELECT f.ID_Factura, f.Fecha, c.Nombre AS Cliente, 
-                   f.Credito_Contado, f.Observacion,
-                   (SELECT SUM(Total) FROM Detalle_Facturacion WHERE ID_Factura = f.ID_Factura) AS Total
+            SELECT 
+                f.ID_Factura, 
+                strftime('%d/%m/%Y %H:%M', f.Fecha) as Fecha,
+                c.Nombre AS Cliente,
+                f.Credito_Contado,
+                SUM(df.Total) AS Total,
+                EXISTS(SELECT 1 FROM Pagos_Credito WHERE ID_Factura = f.ID_Factura) AS tiene_pagos
             FROM Facturacion f
             JOIN Clientes c ON c.ID_Cliente = f.IDCliente
-            ORDER BY f.ID_Factura DESC
-        """)
+            JOIN Detalle_Facturacion df ON df.ID_Factura = f.ID_Factura
+            GROUP BY f.ID_Factura
+            ORDER BY f.Fecha DESC
+            LIMIT ? OFFSET ?
+        """, per_page, offset)
 
-        # Obtener los detalles (productos por venta)
+        # Productos por venta
         detalles = db.execute("""
-            SELECT df.ID_Factura, p.Descripcion, df.Cantidad, df.Total AS Subtotal
+            SELECT 
+                df.ID_Factura, 
+                p.Descripcion, 
+                df.Cantidad, 
+                df.PrecioUnitario,
+                df.Total AS Subtotal
             FROM Detalle_Facturacion df
             JOIN Productos p ON df.ID_Producto = p.ID_Producto
-        """)
+            WHERE df.ID_Factura IN (
+                SELECT ID_Factura FROM Facturacion 
+                ORDER BY Fecha DESC 
+                LIMIT ? OFFSET ?
+            )
+        """, per_page, offset)
 
-        # Agrupar productos por factura
+        # Procesamiento
         productos_por_venta = {}
         for d in detalles:
             productos_por_venta.setdefault(d["ID_Factura"], []).append(
-                f"{d['Cantidad']} x {d['Descripcion']} (C$ {d['Subtotal']:,.2f})"
+                f"{d['Cantidad']} x {d['Descripcion']} (C${d['Subtotal']:.2f})"
             )
 
-        # Preparar datos para mostrar en la plantilla
         for venta in ventas:
             venta["Productos"] = productos_por_venta.get(venta["ID_Factura"], [])
             venta["NumeroFactura"] = f"F-{venta['ID_Factura']:05d}"
-            # Formatear el total como moneda
-            venta["TotalFormateado"] = f"C${venta['Total']:,.2f}" if venta['Total'] else "C$ 0.00"
+            venta["TotalFormateado"] = f"C${venta['Total']:.2f}"
+            venta["tiene_pagos"] = bool(venta["tiene_pagos"])
 
-        return render_template("gestionar_ventas.html", ventas=ventas)
+        return render_template("gestionar_ventas.html", ventas=ventas, page=page)
 
     except Exception as e:
-        flash(f"❌ Error al cargar las ventas: {e}", "danger")
+        app.logger.error(f"Error: {str(e)}")
+        flash("❌ Error al cargar ventas", "danger")
         return redirect(url_for("ventas"))
 
+@app.route("/ventas/<int:venta_id>", methods=["GET"])
+def obtener_detalle_venta(venta_id):
+    try:
+        if not venta_id or venta_id <= 0:
+            return jsonify({"error": "ID inválido"}), 400
+
+        venta = db.execute("""
+            SELECT 
+                f.ID_Factura, 
+                strftime('%Y-%m-%d %H:%M:%S', f.Fecha) AS Fecha,
+                c.Nombre AS Cliente,
+                c.Telefono,
+                c.Direccion,
+                f.Credito_Contado,
+                f.Observacion,
+                SUM(df.Total) AS Total
+            FROM Facturacion f
+            JOIN Clientes c ON c.ID_Cliente = f.IDCliente
+            JOIN Detalle_Facturacion df ON df.ID_Factura = f.ID_Factura
+            WHERE f.ID_Factura = ?
+            GROUP BY f.ID_Factura
+        """, venta_id)
+
+        if not venta:
+            return jsonify({"error": "No encontrada"}), 404
+
+        detalles = db.execute("""
+            SELECT 
+                p.Descripcion, 
+                df.Cantidad, 
+                df.PrecioUnitario,
+                df.Total AS Subtotal
+            FROM Detalle_Facturacion df
+            JOIN Productos p ON df.ID_Producto = p.ID_Producto
+            WHERE df.ID_Factura = ?
+        """, venta_id)
+
+        response = {
+            "venta": venta[0],
+            "productos": detalles,
+            "status": "success"
+        }
+        return jsonify(response)
+
+    except Exception as e:
+        app.logger.error(f"Error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
 ######################################################################
 @app.route("/productos_por_bodega/<int:id_bodega>")
 def productos_por_bodega(id_bodega):
@@ -1280,7 +1385,7 @@ def cobros():
         elif estado == 'pendiente':
             query += " AND (dcc.Fecha_Vencimiento >= date('now') OR dcc.Fecha_Vencimiento IS NULL)"
             
-        query += " ORDER BY dcc.Fecha_Vencimiento ASC, dcc.Fecha DESC"
+        query += " ORDER BY dcc.Fecha_Vencimiento DESC"
         
         cuentas = db.execute(query, *params)
         

@@ -1,0 +1,293 @@
+{% extends "layout.html" %}
+{% block title %}Inicio{% endblock %}
+
+{% block main %}
+<style>
+    :root {
+        --max-width: 1200px;
+        --padding-lg: 2rem;
+        --padding-md: 1.5rem;
+        --padding-sm: 1rem;
+        --padding-xs: 0.5rem;
+        --gap-lg: 2rem;
+        --gap-md: 1.5rem;
+        --gap-sm: 1rem;
+        --gap-xs: 0.5rem;
+        --primary-color: #3b82f6;
+        --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        --border-radius: 0.5rem;
+    }
+
+    .dashboard-container {
+        max-width: var(--max-width);
+        margin: 0 auto;
+        padding: var(--padding-sm);
+        padding-top: 80px;
+    }
+
+    .header {
+        background-color: var(--primary-color);
+        color: white;
+        padding: var(--padding-sm);
+        border-radius: var(--border-radius);
+        margin-bottom: var(--gap-md);
+        box-shadow: var(--card-shadow);
+    }
+
+    .header h1 {
+        font-size: clamp(1.25rem, 5vw, 1.75rem);
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .header p {
+        font-size: clamp(0.8rem, 3vw, 0.95rem);
+        opacity: 0.9;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--gap-sm);
+        margin-bottom: var(--gap-lg);
+    }
+
+    .metric-card {
+        background-color: white;
+        border-radius: var(--border-radius);
+        padding: var(--padding-sm);
+        box-shadow: var(--card-shadow);
+        position: relative;
+        min-height: 100px;
+    }
+
+    .metric-icon {
+        position: absolute;
+        top: var(--padding-xs);
+        right: var(--padding-xs);
+        font-size: clamp(1rem, 4vw, 1.25rem);
+        color: var(--primary-color);
+        opacity: 0.2;
+    }
+
+    .metric-title {
+        font-size: clamp(0.85rem, 3.5vw, 1rem);
+        color: #555;
+        margin-bottom: 0.25rem;
+    }
+
+    .metric-value {
+        font-size: clamp(1.1rem, 5vw, 1.5rem);
+        font-weight: bold;
+        color: #333;
+    }
+
+    .info-container {
+        background: white;
+        padding: var(--padding-sm);
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        margin-bottom: var(--gap-md);
+    }
+
+    .info-title {
+        font-size: clamp(1rem, 4vw, 1.3rem);
+        margin-bottom: var(--gap-sm);
+        color: #444;
+    }
+
+    /* Media queries para tablets */
+    @media (min-width: 768px) {
+        .dashboard-container {
+            padding: var(--padding-md);
+        }
+
+        .header {
+            padding: var(--padding-md);
+        }
+
+        .metrics-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--gap-md);
+        }
+
+        .metric-card {
+            padding: var(--padding-md);
+            min-height: 120px;
+        }
+    }
+
+    /* Media queries para desktop */
+    @media (min-width: 992px) {
+        .dashboard-container {
+            padding: var(--padding-lg);
+        }
+
+        .metrics-grid {
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: var(--gap-lg);
+        }
+
+        .metric-card {
+            padding: var(--padding-md);
+            min-height: 140px;
+        }
+    }
+
+.section-title {
+        font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #3b82f6;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-title i {
+        color: #3b82f6;
+        font-size: 1.1em;
+    }
+
+    /* Estilos específicos para cada sección */
+    .low-stock-title {
+        border-bottom-color: #ef4444;
+    }
+    .low-stock-title i {
+        color: #ef4444;
+    }
+
+    .last-invoice-title {
+        border-bottom-color: #10b981;
+    }
+    .last-invoice-title i {
+        color: #10b981;
+    }
+
+    .top-clients-title {
+        border-bottom-color: #f59e0b;
+    }
+    .top-clients-title i {
+        color: #f59e0b;
+    }
+
+    .maintenance-title {
+        border-bottom-color: #8b5cf6;
+    }
+    .maintenance-title i {
+        color: #8b5cf6;
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="header">
+        <h1><i class="fas fa-chart-pie"></i> Resumen del Negocio</h1>
+        <p>Actualizado al {{ today }}</p>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-shopping-bag"></i></div>
+            <h3 class="metric-title">Ventas Hoy</h3>
+            <div class="metric-value">${{ "{:,.2f}".format(total_ventas_hoy) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-chart-line"></i></div>
+            <h3 class="metric-title">Ventas Mes</h3>
+            <div class="metric-value">${{ "{:,.2f}".format(total_ventas_mes) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-cart-arrow-down"></i></div>
+            <h3 class="metric-title">Compras Hoy</h3>
+            <div class="metric-value">${{ "{:,.2f}".format(total_compras_hoy) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-boxes"></i></div>
+            <h3 class="metric-title">Compras Mes</h3>
+            <div class="metric-value">${{ "{:,.2f}".format(total_compras_mes) }}</div>
+        </div>
+    </div>
+
+    <!-- Productos con stock bajo -->
+    <div class="info-container">
+        <h2 class="section-title low-stock-litle">
+            <i class="fas fa-exclamation-triangle"></i> Productos con Stock Bajo
+        </h2>
+        <ul>
+            {% for producto in productos_stock_bajo %}
+            <li>
+                {{ producto.Descripcion }} – {{ producto.Existencias }} {{ producto.unidad }}
+            </li>
+            {% else %}
+            <li>No hay productos con bajo stock.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Top Clientes -->
+    <div class="info-container">
+        <h2 class="section-title top-clients-title">
+            <i class="fas fa-trophy"></i>Top 5 Clientes
+        </h2>
+        <ul>
+            {% for cliente in top_clientes %}
+            <li>{{ cliente.Nombre }} – ${{ "{:,.2f}".format(cliente.total_comprado) }}</li>
+            {% else %}
+            <li>No hay clientes con compras registradas.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Última Factura -->
+    <div class="info-container">
+        <h2 class="section-title last-invoice-title">
+            <i class="fas fa-file-invoice-dollar"></i>Última Factura
+        </h2>
+        {% if ultima_factura %}
+        <p>
+            <strong>Factura #{{ ultima_factura.ID_Factura }}</strong><br>
+            Cliente: {{ ultima_factura.cliente }}<br>
+            Fecha: {{ ultima_factura.Fecha }}<br>
+            Total: ${{ "{:,.2f}".format(ultima_factura.total) }}
+        </p>
+        {% else %}
+        <p>No hay facturas registradas aún.</p>
+        {% endif %}
+    </div>
+
+    <!-- Cuentas por Cobrar -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-hand-holding-usd"></i></div>
+            <h3 class="metric-title">Cuentas por Cobrar Vigentes</h3>
+            <div class="metric-value">${{ "{:,.2f}".format(cuentas_cobrar) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <h3 class="metric-title">Cuentas Vencidas</h3>
+            <div class="metric-value">${{ "{:,.2f}".format(cuentas_cobrar_vencidas) }}</div>
+        </div>
+    </div>
+
+    <!-- Próximos mantenimientos -->
+    <div class="info-container">
+        <h2 class="section-title maintenance-title">
+            <i class="fas fa-tools"></i>Próximos Mantenimientos Vehiculares
+        </h2>
+        <ul>
+            {% for mant in proximos_mantenimientos %}
+            <li>
+                {{ mant.Placa }} – {{ mant.Fecha }} – {{ mant.Tipo }}: ${{ "{:,.2f}".format(mant.Costo) }}
+            </li>
+            {% else %}
+            <li>No hay mantenimientos programados.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

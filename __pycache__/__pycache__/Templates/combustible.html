@@ -1,0 +1,130 @@
+{% extends "layout.html" %}
+{% block title %}Reporte de Combustible{% endblock %}
+{% block main %}
+<div class="container my-4">
+    <h3 class="text-center text-primary fw-bold mb-4"> Reporte de Gasto de Combustibles</h3>
+
+    <!-- BOTÓN AGREGAR -->
+    <div class="text-end mb-3">
+        <button class="btn btn-success" type="button" data-bs-toggle="collapse" data-bs-target="#formRegistroCombustible" aria-expanded="false" aria-controls="formRegistroCombustible">
+            <i class="bi bi-plus-circle me-1"></i> Agregar
+        </button>
+    </div>
+
+    <!-- FORMULARIO DE REGISTRO COLAPSABLE -->
+    <div class="collapse" id="formRegistroCombustible">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form method="post" class="row gy-3 gx-3">
+                    <div class="col-12 col-md-4 col-lg-2">
+                        <label class="form-label">Fecha</label>
+                        <input type="date" name="fecha" class="form-control" required>
+                    </div>
+                    <div class="col-12 col-md-8 col-lg-4">
+                        <label class="form-label">Vehículo</label>
+                        <select name="vehiculo" class="form-select" required>
+                            <option value="">Seleccione</option>
+                            {% for v in vehiculos %}
+                                <option value="{{ v.ID_Vehiculo }}">{{ v.Placa }} - {{ v.Marca }} {{ v.Modelo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <label class="form-label">Monto (C$)</label>
+                        <input type="number" step="0.01" name="monto" class="form-control" required>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <label class="form-label">Litros</label>
+                        <input type="number" step="0.01" name="litros" class="form-control">
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <label class="form-label">Kilometraje</label>
+                        <input type="number" name="kilometraje" class="form-control">
+                    </div>
+                    <div class="col-6 col-md-6 col-lg-3">
+                        <label class="form-label">Bodega</label>
+                        <select name="bodega" class="form-select">
+                            <option value="">Seleccione</option>
+                            {% for b in bodegas %}
+                                <option value="{{ b.ID_Bodega }}">{{ b.Nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Observación</label>
+                        <textarea name="observacion" class="form-control" rows="2" placeholder="Detalle breve (opcional)"></textarea>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle me-1"></i> Registrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORMULARIO DE FILTRO -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white fw-semibold">
+            Filtrar Registros
+        </div>
+        <div class="card-body">
+            <form method="get" class="row gy-2 gx-3 align-items-end">
+                <div class="col-12 col-sm-6 col-md-4">
+                    <label class="form-label">Fecha</label>
+                    <input type="date" name="fecha" class="form-control" value="{{ fecha or '' }}">
+                </div>
+                <div class="col-12 col-sm-6 col-md-5">
+                    <label class="form-label">Vehículo</label>
+                    <select name="vehiculo" class="form-select">
+                        <option value="">Todos</option>
+                        {% for v in vehiculos %}
+                            <option value="{{ v.ID_Vehiculo }}" {% if id_vehiculo|int == v.ID_Vehiculo %}selected{% endif %}>
+                                {{ v.Placa }} - {{ v.Marca }} {{ v.Modelo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-1"></i> Buscar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TABLA DE REGISTROS -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Vehículo</th>
+                    <th>Monto (C$)</th>
+                    <th>Litros</th>
+                    <th>Kilometraje</th>
+                    <th>Observación</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in gastos %}
+                <tr>
+                    <td>{{ row.Fecha }}</td>
+                    <td>{{ row.Placa }} - {{ row.Marca }} {{ row.Modelo }}</td>
+                    <td class="text-end">{{ row.Monto }}</td>
+                    <td class="text-end">{{ row.Litros or '' }}</td>
+                    <td class="text-end">{{ row.Kilometraje or '' }}</td>
+                    <td>{{ row.Observacion }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No hay registros para mostrar.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

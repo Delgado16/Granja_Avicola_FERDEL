@@ -167,6 +167,52 @@
         margin-bottom: 1rem;
     }
 
+    /* Estilos para el resumen de totales */
+    .total-summary {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #dee2e6;
+    }
+
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .total-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .total-label {
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .total-value {
+        font-weight: 600;
+    }
+
+    .grand-total {
+        border-top: 1px solid #dee2e6;
+        padding-top: 0.75rem;
+        margin-top: 0.75rem;
+        font-size: 1.1rem;
+        color: #212529;
+    }
+
+    .grand-total .total-label {
+        font-weight: 600;
+    }
+
+    .grand-total .total-value {
+        font-weight: 700;
+        color: #0d6efd;
+    }
+
     /* Validación */
     .is-invalid {
         border-color: #dc3545;
@@ -185,14 +231,14 @@
     }
 
     /* Estilos para pantallas grandes (desktop) */
-    @media (min-width: 1200px) {
+    @media (min-width: 992px) {
         .stock-container {
             flex: 0 0 380px;
         }
     }
 
     /* Estilos para pantallas medianas (tablets) */
-    @media (max-width: 992px) {
+    @media (max-width: 991.98px) {
         .split-container {
             flex-direction: column;
             gap: 1rem;
@@ -201,9 +247,9 @@
         .stock-container {
             flex: 1;
             max-height: none;
-            order: -1;
             position: static;
             max-height: 300px;
+            order: 1;
         }
 
         .row.g-3 > [class^="col-"] {
@@ -216,7 +262,7 @@
     }
 
     /* Estilos para pantallas pequeñas (móviles grandes) */
-    @media (max-width: 768px) {
+    @media (max-width: 767.98px) {
         .split-container {
             margin: 0.75rem;
             padding: 0;
@@ -231,10 +277,14 @@
         .stock-container {
             padding: var(--card-padding-sm);
         }
+
+        .total-summary {
+            padding: 0.75rem;
+        }
     }
 
     /* Estilos para móviles pequeños (576px y menos) */
-    @media (max-width: 576px) {
+    @media (max-width: 575.98px) {
         .split-container {
             margin: 0.5rem;
             margin-top: calc(var(--navbar-height-sm) + 0.5rem);
@@ -354,7 +404,7 @@
         z-index: 1100;
     }
 
-    @media (max-width: 576px) {
+    @media (max-width: 575.98px) {
         .alert.position-fixed {
             top: calc(var(--navbar-height-sm) + 1rem);
         }
@@ -446,13 +496,14 @@
                                         <th data-label="Costo" style="width: 7rem;">Costo</th>
                                         <th data-label="IVA" style="width: 6rem;">IVA</th>
                                         <th data-label="Descuento" style="width: 8rem;">Descuento</th>
+                                        <th data-label="Subtotal" style="width: 7rem;">Subtotal</th>
                                         <th style="width: 6rem;">Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
                                         <td data-label="Producto">
-                                            <select name="productos[]" class="form-select producto-select" required>
+                                            <select name="productos[]" class="form-select producto-select" required onchange="calcularSubtotalFila(this)">
                                                 <option value="" disabled selected>Productos</option>
                                                 {% for producto in productos %}
                                                 <option value="{{ producto.id }}">{{ producto.Descripcion }}</option>
@@ -461,20 +512,23 @@
                                             <div class="invalid-feedback">Seleccione un producto</div>
                                         </td>
                                         <td data-label="Cantidad">
-                                            <input type="number" name="cantidades[]" step="any" min="0" class="form-control" required>
+                                            <input type="number" name="cantidades[]" step="any" min="0" class="form-control" required oninput="calcularSubtotalFila(this)">
                                             <div class="invalid-feedback">Ingrese cantidad</div>
                                         </td>
                                         <td data-label="Costo">
-                                            <input type="number" name="costos[]" step="any" min="0" class="form-control" required>
+                                            <input type="number" name="costos[]" step="any" min="0" class="form-control" required oninput="calcularSubtotalFila(this)">
                                             <div class="invalid-feedback">Ingrese costo</div>
                                         </td>
                                         <td data-label="IVA">
-                                            <input type="number" name="ivas[]" step="any" min="0" class="form-control" required>
+                                            <input type="number" name="ivas[]" step="any" min="0" class="form-control" required oninput="calcularSubtotalFila(this)">
                                             <div class="invalid-feedback">Ingrese IVA</div>
                                         </td>
                                         <td data-label="Descuento">
-                                            <input type="number" name="descuentos[]" step="any" min="0" class="form-control" required>
+                                            <input type="number" name="descuentos[]" step="any" min="0" class="form-control" required oninput="calcularSubtotalFila(this)">
                                             <div class="invalid-feedback">Ingrese descuento</div>
+                                        </td>
+                                        <td data-label="Subtotal" class="subtotal-cell">
+                                            $0.00
                                         </td>
                                         <td>
                                             <button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)">
@@ -487,6 +541,26 @@
                         </div>
                     </div>
 
+                    <!-- Resumen de totales -->
+                    <div class="total-summary mb-4">
+                        <div class="total-row">
+                            <span class="total-label">Subtotal:</span>
+                            <span class="total-value" id="subtotal">$0.00</span>
+                        </div>
+                        <div class="total-row">
+                            <span class="total-label">IVA:</span>
+                            <span class="total-value" id="iva-total">$0.00</span>
+                        </div>
+                        <div class="total-row">
+                            <span class="total-label">Descuentos:</span>
+                            <span class="total-value" id="descuento-total">$0.00</span>
+                        </div>
+                        <div class="total-row grand-total">
+                            <span class="total-label">Total:</span>
+                            <span class="total-value" id="total-compra">$0.00</span>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn-primary btn-submit w-100 py-2">
                         <i class="bi bi-save"></i> Registrar Compra
                     </button>
@@ -495,7 +569,7 @@
         </div>
     </div>
 
-    <!-- Contenedor del stock (derecha) -->
+    <!-- Contenedor del stock (derecha en desktop, debajo en móvil) -->
     <div class="stock-container">
         <h3 class="stock-title">Stock por Bodega</h3>
         <div id="stock-loading" class="text-center py-3">
@@ -529,12 +603,17 @@
         nuevaFila.querySelectorAll("input").forEach(input => {
             input.value = "";
             input.classList.remove("is-invalid");
+            input.oninput = function() { calcularSubtotalFila(this); };
         });
         
         // Resetear el select
         const select = nuevaFila.querySelector("select");
         select.selectedIndex = 0;
         select.classList.remove("is-invalid");
+        select.onchange = function() { calcularSubtotalFila(this); };
+        
+        // Resetear subtotal
+        nuevaFila.querySelector(".subtotal-cell").textContent = "$0.00";
         
         // Ocultar mensajes de error
         nuevaFila.querySelectorAll(".invalid-feedback").forEach(feedback => {
@@ -543,7 +622,7 @@
 
         // Asegurar que los atributos data-label estén presentes para móviles
         const celdas = nuevaFila.querySelectorAll("td");
-        const etiquetas = ["Producto", "Cantidad", "Costo", "IVA", "Descuento"];
+        const etiquetas = ["Producto", "Cantidad", "Costo", "IVA", "Descuento", "Subtotal"];
         celdas.forEach((celda, index) => {
             if (index < etiquetas.length) {
                 celda.setAttribute("data-label", etiquetas[index]);
@@ -563,9 +642,71 @@
         const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
         if (tabla.rows.length > 1) {
             fila.remove();
+            calcularTotales();
         } else {
             mostrarAlerta('warning', 'Advertencia!', 'Debe haber al menos un producto en la compra.');
         }
+    }
+
+    function calcularSubtotalFila(element) {
+        const fila = element.closest('tr');
+        const cantidad = parseFloat(fila.querySelector('input[name="cantidades[]"]').value) || 0;
+        const costo = parseFloat(fila.querySelector('input[name="costos[]"]').value) || 0;
+        const iva = parseFloat(fila.querySelector('input[name="ivas[]"]').value) || 0;
+        const descuento = parseFloat(fila.querySelector('input[name="descuentos[]"]').value) || 0;
+        
+        // Calcular subtotal con IVA y descuento
+        const subtotalSinDescuento = cantidad * costo;
+        const valorDescuento = subtotalSinDescuento * (descuento / 100);
+        const subtotalConDescuento = subtotalSinDescuento - valorDescuento;
+        const valorIva = subtotalConDescuento * (iva / 100);
+        const subtotalFinal = subtotalConDescuento + valorIva;
+        
+        // Mostrar subtotal en la fila
+        fila.querySelector('.subtotal-cell').textContent = formatCurrency(subtotalFinal);
+        
+        // Calcular totales generales
+        calcularTotales();
+    }
+
+    function calcularTotales() {
+        let subtotal = 0;
+        let ivaTotal = 0;
+        let descuentoTotal = 0;
+        let total = 0;
+        
+        const filas = document.querySelectorAll("#tabla-productos tbody tr");
+        
+        filas.forEach(fila => {
+            const cantidad = parseFloat(fila.querySelector('input[name="cantidades[]"]').value) || 0;
+            const costo = parseFloat(fila.querySelector('input[name="costos[]"]').value) || 0;
+            const iva = parseFloat(fila.querySelector('input[name="ivas[]"]').value) || 0;
+            const descuento = parseFloat(fila.querySelector('input[name="descuentos[]"]').value) || 0;
+            
+            // Calcular valores para esta fila
+            const subtotalSinDescuento = cantidad * costo;
+            const valorDescuento = subtotalSinDescuento * (descuento / 100);
+            const subtotalConDescuento = subtotalSinDescuento - valorDescuento;
+            const valorIva = subtotalConDescuento * (iva / 100);
+            
+            // Acumular totales
+            subtotal += subtotalConDescuento;
+            ivaTotal += valorIva;
+            descuentoTotal += valorDescuento;
+        });
+        
+        total = subtotal + ivaTotal;
+        
+        // Actualizar la interfaz
+        document.getElementById('subtotal').textContent = formatCurrency(subtotal);
+        document.getElementById('iva-total').textContent = formatCurrency(ivaTotal);
+        document.getElementById('descuento-total').textContent = formatCurrency(descuentoTotal);
+        document.getElementById('total-compra').textContent = formatCurrency(total);
+    }
+
+    // Función para formatear números como moneda
+    function formatCurrency(amount) {
+        return '$' + amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
     }
 
     function mostrarAlerta(tipo, titulo, mensaje) {
@@ -699,7 +840,7 @@
         const primeraFila = document.querySelector("#tabla-productos tbody tr");
         if (primeraFila) {
             const celdas = primeraFila.querySelectorAll("td");
-            const etiquetas = ["Producto", "Cantidad", "Costo", "IVA", "Descuento"];
+            const etiquetas = ["Producto", "Cantidad", "Costo", "IVA", "Descuento", "Subtotal"];
             
             celdas.forEach((celda, index) => {
                 if (index < etiquetas.length) {
@@ -720,6 +861,9 @@
         document.getElementById("id_bodega").addEventListener("change", function() {
             actualizarStockVisual(this.value);
         });
+
+        // Calcular total inicial
+        calcularTotales();
     });
 </script>
 {% endblock %}
