@@ -1,3 +1,1 @@
-Tambien podemos implementar algo nuevo que sea una automaticacion, que mediante el numero de los clientes registrados, mande mensajes de texto automaticos
-cada cierto tiempo para ver si van a realizar pedidos para añadirlos a la proxima ruta de entrega, tambien podemos hacer esa misma jugada
-crear secciones de ruteo de venta y ruteo de entrega
+Problemas al ver detalles de ventas, implementar tambien en compras, ademas organizar mejor el apartado de clientes
