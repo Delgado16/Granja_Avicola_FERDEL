@@ -3,16 +3,109 @@
 {% block title %}Gestionar Vehículos{% endblock %}
 
 {% block main %}
-<div class="container" style="max-width: 950px; margin-top: 22px;">
-    <div class="card shadow-sm mb-4">
+<div class="container" style="max-width: 1200px; margin-top: 22px;">
+    <!-- Formulario mejorado para agregar nuevo vehículo (ahora arriba) -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-success text-white py-3">
+            <h4 class="card-title text-center mb-0">
+                <i class="bi bi-plus-circle me-2"></i>Agregar Nuevo Vehículo
+            </h4>
+        </div>
         <div class="card-body">
-            <h2 class="card-title text-center text-primary mb-4" style="font-weight: 700;">Vehículos Registrados</h2>
-            <!-- Tabla de vehículos -->
+            <form method="post" action="{{ url_for('vehiculos') }}" class="row g-3 needs-validation" novalidate>
+                <!-- Primera fila de campos -->
+                <div class="col-md-3">
+                    <label for="placa" class="form-label fw-bold">Placa</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                        <input type="text" class="form-control" id="placa" name="placa" required>
+                        <div class="invalid-feedback">
+                            Por favor ingrese la placa del vehículo
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="marca" class="form-label fw-bold">Marca</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-building"></i></span>
+                        <input type="text" class="form-control" id="marca" name="marca">
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="modelo" class="form-label fw-bold">Modelo</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                        <input type="text" class="form-control" id="modelo" name="modelo">
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="año" class="form-label fw-bold">Año</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                        <input type="number" class="form-control" id="año" name="año" min="1950" max="2100">
+                    </div>
+                </div>
+                
+                <!-- Segunda fila de campos -->
+                <div class="col-md-3">
+                    <label for="color" class="form-label fw-bold">Color</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-palette"></i></span>
+                        <input type="text" class="form-control" id="color" name="color">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <label for="chasis" class="form-label fw-bold">Número de Chasis</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-upc"></i></span>
+                        <input type="text" class="form-control" id="chasis" name="chasis">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <label for="motor" class="form-label fw-bold">Número de Motor</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-gear"></i></span>
+                        <input type="text" class="form-control" id="motor" name="motor">
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="estado" class="form-label fw-bold">Estado</label>
+                    <select id="estado" name="estado" class="form-select">
+                        <option value="1" selected>Activo</option>
+                        <option value="0">Inactivo</option>
+                    </select>
+                </div>
+                
+                <!-- Botón de submit -->
+                <div class="col-12 text-center mt-2">
+                    <button type="submit" class="btn btn-success px-4 py-2 fw-bold rounded-pill">
+                        <i class="bi bi-save me-2"></i>Guardar Vehículo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sección de vehículos registrados (ahora abajo) -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white py-3">
+            <h2 class="card-title text-center mb-0" style="font-weight: 700;">
+                <i class="bi bi-car-front-fill me-2"></i>Vehículos Registrados
+            </h2>
+        </div>
+        <div class="card-body px-0">
+            <!-- Tabla de vehículos con mejor estilo -->
             <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
-                    <thead class="table-dark">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th>Placa</th>
+                            <th class="ps-4">Placa</th>
                             <th>Marca</th>
                             <th>Modelo</th>
                             <th>Año</th>
@@ -20,39 +113,48 @@
                             <th>Chasis</th>
                             <th>Motor</th>
                             <th>Estado</th>
-                            <th>Acciones</th>
+                            <th class="text-end pe-4">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for veh in vehiculos %}
-                        <tr>
-                            <td>{{ veh.Placa }}</td>
+                        <tr class="border-top">
+                            <td class="ps-4 fw-bold text-primary">{{ veh.Placa }}</td>
                             <td>{{ veh.Marca }}</td>
                             <td>{{ veh.Modelo }}</td>
                             <td>{{ veh.Año }}</td>
-                            <td>{{ veh.Color }}</td>
-                            <td>{{ veh.NumeroChasis }}</td>
-                            <td>{{ veh.NumeroMotor }}</td>
                             <td>
-                                <span class="badge bg-{{ 'success' if veh.Estado else 'secondary' }}">
+                                <span class="color-badge" style="background-color: {{ veh.Color }};"></span>
+                                {{ veh.Color }}
+                            </td>
+                            <td class="text-muted font-monospace">{{ veh.NumeroChasis }}</td>
+                            <td class="text-muted font-monospace">{{ veh.NumeroMotor }}</td>
+                            <td>
+                                <span class="badge rounded-pill bg-{{ 'success' if veh.Estado else 'secondary' }}">
                                     {{ 'Activo' if veh.Estado else 'Inactivo' }}
                                 </span>
                             </td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <a href="/vehiculos/{{ veh.ID_Vehiculo }}/editar" class="btn btn-warning" title="Editar">
-                                        <i class="bi bi-pencil"></i> Editar
+                            <td class="text-end pe-4">
+                                <div class="btn-group" role="group">
+                                    <a href="/vehiculos/{{ veh.ID_Vehiculo }}/editar" 
+                                       class="btn btn-sm btn-outline-warning rounded-start-pill px-3"
+                                       title="Editar">
+                                        <i class="bi bi-pencil-square"></i>
                                     </a>
-                                    <a href="/vehiculos/{{ veh.ID_Vehiculo }}/eliminar" class="btn btn-danger"
-                                       onclick="return confirm('¿Seguro que deseas eliminar este vehículo?');" title="Eliminar">
-                                        <i class="bi bi-trash"></i> Eliminar
+                                    <a href="/vehiculos/{{ veh.ID_Vehiculo }}/eliminar" 
+                                       class="btn btn-sm btn-outline-danger rounded-end-pill px-3"
+                                       onclick="return confirm('¿Seguro que deseas eliminar este vehículo?');" 
+                                       title="Eliminar">
+                                        <i class="bi bi-trash"></i>
                                     </a>
                                 </div>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="9" class="text-center text-muted">No hay vehículos registrados.</td>
+                            <td colspan="9" class="text-center py-4 text-muted">
+                                <i class="bi bi-info-circle me-2"></i>No hay vehículos registrados
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -60,52 +162,55 @@
             </div>
         </div>
     </div>
-
-    <!-- Formulario para agregar nuevo vehículo -->
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h4 class="card-title text-center mb-3 text-success" style="font-weight: 600;">Agregar Nuevo Vehículo</h4>
-            <form method="post" action="{{ url_for('vehiculos') }}" class="row g-2 justify-content-center">
-                <div class="col-md-2 col-6">
-                    <label class="form-label">Placa</label>
-                    <input type="text" name="placa" class="form-control" required>
-                </div>
-                <div class="col-md-2 col-6">
-                    <label class="form-label">Marca</label>
-                    <input type="text" name="marca" class="form-control">
-                </div>
-                <div class="col-md-2 col-6">
-                    <label class="form-label">Modelo</label>
-                    <input type="text" name="modelo" class="form-control">
-                </div>
-                <div class="col-md-1 col-3">
-                    <label class="form-label">Año</label>
-                    <input type="number" name="año" class="form-control" min="1950" max="2100">
-                </div>
-                <div class="col-md-1 col-3">
-                    <label class="form-label">Color</label>
-                    <input type="text" name="color" class="form-control">
-                </div>
-                <div class="col-md-2 col-6">
-                    <label class="form-label">Chasis</label>
-                    <input type="text" name="chasis" class="form-control">
-                </div>
-                <div class="col-md-2 col-6">
-                    <label class="form-label">Motor</label>
-                    <input type="text" name="motor" class="form-control">
-                </div>
-                <div class="col-md-2 col-6">
-                    <label class="form-label">Estado</label>
-                    <select name="estado" class="form-select">
-                        <option value="1">Activo</option>
-                        <option value="0">Inactivo</option>
-                    </select>
-                </div>
-                <div class="col-12 text-center mt-2">
-                    <button type="submit" class="btn btn-success px-5 fw-bold">Agregar Vehículo</button>
-                </div>
-            </form>
-        </div>
-    </div>
 </div>
+
+<style>
+    .color-badge {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        margin-right: 8px;
+        border: 1px solid #dee2e6;
+        vertical-align: middle;
+    }
+    
+    .card {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .table th {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .form-label {
+        font-size: 0.85rem;
+        margin-bottom: 0.3rem;
+    }
+</style>
+
+<script>
+    // Validación de formulario
+    (function() {
+        'use strict'
+        
+        var forms = document.querySelectorAll('.needs-validation')
+        
+        Array.prototype.slice.call(forms)
+            .forEach(function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
 {% endblock %}
