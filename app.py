@@ -1000,116 +1000,42 @@ def ventas():
 @app.route("/gestionar_ventas", methods=["GET"])
 def gestionar_ventas():
     try:
-        if not session.get("user_id"):
-            flash("❌ Debes iniciar sesión", "danger")
-            return redirect(url_for("login"))
-
-        # Paginación
-        page = request.args.get('page', 1, type=int)
-        per_page = 20
-        offset = (page - 1) * per_page
-
-        # Consulta principal
+        # Obtener las ventas con datos del cliente y el total de cada factura
         ventas = db.execute("""
-            SELECT 
-                f.ID_Factura, 
-                strftime('%d/%m/%Y %H:%M', f.Fecha) as Fecha,
-                c.Nombre AS Cliente,
-                f.Credito_Contado,
-                SUM(df.Total) AS Total,
-                EXISTS(SELECT 1 FROM Pagos_Credito WHERE ID_Factura = f.ID_Factura) AS tiene_pagos
+            SELECT f.ID_Factura, f.Fecha, c.Nombre AS Cliente, 
+                   f.Credito_Contado, f.Observacion,
+                   (SELECT SUM(Total) FROM Detalle_Facturacion WHERE ID_Factura = f.ID_Factura) AS Total
             FROM Facturacion f
             JOIN Clientes c ON c.ID_Cliente = f.IDCliente
-            JOIN Detalle_Facturacion df ON df.ID_Factura = f.ID_Factura
-            GROUP BY f.ID_Factura
             ORDER BY f.Fecha DESC
-            LIMIT ? OFFSET ?
-        """, per_page, offset)
+        """)
 
-        # Productos por venta
+        # Obtener los detalles (productos por venta)
         detalles = db.execute("""
-            SELECT 
-                df.ID_Factura, 
-                p.Descripcion, 
-                df.Cantidad, 
-                df.PrecioUnitario,
-                df.Total AS Subtotal
+            SELECT df.ID_Factura, p.Descripcion, df.Cantidad, df.Total AS Subtotal
             FROM Detalle_Facturacion df
             JOIN Productos p ON df.ID_Producto = p.ID_Producto
-            WHERE df.ID_Factura IN (
-                SELECT ID_Factura FROM Facturacion 
-                ORDER BY Fecha DESC 
-                LIMIT ? OFFSET ?
-            )
-        """, per_page, offset)
+        """)
 
-        # Procesamiento
+        # Agrupar productos por factura
         productos_por_venta = {}
         for d in detalles:
             productos_por_venta.setdefault(d["ID_Factura"], []).append(
-                f"{d['Cantidad']} x {d['Descripcion']} (C${d['Subtotal']:.2f})"
+                f"{d['Cantidad']} x {d['Descripcion']} (C$ {d['Subtotal']:,.2f})"
             )
 
+        # Preparar datos para mostrar en la plantilla
         for venta in ventas:
             venta["Productos"] = productos_por_venta.get(venta["ID_Factura"], [])
             venta["NumeroFactura"] = f"F-{venta['ID_Factura']:05d}"
-            venta["TotalFormateado"] = f"C${venta['Total']:.2f}"
-            venta["tiene_pagos"] = bool(venta["tiene_pagos"])
+            # Formatear el total como moneda
+            venta["TotalFormateado"] = f"C${venta['Total']:,.2f}" if venta['Total'] else "C$ 0.00"
 
-        return render_template("gestionar_ventas.html", ventas=ventas, page=page)
+        return render_template("gestionar_ventas.html", ventas=ventas)
 
     except Exception as e:
-        app.logger.error(f"Error: {str(e)}")
-        flash("❌ Error al cargar ventas", "danger")
+        flash(f"❌ Error al cargar las ventas: {e}", "danger")
         return redirect(url_for("ventas"))
-
-@app.route("/ventas/<int:venta_id>", methods=["GET"])
-def obtener_detalle_venta(venta_id):
-    try:
-        if not venta_id or venta_id <= 0:
-            return jsonify({"error": "ID inválido"}), 400
-
-        venta = db.execute("""
-            SELECT 
-                f.ID_Factura, 
-                strftime('%Y-%m-%d %H:%M:%S', f.Fecha) AS Fecha,
-                c.Nombre AS Cliente,
-                c.Telefono,
-                c.Direccion,
-                f.Credito_Contado,
-                f.Observacion,
-                SUM(df.Total) AS Total
-            FROM Facturacion f
-            JOIN Clientes c ON c.ID_Cliente = f.IDCliente
-            JOIN Detalle_Facturacion df ON df.ID_Factura = f.ID_Factura
-            WHERE f.ID_Factura = ?
-            GROUP BY f.ID_Factura
-        """, venta_id)
-
-        if not venta:
-            return jsonify({"error": "No encontrada"}), 404
-
-        detalles = db.execute("""
-            SELECT 
-                p.Descripcion, 
-                df.Cantidad, 
-                df.PrecioUnitario,
-                df.Total AS Subtotal
-            FROM Detalle_Facturacion df
-            JOIN Productos p ON df.ID_Producto = p.ID_Producto
-            WHERE df.ID_Factura = ?
-        """, venta_id)
-
-        response = {
-            "venta": venta[0],
-            "productos": detalles,
-            "status": "success"
-        }
-        return jsonify(response)
-
-    except Exception as e:
-        app.logger.error(f"Error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
     
 ######################################################################
 @app.route("/productos_por_bodega/<int:id_bodega>")

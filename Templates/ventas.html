@@ -232,7 +232,7 @@
         }
     }
 
-    /* Estilos para tablets */
+    /* Estilos para tablets y móviles */
     @media (max-width: 992px) {
         .split-container {
             flex-direction: column;
@@ -242,8 +242,9 @@
         .stock-container {
             flex: 1;
             max-height: none;
-            order: -1;
             position: static;
+            order: 1; /* Cambiado a 1 para que aparezca después del formulario */
+            margin-top: 1rem;
             max-height: 300px;
         }
 
@@ -592,7 +593,7 @@
         </div>
     </div>
 
-    <!-- Contenedor del stock (derecha) -->
+    <!-- Contenedor del stock (derecha en desktop, debajo en móvil) -->
     <div class="stock-container">
         <h3 class="stock-title">Stock por Bodega</h3>
         <div id="stock-loading" class="text-center py-3">
