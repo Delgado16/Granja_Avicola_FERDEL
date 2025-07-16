@@ -9,8 +9,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import traceback
 import json
-import time
-import hmac
+
 
 
 app = Flask(__name__)
@@ -19,14 +18,8 @@ app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"  # Necesaria para sesiones y Flask-Login
-app.config["SECRET_KEY"] = "HuevoExtraGrandeRojo"  # ¡Cambia esto por una clave segura!
-
-app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SECURE"] = True  # Activar solo en producción con HTTPS
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["PERMANENT_SESSION_LIFETIME"] = 1800  # 30 minutos de inactividad
-
 Session(app)
+
 # Configuración base de datos
 db = SQL("sqlite:///Data_Base.db")
 
@@ -34,34 +27,19 @@ db = SQL("sqlite:///Data_Base.db")
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
-login_manager.session_protection = "strong"  # Protección de sesión fuerte
-
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],  # Límites de uso
-    storage_uri="memory://"  # Almacenamiento en memoria para pruebas
-)
 
 # Clase Usuario para Flask-Login
 class User(UserMixin):
     def __init__(self, id, username):
         self.id = str(id)  # importante que sea string para Flask-Login
         self.username = username
-    
-    def get_id(self):
-        return self.id
-    
 
 # Cargar usuario para mantener sesión
 @login_manager.user_loader
 def load_user(user_id):
-    try:
-        user_data = db.execute("SELECT * FROM Usuarios WHERE ID_Usuario = ?", user_id)
-        if len(user_data) == 1:
-            return User(user_data[0]["ID_Usuario"], user_data[0]["NombreUsuario"])
-    except Exception as e:
-        app.logger.error(f"Error al cargar usuario: {e}")
+    user_data = db.execute("SELECT * FROM Usuarios WHERE ID_Usuario = ?", user_id)
+    if len(user_data) == 1:
+        return User(user_data[0]["ID_Usuario"], user_data[0]["NombreUsuario"])
     return None
 
 
@@ -71,18 +49,7 @@ def after_request(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Expires"] = 0
     response.headers["Pragma"] = "no-cache"
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "SAMEORIGIN"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    
-    # HSTS solo en producción
-    if not app.debug:
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    
     return response
-
-def secure_compare(actual, expected):
-    return hmac.compare_digest(actual, expected)
 
 # Ruta raíz
 @app.route('/')
@@ -479,109 +446,51 @@ def compras():
 # Gestionar compras
 @app.route("/gestionar_compras")
 def gestionar_compras():
-    # Consulta para obtener TODAS las compras sin límite
-    compras = db.execute("""
-        SELECT
-            mi.ID_Movimiento AS id,
-            mi.Fecha AS fecha,
-            p.Nombre AS proveedor,
-            p.ID_Proveedor AS proveedor_id,
-            mi.N_Factura AS factura,
-            mi.Contado_Credito AS tipo_pago,
-            mi.Observacion AS observacion,
-            mi.ID_Bodega AS id_bodega,
-            mi.ID_Empresa AS id_empresa,
-            IFNULL(SUM(dmi.Costo_Total), 0) AS total
-        FROM Movimientos_Inventario mi
-        JOIN Proveedores p ON mi.ID_Proveedor = p.ID_Proveedor
-        LEFT JOIN Detalle_Movimiento_Inventario dmi ON mi.ID_Movimiento = dmi.ID_Movimiento
-        WHERE mi.ID_TipoMovimiento = 1
-        GROUP BY mi.ID_Movimiento
-        ORDER BY mi.ID_Movimiento DESC
-    """)
-
-    # Agregar diagnóstico
-    print(f"Total de compras recuperadas: {len(compras)}")
-
-    # Obtener datos para los formularios (sin cambios)
-    proveedores = db.execute("SELECT ID_Proveedor AS id, Nombre FROM Proveedores")
-    empresas = db.execute("SELECT ID_Empresa, Descripcion FROM Empresa")
-    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
-    productos = db.execute("SELECT ID_Producto AS id, Descripcion FROM Productos ORDER BY Descripcion")
-
-    # Consulta de inventario (sin cambios)
-    inventario_query = """
-        SELECT 
-            ib.ID_Bodega,
-            ib.ID_Producto,
-            p.Descripcion,
-            ib.Cantidad as stock,
-            COALESCE(
-                (SELECT dmi.Precio_Unitario 
-                 FROM Detalle_Movimiento_Inventario dmi 
-                 JOIN Movimientos_Inventario mi ON dmi.ID_Movimiento = mi.ID_Movimiento 
-                 WHERE dmi.ID_Producto = ib.ID_Producto 
-                   AND mi.ID_Bodega = ib.ID_Bodega 
-                   AND mi.ID_TipoMovimiento = 1 
-                 ORDER BY mi.Fecha DESC 
-                 LIMIT 1), 0
-            ) as precio_compra
-        FROM Inventario_Bodega ib
-        JOIN Productos p ON ib.ID_Producto = p.ID_Producto
-        WHERE ib.Cantidad > 0
-        ORDER BY ib.ID_Bodega, p.Descripcion
-    """
-    
-    # Procesamiento de inventario (sin cambios)
     try:
-        inventario_resultados = db.execute(inventario_query)
-        inventario_por_bodega = {}
-        for row in inventario_resultados:
-            bodega_id = str(row['ID_Bodega'])
-            producto_id = str(row['ID_Producto'])
-            
-            if bodega_id not in inventario_por_bodega:
-                inventario_por_bodega[bodega_id] = {}
-                
-            inventario_por_bodega[bodega_id][producto_id] = {
-                'descripcion': row['Descripcion'],
-                'stock': row['stock'],
-                'precio': float(row['precio_compra']) if row['precio_compra'] else 0
-            }
-    except Exception as e:
-        print(f"Error en consulta de inventario: {e}")
-        inventario_por_bodega = {}
-    
-    # Obtener productos de cada compra (sin cambios)
-    for compra in compras:
-        try:
+        # Consulta principal de compras
+        compras = db.execute("""
+            SELECT
+                mi.ID_Movimiento AS id,
+                mi.Fecha AS fecha,
+                p.Nombre AS proveedor,
+                mi.N_Factura AS factura,
+                mi.Contado_Credito AS tipo_pago,
+                mi.Observacion AS observacion,
+                b.Nombre AS bodega,
+                e.Descripcion AS empresa,
+                IFNULL(SUM(dmi.Costo_Total), 0) AS total
+            FROM Movimientos_Inventario mi
+            JOIN Proveedores p ON mi.ID_Proveedor = p.ID_Proveedor
+            JOIN Bodegas b ON mi.ID_Bodega = b.ID_Bodega
+            JOIN Empresa e ON mi.ID_Empresa = e.ID_Empresa
+            LEFT JOIN Detalle_Movimiento_Inventario dmi ON mi.ID_Movimiento = dmi.ID_Movimiento
+            WHERE mi.ID_TipoMovimiento = 1
+            GROUP BY mi.ID_Movimiento
+            ORDER BY mi.ID_Movimiento DESC
+            LIMIT 100
+        """)
+
+        # Obtener productos de cada compra
+        for compra in compras:
             compra['productos'] = db.execute("""
                 SELECT 
                     dmi.ID_Producto as id_producto,
                     p.Descripcion as descripcion,
                     dmi.Cantidad as cantidad,
-                    dmi.Precio_Unitario as costo,
-                    0 as iva,
-                    0 as descuento,
-                    COALESCE(ib.Cantidad, 0) as stock
+                    dmi.Costo_Total as costo_total
                 FROM Detalle_Movimiento_Inventario dmi
                 JOIN Productos p ON dmi.ID_Producto = p.ID_Producto
-                LEFT JOIN Inventario_Bodega ib ON ib.ID_Producto = dmi.ID_Producto 
-                    AND ib.ID_Bodega = ?
                 WHERE dmi.ID_Movimiento = ?
-            """, compra['id_bodega'], compra['id'])
-        except Exception as e:
-            print(f"Error obteniendo productos de compra {compra['id']}: {e}")
-            compra['productos'] = []
+                ORDER BY p.Descripcion
+            """, compra['id'])
 
-    return render_template("gestionar_compras.html",
-                           compras=compras,
-                           proveedores=proveedores,
-                           empresas=empresas,
-                           bodegas=bodegas,
-                           productos=productos,
-                           inventario_por_bodega=inventario_por_bodega)
+        return render_template("gestionar_compras.html", compras=compras)
 
+    except Exception as e:
+        print(f"Error en gestión de compras: {str(e)}")
+        flash("Ocurrió un error al cargar las compras", "danger")
+        return redirect(url_for('home'))
+    
 ##############################################################
 # Editar compra (corregido para manejar los productos del formulario)
 @app.route("/editar_compra/<int:id_compra>", methods=["GET", "POST"])
@@ -1972,9 +1881,11 @@ def format_currency(value):
 @app.route("/factura_alterna", methods=["GET", "POST"])
 @login_required
 def factura_alterna():
+    id_empresa = getattr(current_user, 'id_empresa', 1)
+    
     if request.method == "POST":
         try:
-            # === VALIDACIÓN DE FECHA (combinando ambos enfoques) ===
+            # === VALIDACIÓN DE FECHA ===
             fecha = request.form.get("fecha")
             if not fecha:
                 flash("La fecha es requerida", "danger")
@@ -1982,32 +1893,49 @@ def factura_alterna():
 
             try:
                 fecha_date = datetime.strptime(fecha, '%Y-%m-%d').date()
-                if fecha_date > datetime.now().date():
+                hoy = datetime.now().date()
+                
+                if fecha_date > hoy:
                     flash("La fecha no puede ser futura", "danger")
+                    return redirect(url_for("factura_alterna"))
+                if fecha_date < hoy - timedelta(days=365*5):
+                    flash("La fecha no puede ser menor a 5 años", "danger")
                     return redirect(url_for("factura_alterna"))
             except ValueError:
                 flash("Formato de fecha inválido (YYYY-MM-DD)", "danger")
                 return redirect(url_for("factura_alterna"))
 
-            # === OBTENER DATOS DEL FORMULARIO (combinando ambos) ===
+            # === OBTENER Y VALIDAR DATOS PRINCIPALES ===
             cliente_id = request.form.get("cliente")
-            tipo_pago = request.form.get("tipo_pago")  # 0=Contado, 1=Crédito
-            observacion = request.form.get("observacion", "").strip()
+            tipo_pago = request.form.get("tipo_pago")
             id_bodega = request.form.get("id_bodega")
+            observacion = request.form.get("observacion", "").strip()
             
-            # Soporte para ambos formatos de productos
-            productos = request.form.getlist("productos[]")
-            cantidades = request.form.getlist("cantidades[]")
-            costos = request.form.getlist("precio_unitarios[]") or request.form.getlist("costos[]")
-            ivas = request.form.getlist("ivas[]", [0]*len(productos))  # Default 0 si no existe
-            descuentos = request.form.getlist("descuentos[]", [0]*len(productos))  # Default 0 si no existe
-
-            # === VALIDACIONES COMBINADAS ===
             if not all([cliente_id, tipo_pago, id_bodega]):
                 flash("Todos los campos obligatorios deben estar completos", "danger")
                 return redirect(url_for("factura_alterna"))
 
-            if not productos or len(productos) == 0:
+            try:
+                cliente_id = int(cliente_id)
+                tipo_pago = int(tipo_pago)
+                id_bodega = int(id_bodega)
+                
+                if tipo_pago not in (0, 1):
+                    flash("Tipo de pago inválido", "danger")
+                    return redirect(url_for("factura_alterna"))
+            except (ValueError, TypeError):
+                flash("Datos numéricos inválidos", "danger")
+                return redirect(url_for("factura_alterna"))
+
+            # === OBTENER DATOS DE PRODUCTOS ===
+            productos = request.form.getlist("productos[]")
+            cantidades = request.form.getlist("cantidades[]")
+            costos = request.form.getlist("precio_unitarios[]") or request.form.getlist("costos[]")
+            ivas = request.form.getlist("ivas[]") or [0]*len(productos)
+            descuentos = request.form.getlist("descuentos[]") or [0]*len(productos)
+
+            # === VALIDACIONES DE PRODUCTOS ===
+            if not productos:
                 flash("Debe ingresar al menos un producto", "danger")
                 return redirect(url_for("factura_alterna"))
 
@@ -2015,40 +1943,42 @@ def factura_alterna():
                 flash("Error en los datos de productos", "danger")
                 return redirect(url_for("factura_alterna"))
 
-            # === CONVERSIÓN DE TIPOS ===
+            # === CONVERSIÓN DE DATOS DE PRODUCTOS ===
             try:
-                tipo_pago = int(tipo_pago)
-                id_bodega = int(id_bodega)
-                id_cliente = int(cliente_id)
+                productos_ids = [int(p) for p in productos]
                 cantidades = [max(0.01, round(float(q), 2)) for q in cantidades]
                 costos = [max(0.01, round(float(p), 2)) for p in costos]
                 ivas = [float(i) for i in ivas]
                 descuentos = [float(d) for d in descuentos]
             except (ValueError, TypeError) as ve:
-                flash(f"Datos numéricos inválidos: {str(ve)}", "danger")
+                flash(f"Datos de productos inválidos: {str(ve)}", "danger")
                 return redirect(url_for("factura_alterna"))
 
-            id_empresa = current_user.get('id_empresa') or 1  # Default 1 si no existe
-
-            # === VERIFICACIÓN DE EXISTENCIAS ===
-            cliente = db.execute("SELECT ID_Cliente FROM Clientes WHERE ID_Cliente = ?", id_cliente)
-            if not cliente:
+            # === VERIFICACIÓN EN BASE DE DATOS ===
+            # Verificar cliente y bodega
+            cliente_bodega = db.execute(
+                """SELECT 
+                   (SELECT COUNT(*) FROM Clientes WHERE ID_Cliente = ?) as cliente_existe,
+                   (SELECT COUNT(*) FROM Bodegas WHERE ID_Bodega = ?) as bodega_existe""",
+                cliente_id, id_bodega
+            )[0]
+            
+            if not cliente_bodega["cliente_existe"]:
                 flash("Cliente no encontrado", "danger")
                 return redirect(url_for("factura_alterna"))
-
-            bodega = db.execute("SELECT ID_Bodega FROM Bodegas WHERE ID_Bodega = ?", id_bodega)
-            if not bodega:
+            if not cliente_bodega["bodega_existe"]:
                 flash("Bodega no encontrada", "danger")
                 return redirect(url_for("factura_alterna"))
 
             # Verificar productos y existencias
-            productos_ids = [int(p) for p in productos]
+            placeholders = ",".join(["?"]*len(productos_ids))
             productos_db = db.execute(
-                """SELECT p.ID_Producto, p.Descripcion, ib.Existencias 
-                   FROM Productos p
-                   LEFT JOIN Inventario_Bodega ib ON p.ID_Producto = ib.ID_Producto 
-                   AND ib.ID_Bodega = ?
-                   WHERE p.ID_Producto IN ({})""".format(','.join(['?']*len(productos_ids))),
+                f"""SELECT p.ID_Producto, p.Descripcion, 
+                    COALESCE(ib.Existencias, 0) as Existencias
+                    FROM Productos p
+                    LEFT JOIN Inventario_Bodega ib ON p.ID_Producto = ib.ID_Producto 
+                    AND ib.ID_Bodega = ?
+                    WHERE p.ID_Producto IN ({placeholders})""",
                 id_bodega, *productos_ids
             )
 
@@ -2056,96 +1986,100 @@ def factura_alterna():
                 flash("Algunos productos no existen", "danger")
                 return redirect(url_for("factura_alterna"))
 
+            # Verificar stock antes de transacción
+            existencias = {p["ID_Producto"]: p["Existencias"] for p in productos_db}
+            for i, id_producto in enumerate(productos_ids):
+                if existencias[id_producto] < cantidades[i]:
+                    nombre_prod = next(p["Descripcion"] for p in productos_db if p["ID_Producto"] == id_producto)
+                    flash(f"No hay suficiente stock del producto '{nombre_prod}' en la bodega", "danger")
+                    return redirect(url_for("factura_alterna"))
+
             # === INICIO DE TRANSACCIÓN ===
             db.execute("BEGIN")
 
-            # === INSERTAR FACTURA ALTERNA (manteniendo estructura original) ===
-            db.execute(
+            # === INSERTAR FACTURA ALTERNA ===
+            factura_id = db.execute(
                 """INSERT INTO Factura_Alterna 
                    (Fecha, IDCliente, Credito_Contado, Observacion, ID_Empresa)
-                   VALUES (?, ?, ?, ?, ?)""",
-                fecha, id_cliente, tipo_pago, observacion, id_empresa
-            )
-            factura_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
+                   VALUES (?, ?, ?, ?, ?) RETURNING ID_Factura""",
+                fecha, cliente_id, tipo_pago, observacion, id_empresa
+            )[0]["ID_Factura"]
 
-            # === REGISTRAR MOVIMIENTO DE INVENTARIO (como en ventas) ===
-            tipo_mov = db.execute("SELECT ID_TipoMovimiento FROM Catalogo_Movimientos WHERE Descripcion = 'Venta'")
-            if not tipo_mov:
+            # Obtener tipo de movimiento
+            tipo_movimiento = db.execute(
+                "SELECT ID_TipoMovimiento FROM Catalogo_Movimientos WHERE Descripcion = 'Venta'"
+            )
+            if not tipo_movimiento:
                 db.execute("ROLLBACK")
                 flash("El tipo de movimiento 'Venta' no está definido.", "danger")
                 return redirect(url_for("factura_alterna"))
+            tipo_movimiento = tipo_movimiento[0]["ID_TipoMovimiento"]
 
-            tipo_movimiento = tipo_mov[0]["ID_TipoMovimiento"]
-
-            db.execute(
+            # Insertar movimiento de inventario
+            movimiento_id = db.execute(
                 """INSERT INTO Movimientos_Inventario (
                     ID_TipoMovimiento, N_Factura, Contado_Credito, Fecha,
                     ID_Proveedor, Observacion, IVA, Retencion,
                     ID_Empresa, ID_Bodega
-                ) VALUES (?, ?, ?, ?, NULL, ?, 0, 0, ?, ?)""",
-                tipo_movimiento, f"FA-{factura_id:05d}", tipo_pago, fecha, observacion, id_empresa, id_bodega
-            )
-            movimiento_id = db.execute("SELECT last_insert_rowid() AS id")[0]["id"]
+                ) VALUES (?, ?, ?, ?, NULL, ?, 0, 0, ?, ?) RETURNING ID_Movimiento""",
+                tipo_movimiento, f"FA-{factura_id:05d}", tipo_pago, fecha, 
+                observacion, id_empresa, id_bodega
+            )[0]["ID_Movimiento"]
 
-            # === PROCESAR PRODUCTOS (combinando ambas lógicas) ===
+            # === PROCESAR PRODUCTOS ===
             total_venta = 0
-            for i in range(len(productos)):
-                id_producto = int(productos[i])
-                cantidad = float(cantidades[i])
-                costo = float(costos[i])
-                iva = float(ivas[i])
-                descuento = float(descuentos[i])
+            detalles_factura = []
+            detalles_movimiento = []
+            updates_productos = []
+            updates_inventario = []
+            
+            for i, id_producto in enumerate(productos_ids):
+                cantidad = cantidades[i]
+                costo = costos[i]
+                iva = ivas[i]
+                descuento = descuentos[i]
                 total = (cantidad * costo) - descuento + iva
                 total_venta += total
 
-                # Validar existencia
-                existencia = db.execute(
-                    """SELECT Existencias FROM Inventario_Bodega
-                       WHERE ID_Bodega = ? AND ID_Producto = ?""",
-                    id_bodega, id_producto
-                )
-                
-                if not existencia or existencia[0]["Existencias"] < cantidad:
-                    nombre_prod = db.execute(
-                        "SELECT Descripcion FROM Productos WHERE ID_Producto = ?", 
-                        id_producto
-                    )[0]["Descripcion"]
-                    db.execute("ROLLBACK")
-                    flash(f"No hay suficiente stock del producto '{nombre_prod}' en la bodega", "danger")
-                    return redirect(url_for("factura_alterna"))
-
-                # Insertar en Detalle_Factura_Alterna (estructura original)
-                db.execute(
-                    """INSERT INTO Detalle_Factura_Alterna 
-                       (ID_Factura, ID_Producto, Cantidad, Costo, Total)
-                       VALUES (?, ?, ?, ?, ?)""",
-                    factura_id, id_producto, cantidad, costo, total
-                )
-
-                # Insertar en Detalle_Movimiento_Inventario (como en ventas)
-                db.execute(
-                    """INSERT INTO Detalle_Movimiento_Inventario (
-                        ID_Movimiento, ID_TipoMovimiento, ID_Producto,
-                        Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                # Preparar datos para inserción batch
+                detalles_factura.append((factura_id, id_producto, cantidad, costo, total))
+                detalles_movimiento.append((
                     movimiento_id, tipo_movimiento, id_producto,
                     cantidad, costo, iva, descuento, total, -cantidad
-                )
+                ))
+                updates_productos.append((cantidad, id_producto))
+                updates_inventario.append((cantidad, id_bodega, id_producto))
 
-                # Actualizar inventario (como en ventas)
-                db.execute(
-                    """UPDATE Productos SET Existencias = Existencias - ?
-                       WHERE ID_Producto = ?""",
-                    cantidad, id_producto
-                )
+            # Ejecutar inserciones batch
+            db.executemany(
+                """INSERT INTO Detalle_Factura_Alterna 
+                   (ID_Factura, ID_Producto, Cantidad, Costo, Total)
+                   VALUES (?, ?, ?, ?, ?)""",
+                detalles_factura
+            )
 
-                db.execute(
-                    """UPDATE Inventario_Bodega SET Existencias = Existencias - ?
-                       WHERE ID_Bodega = ? AND ID_Producto = ?""",
-                    cantidad, id_bodega, id_producto
-                )
+            db.executemany(
+                """INSERT INTO Detalle_Movimiento_Inventario (
+                    ID_Movimiento, ID_TipoMovimiento, ID_Producto,
+                    Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                detalles_movimiento
+            )
 
-            # === REGISTRAR CUENTA POR COBRAR SI ES CRÉDITO (combinado) ===
+            # Actualizar existencias (batch)
+            db.executemany(
+                "UPDATE Productos SET Existencias = Existencias - ? WHERE ID_Producto = ?",
+                updates_productos
+            )
+
+            db.executemany(
+                """UPDATE Inventario_Bodega 
+                   SET Existencias = Existencias - ? 
+                   WHERE ID_Bodega = ? AND ID_Producto = ?""",
+                updates_inventario
+            )
+
+            # === REGISTRAR CUENTA POR COBRAR SI ES CRÉDITO ===
             if tipo_pago == 1:
                 fecha_vencimiento = fecha_date + timedelta(days=30)
                 db.execute(
@@ -2154,7 +2088,7 @@ def factura_alterna():
                         Fecha_Vencimiento, Tipo_Movimiento, Monto_Movimiento,
                         IVA, Retencion, ID_Empresa
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)""",
-                    factura_id, fecha, id_cliente, f"FA-{factura_id:05d}", observacion,
+                    factura_id, fecha, cliente_id, f"FA-{factura_id:05d}", observacion,
                     fecha_vencimiento.strftime("%Y-%m-%d"), 2, total_venta, id_empresa
                 )
 
@@ -2164,44 +2098,68 @@ def factura_alterna():
 
         except Exception as e:
             db.execute("ROLLBACK")
-            print(traceback.format_exc())
+            print(f"Error en factura_alterna: {str(e)}\n{traceback.format_exc()}")
             flash(f"Error al registrar la factura alterna: {str(e)}", "danger")
             return redirect(url_for("factura_alterna"))
 
     # === MÉTODO GET ===
     try:
-        id_empresa = current_user.get("id_empresa") or 1
-        
+        # Obtener datos en consultas optimizadas
         clientes = db.execute(
-            "SELECT ID_Cliente AS id, Nombre AS nombre FROM Clientes"
+            "SELECT ID_Cliente AS id, Nombre AS nombre FROM Clientes WHERE ID_Empresa = ?",
+            id_empresa
         )
         
         productos = db.execute(
-            "SELECT ID_Producto AS id, Descripcion AS descripcion FROM Productos"
+            "SELECT ID_Producto AS id, Descripcion AS descripcion FROM Productos WHERE ID_Empresa = ?",
+            id_empresa
         )
         
         bodegas = db.execute(
-            "SELECT ID_Bodega AS id, Nombre AS nombre FROM Bodegas"
+            "SELECT ID_Bodega AS id, Nombre AS nombre FROM Bodegas WHERE ID_Empresa = ?",
+            id_empresa
         )
 
-        # Obtener próximo número de factura (como en ventas)
         last_seq = db.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", "Factura_Alterna")
         next_id = last_seq[0]["seq"] + 1 if last_seq else 1
-
 
         return render_template("factura_alterna.html",
                            clientes=clientes,
                            productos=productos,
-                           bodegas=bodegas)
+                           bodegas=bodegas,
+                           id_empresa=id_empresa,
+                           next_id=next_id)
 
     except Exception as e:
-        print(traceback.format_exc())
+        print(f"Error en GET factura_alterna: {str(e)}\n{traceback.format_exc()}")
         flash("Error al cargar datos iniciales", "danger")
         return render_template("factura_alterna.html",
                            clientes=[],
                            productos=[],
-                           bodegas=[])
+                           bodegas=[],
+                           next_id=1)
 
+@app.route("/api/stock/<int:producto_id>/<int:bodega_id>", methods=["GET"])
+@login_required
+def get_stock(producto_id, bodega_id):
+    try:
+        stock = db.execute(
+            """SELECT COALESCE(ib.Existencias, 0) as existencias
+               FROM Productos p
+               LEFT JOIN Inventario_Bodega ib ON p.ID_Producto = ib.ID_Producto 
+               AND ib.ID_Bodega = ?
+               WHERE p.ID_Producto = ?""",
+            bodega_id, producto_id
+        )
+        
+        if not stock:
+            return jsonify({"error": "Producto no encontrado"}), 404
+            
+        return jsonify({"existencias": stock[0]["existencias"]})
+        
+    except Exception as e:
+        print(f"Error en get_stock: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/factura/pdf/<int:venta_id>")
 def generar_factura_pdf(venta_id):
