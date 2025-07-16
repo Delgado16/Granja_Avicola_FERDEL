@@ -5,9 +5,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from weasyprint import HTML
 from datetime import datetime, timedelta
-#from helpers import get_current_user
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import traceback
 import json
+import time
+import hmac
+
 
 app = Flask(__name__)
 
@@ -15,8 +19,14 @@ app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"  # Necesaria para sesiones y Flask-Login
-Session(app)
+app.config["SECRET_KEY"] = "HuevoExtraGrandeRojo"  # ¡Cambia esto por una clave segura!
 
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SECURE"] = True  # Activar solo en producción con HTTPS
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["PERMANENT_SESSION_LIFETIME"] = 1800  # 30 minutos de inactividad
+
+Session(app)
 # Configuración base de datos
 db = SQL("sqlite:///Data_Base.db")
 
@@ -24,19 +34,34 @@ db = SQL("sqlite:///Data_Base.db")
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
+login_manager.session_protection = "strong"  # Protección de sesión fuerte
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],  # Límites de uso
+    storage_uri="memory://"  # Almacenamiento en memoria para pruebas
+)
 
 # Clase Usuario para Flask-Login
 class User(UserMixin):
     def __init__(self, id, username):
         self.id = str(id)  # importante que sea string para Flask-Login
         self.username = username
+    
+    def get_id(self):
+        return self.id
+    
 
 # Cargar usuario para mantener sesión
 @login_manager.user_loader
 def load_user(user_id):
-    user_data = db.execute("SELECT * FROM Usuarios WHERE ID_Usuario = ?", user_id)
-    if len(user_data) == 1:
-        return User(user_data[0]["ID_Usuario"], user_data[0]["NombreUsuario"])
+    try:
+        user_data = db.execute("SELECT * FROM Usuarios WHERE ID_Usuario = ?", user_id)
+        if len(user_data) == 1:
+            return User(user_data[0]["ID_Usuario"], user_data[0]["NombreUsuario"])
+    except Exception as e:
+        app.logger.error(f"Error al cargar usuario: {e}")
     return None
 
 
@@ -46,7 +71,18 @@ def after_request(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Expires"] = 0
     response.headers["Pragma"] = "no-cache"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    
+    # HSTS solo en producción
+    if not app.debug:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    
     return response
+
+def secure_compare(actual, expected):
+    return hmac.compare_digest(actual, expected)
 
 # Ruta raíz
 @app.route('/')
@@ -2234,34 +2270,114 @@ def visualizar_facturas():
 #ruta de bodega e inventario
 @app.route("/bodega", methods=["GET", "POST"])
 def ver_bodega():
-    # Alta de nueva bodega
+    # Procesar acciones POST (crear/editar/eliminar)
     if request.method == "POST":
-        nombre = request.form.get("nombre", "").strip()
-        ubicacion = request.form.get("ubicacion", "").strip()
-        if nombre:
-            db.execute("INSERT INTO Bodegas (Nombre, Ubicacion) VALUES (?, ?)", nombre, ubicacion)
-            flash("Bodega agregada correctamente", "success")
-            return redirect(url_for("ver_bodega"))
-        else:
-            flash("El nombre de la bodega es obligatorio.", "danger")
+        # Crear nueva bodega
+        if 'nombre' in request.form:
+            nombre = request.form.get("nombre", "").strip()
+            ubicacion = request.form.get("ubicacion", "").strip()
+            if nombre:
+                db.execute("INSERT INTO Bodegas (Nombre, Ubicacion) VALUES (?, ?)", nombre, ubicacion)
+                flash("Bodega agregada correctamente", "success")
+            else:
+                flash("El nombre de la bodega es obligatorio.", "danger")
+        
+        # Editar bodega existente
+        elif 'editar_bodega' in request.form:
+            bodega_id = request.form.get("bodega_id")
+            nuevo_nombre = request.form.get("nuevo_nombre", "").strip()
+            nueva_ubicacion = request.form.get("nueva_ubicacion", "").strip()
+            
+            if nuevo_nombre:
+                db.execute("UPDATE Bodegas SET Nombre = ?, Ubicacion = ? WHERE ID_Bodega = ?", 
+                          nuevo_nombre, nueva_ubicacion, bodega_id)
+                flash("Bodega actualizada correctamente", "success")
+            else:
+                flash("El nombre de la bodega es obligatorio.", "danger")
+                
+        # Eliminar bodega
+        elif 'eliminar_bodega' in request.form:
+            bodega_id = request.form.get("bodega_id")
+            
+            # Verificar si la bodega está desocupada
+            inventario = db.execute("SELECT COUNT(*) as total FROM Inventario_Bodega WHERE ID_Bodega = ?", bodega_id)
+            
+            if inventario[0]['total'] == 0:
+                db.execute("DELETE FROM Bodegas WHERE ID_Bodega = ?", bodega_id)
+                flash("Bodega eliminada correctamente", "success")
+            else:
+                flash("No se puede eliminar la bodega porque contiene productos en inventario", "danger")
+        
+        return redirect(url_for("ver_bodega"))
 
-    # Obtener todas las bodegas
-    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
+    # Obtener todas las bodegas para GET requests
+    bodegas = db.execute("SELECT ID_Bodega, Nombre, Ubicacion FROM Bodegas ORDER BY Nombre")
 
     # Crear diccionario con inventario por bodega
     inventario_por_bodega = {}
     for bodega in bodegas:
         inventario = db.execute("""
-            SELECT P.COD_Producto, P.Descripcion, I.Existencias, U.Abreviatura
+            SELECT P.COD_Producto, P.Descripcion, 
+                   COALESCE(I.Existencias, 0) as Existencias, 
+                   U.Abreviatura
             FROM Inventario_Bodega I
             JOIN Productos P ON P.ID_Producto = I.ID_Producto
             LEFT JOIN Unidades_Medida U ON U.ID_Unidad = P.Unidad_Medida
             WHERE I.ID_Bodega = ?
-            ORDER BY P.cod_producto
+            ORDER BY P.Descripcion
         """, bodega["ID_Bodega"])
-        inventario_por_bodega[str(bodega["ID_Bodega"])] = inventario  # clave como string para seguridad
+        inventario_por_bodega[str(bodega["ID_Bodega"])] = inventario
 
-    return render_template("bodega.html", bodegas=bodegas, inventario_por_bodega=inventario_por_bodega)
+    return render_template("bodega.html", 
+                         bodegas=bodegas, 
+                         inventario_por_bodega=inventario_por_bodega)
+
+
+# Ruta para manejar acciones AJAX (opcional, para mejor experiencia de usuario)
+@app.route("/bodega/acciones", methods=["POST"])
+def acciones_bodega():
+    if not request.is_json:
+        return jsonify({"error": "Solicitud no válida"}), 400
+    
+    data = request.get_json()
+    action = data.get("action")
+    
+    if action == "eliminar":
+        bodega_id = data.get("bodega_id")
+        # Verificar si la bodega está vacía
+        inventario = db.execute("SELECT COUNT(*) as total FROM Inventario_Bodega WHERE ID_Bodega = ?", bodega_id)
+        
+        if inventario[0]['total'] > 0:
+            return jsonify({
+                "success": False,
+                "message": "No se puede eliminar la bodega porque contiene productos"
+            })
+        
+        db.execute("DELETE FROM Bodegas WHERE ID_Bodega = ?", bodega_id)
+        return jsonify({
+            "success": True,
+            "message": "Bodega eliminada correctamente"
+        })
+    
+    elif action == "editar":
+        bodega_id = data.get("bodega_id")
+        nuevo_nombre = data.get("nuevo_nombre", "").strip()
+        nueva_ubicacion = data.get("nueva_ubicacion", "").strip()
+        
+        if not nuevo_nombre:
+            return jsonify({
+                "success": False,
+                "message": "El nombre de la bodega es obligatorio"
+            })
+        
+        db.execute("UPDATE Bodegas SET Nombre = ?, Ubicacion = ? WHERE ID_Bodega = ?", 
+                  nuevo_nombre, nueva_ubicacion, bodega_id)
+        return jsonify({
+            "success": True,
+            "message": "Bodega actualizada correctamente"
+        })
+    
+    return jsonify({"error": "Acción no válida"}), 400
 
 @app.route("/inventario", methods=["GET", "POST"])
 def gestionar_inventario():

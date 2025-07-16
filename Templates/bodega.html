@@ -25,20 +25,22 @@
             <!-- Dropdown de formulario -->
             <div class="dropdown text-center mb-3">
                 <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownBodegaButton" data-bs-toggle="dropdown" aria-expanded="false">
-                    Añadir Nueva Bodega
+                    <i class="bi bi-plus-circle me-2"></i>Añadir Nueva Bodega
                 </button>
                 <div class="dropdown-menu p-4 text-start shadow" style="min-width: 300px;" aria-labelledby="dropdownBodegaButton">
                     <form method="post" class="row g-3">
                         <div class="col-12">
-                            <label for="nombre" class="form-label">Nombre</label>
+                            <label for="nombre" class="form-label">Nombre*</label>
                             <input type="text" id="nombre" name="nombre" class="form-control" placeholder="Nombre de la bodega" required>
                         </div>
                         <div class="col-12">
                             <label for="ubicacion" class="form-label">Ubicación</label>
-                            <input type="text" id="ubicacion" name="ubicacion" class="form-control" placeholder="Ubicación">
+                            <input type="text" id="ubicacion" name="ubicacion" class="form-control" placeholder="Ubicación física">
                         </div>
                         <div class="col-12 text-end">
-                            <button type="submit" class="btn btn-success mt-2">Agregar</button>
+                            <button type="submit" class="btn btn-success mt-2">
+                                <i class="bi bi-check-circle me-2"></i>Agregar
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -50,28 +52,59 @@
     <div class="card shadow-sm mx-auto" style="max-width: 900px;">
         <div class="card-body">
             {% if not bodegas %}
-                <div class="alert alert-info">No hay bodegas registradas.</div>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>No hay bodegas registradas.
+                </div>
             {% else %}
                 {% for bodega in bodegas %}
                     {% set bodega_id = bodega.ID_Bodega|string %}
                     {% set inventario_bodega = inventario_por_bodega.get(bodega_id, []) %}
-                    <div class="mb-4">
-                        <h6 class="text-secondary fw-semibold border-bottom pb-2">
-                            <i class="bi bi-box-seam me-2"></i> Bodega: {{ bodega.Nombre }}
-                            <small class="text-muted">({{ bodega.Ubicacion or 'Sin ubicación' }})</small>
-                        </h6>
-                        <p class="text-muted mb-2">Total de productos: 
-                            {{ inventario_bodega | sum(attribute='Existencias') | default(0, true) | round(2) }}
-                        </p>
+                    <div class="mb-4 border-bottom pb-3">
+                        <!-- Encabezado con acciones -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5 class="text-primary fw-bold mb-1">
+                                    <i class="bi bi-archive me-2"></i>{{ bodega.Nombre }}
+                                </h5>
+                                <p class="text-muted small mb-0">
+                                    <i class="bi bi-geo-alt me-1"></i>{{ bodega.Ubicacion or 'Sin ubicación registrada' }}
+                                </p>
+                            </div>
+                            <div>
+                                <!-- Botón para editar -->
+                                <button class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" 
+                                        data-bs-target="#editModal{{ bodega.ID_Bodega }}">
+                                    <i class="bi bi-pencil-square me-1"></i>Editar
+                                </button>
+                                <!-- Botón para eliminar -->
+                                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" 
+                                        data-bs-target="#deleteModal{{ bodega.ID_Bodega }}">
+                                    <i class="bi bi-trash me-1"></i>Eliminar
+                                </button>
+                            </div>
+                        </div>
 
+                        <!-- Resumen de inventario -->
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-secondary">
+                                <i class="bi bi-box-seam me-1"></i>
+                                {{ inventario_bodega|length }} producto(s)
+                            </span>
+                            <span class="badge bg-primary">
+                                <i class="bi bi-calculator me-1"></i>
+                                Total existencias: {{ inventario_bodega | sum(attribute='Existencias') | default(0, true) | round(2) }}
+                            </span>
+                        </div>
+
+                        <!-- Tabla de inventario -->
                         <div class="table-responsive" style="max-height: 320px;">
-                            <table class="table table-sm table-striped table-bordered align-middle text-center mb-0">
+                            <table class="table table-sm table-striped table-hover table-bordered align-middle text-center mb-0">
                                 <thead class="table-dark sticky-top small">
                                     <tr>
-                                        <th>Código</th>
+                                        <th width="15%">Código</th>
                                         <th class="text-start">Descripción</th>
-                                        <th>Existencias</th>
-                                        <th>Unidad</th>
+                                        <th width="15%">Existencias</th>
+                                        <th width="10%">Unidad</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -81,16 +114,90 @@
                                                 <td>{{ prod.COD_Producto or 'N/A' }}</td>
                                                 <td class="text-start">{{ prod.Descripcion or 'Sin descripción' }}</td>
                                                 <td>{{ "%.2f"|format(prod.Existencias|default(0)) }}</td>
-                                                <td>{{ prod.Abreviatura or 'Sin unidad' }}</td>
+                                                <td>{{ prod.Abreviatura or '--' }}</td>
                                             </tr>
                                         {% endfor %}
                                     {% else %}
                                         <tr>
-                                            <td colspan="4" class="text-muted">No hay productos en esta bodega.</td>
+                                            <td colspan="4" class="text-muted py-3">
+                                                <i class="bi bi-exclamation-circle me-2"></i>No hay productos en esta bodega
+                                            </td>
                                         </tr>
                                     {% endif %}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Modal de Edición -->
+                    <div class="modal fade" id="editModal{{ bodega.ID_Bodega }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST">
+                                    <div class="modal-header bg-primary text-white">
+                                        <h5 class="modal-title">
+                                            <i class="bi bi-pencil-square me-2"></i>Editar Bodega
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <input type="hidden" name="bodega_id" value="{{ bodega.ID_Bodega }}">
+                                        <div class="mb-3">
+                                            <label class="form-label">Nombre*</label>
+                                            <input type="text" class="form-control" name="nuevo_nombre" 
+                                                   value="{{ bodega.Nombre }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Ubicación</label>
+                                            <input type="text" class="form-control" name="nueva_ubicacion" 
+                                                   value="{{ bodega.Ubicacion or '' }}">
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            <i class="bi bi-x-circle me-1"></i>Cancelar
+                                        </button>
+                                        <button type="submit" class="btn btn-primary" name="editar_bodega">
+                                            <i class="bi bi-check-circle me-1"></i>Guardar Cambios
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal de Eliminación -->
+                    <div class="modal fade" id="deleteModal{{ bodega.ID_Bodega }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">
+                                            <i class="bi bi-trash me-2"></i>Eliminar Bodega
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <input type="hidden" name="bodega_id" value="{{ bodega.ID_Bodega }}">
+                                        <p>¿Estás seguro de eliminar la bodega <strong>"{{ bodega.Nombre }}"</strong>?</p>
+                                        {% if inventario_por_bodega.get(bodega_id|string, []) %}
+                                        <div class="alert alert-warning">
+                                            <i class="bi bi-exclamation-triangle me-2"></i>
+                                            Esta bodega contiene productos y no puede ser eliminada.
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            <i class="bi bi-x-circle me-1"></i>Cancelar
+                                        </button>
+                                        <button type="submit" class="btn btn-danger" name="eliminar_bodega" 
+                                                {% if inventario_por_bodega.get(bodega_id|string, []) %}disabled{% endif %}>
+                                            <i class="bi bi-trash me-1"></i>Confirmar Eliminación
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 {% endfor %}
@@ -98,12 +205,21 @@
         </div>
     </div>
 </div>
-<style>
-    /* Estilo adicional para asegurar que el dropdown se muestre correctamente */
-    .dropdown-menu {
-        z-index: 1060; /* Mayor que el z-index de las tarjetas */
-        transform: none !important; /* Evita transformaciones no deseadas */
-    }
 
+<!-- Estilos adicionales -->
+<style>
+    .dropdown-menu {
+        z-index: 1060;
+    }
+    .table th {
+        white-space: nowrap;
+    }
+    .table-responsive {
+        border-radius: 0.25rem;
+        border: 1px solid #dee2e6;
+    }
+    .modal-header {
+        padding: 0.75rem 1.5rem;
+    }
 </style>
 {% endblock %}
