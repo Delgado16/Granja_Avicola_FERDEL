@@ -1,1 +1,0 @@
-Problemas al ver detalles de ventas, implementar tambien en compras, ademas organizar mejor el apartado de clientes

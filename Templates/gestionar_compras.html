@@ -8,11 +8,6 @@
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     }
     
-    .table-responsive {
-        border-radius: 0.375rem;
-        overflow: hidden;
-    }
-    
     .badge-contado {
         background-color: #28a745;
     }
@@ -27,9 +22,74 @@
         background-color: #f8f9fa;
     }
     
-    @media (max-width: 768px) {
+    /* Estilos para móviles - Oculta el encabezado */
+    @media (max-width: 767.98px) {
+        .table thead {
+            display: none;
+        }
+        
+        .table tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+        }
+        
+        .table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .table td:before {
+            content: attr(data-label);
+            font-weight: bold;
+            margin-right: 1rem;
+            flex: 1;
+        }
+        
+        .table td:last-child {
+            border-bottom: 0;
+        }
+        
         .btn-responsive {
+            width: 100%;
             margin-bottom: 0.5rem;
+        }
+        
+        .detalle-table tr {
+            border: none;
+            margin-bottom: 0;
+        }
+        
+        .detalle-table td {
+            padding: 0.3rem 0.75rem;
+            border-bottom: none;
+        }
+        
+        .detalle-table td:before {
+            content: none;
+        }
+    }
+    
+    /* Estilos para PC - Muestra el encabezado */
+    @media (min-width: 768px) {
+        .table thead {
+            display: table-header-group;
+        }
+        
+        .table tr {
+            display: table-row;
+        }
+        
+        .table td {
+            display: table-cell;
+        }
+        
+        .table td:before {
+            content: none;
         }
     }
 </style>
@@ -71,22 +131,22 @@
                             <tbody>
                                 {% for compra in compras %}
                                 <tr>
-                                    <td>{{ compra.id }}</td>
-                                    <td>{{ compra.fecha }}</td>
-                                    <td>{{ compra.proveedor }}</td>
-                                    <td>{{ compra.factura or 'N/A' }}</td>
-                                    <td>{{ compra.bodega }}</td>
-                                    <td>
+                                    <td data-label="ID">{{ compra.id }}</td>
+                                    <td data-label="Fecha">{{ compra.fecha }}</td>
+                                    <td data-label="Proveedor">{{ compra.proveedor }}</td>
+                                    <td data-label="Factura">{{ compra.factura or 'N/A' }}</td>
+                                    <td data-label="Bodega">{{ compra.bodega }}</td>
+                                    <td data-label="Tipo Pago">
                                         <span class="badge {% if compra.tipo_pago == 0 %}badge-contado{% else %}badge-credito{% endif %}">
                                             {% if compra.tipo_pago == 0 %}Contado{% else %}Crédito{% endif %}
                                         </span>
                                     </td>
-                                    <td>C$ {{ "{:,.2f}".format(compra.total) }}</td>
-                                    <td>
+                                    <td data-label="Total">C$ {{ "{:,.2f}".format(compra.total) }}</td>
+                                    <td data-label="Detalle">
                                         <button class="btn btn-sm btn-info" 
                                                 data-bs-toggle="collapse" 
                                                 data-bs-target="#detalle-{{ compra.id }}">
-                                            <i class="fas fa-eye">Detalles</i>
+                                            <i class="fas fa-eye"></i> Detalles
                                         </button>
                                     </td>
                                 </tr>
@@ -105,7 +165,7 @@
                                             <h5>Productos Comprados</h5>
                                             <div class="table-responsive">
                                                 <table class="table table-sm">
-                                                    <thead>
+                                                    <thead class="d-none d-md-table-header-group">
                                                         <tr class="table-light">
                                                             <th>Producto</th>
                                                             <th class="text-end">Cantidad</th>
@@ -115,9 +175,9 @@
                                                     <tbody>
                                                         {% for producto in compra.productos %}
                                                         <tr>
-                                                            <td>{{ producto.descripcion }}</td>
-                                                            <td class="text-end">{{ producto.cantidad }}</td>
-                                                            <td class="text-end">C$ {{ "{:,.2f}".format(producto.costo_total) }}</td>
+                                                            <td data-label="Producto">{{ producto.descripcion }}</td>
+                                                            <td data-label="Cantidad" class="text-end">{{ producto.cantidad }}</td>
+                                                            <td data-label="Total" class="text-end">C$ {{ "{:,.2f}".format(producto.costo_total) }}</td>
                                                         </tr>
                                                         {% else %}
                                                         <tr>
@@ -146,16 +206,16 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Opcional: Puedes agregar funcionalidad JavaScript aquí si necesitas
-    // Por ejemplo, para mejorar la interacción con los detalles
     const detallesButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
     detallesButtons.forEach(button => {
         button.addEventListener('click', function() {
             const icon = this.querySelector('i');
             if (icon.classList.contains('fa-eye')) {
                 icon.classList.replace('fa-eye', 'fa-eye-slash');
+                this.innerHTML = '<i class="fas fa-eye-slash"></i> Ocultar';
             } else {
                 icon.classList.replace('fa-eye-slash', 'fa-eye');
+                this.innerHTML = '<i class="fas fa-eye"></i> Detalles';
             }
         });
     });
