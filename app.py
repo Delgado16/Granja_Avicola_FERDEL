@@ -1275,7 +1275,7 @@ def cobros():
     except Exception as e:
         flash(f"❌ Error al cargar los cobros: {e}", "danger")
         return redirect(url_for("home"))
-
+#######################################################################################
 @app.route("/historial_pagos/<int:id_movimiento>")
 def historial_pagos(id_movimiento):
     try:
@@ -1358,7 +1358,7 @@ def historial_pagos(id_movimiento):
         flash(f"❌ Error al cargar el historial: {str(e)}", "danger")
         app.logger.error(f"Error en historial_pagos: {str(e)}")
         return redirect(url_for("cobros"))
-    
+#######################################################################################
 @app.route("/registrar_cobro/<int:id_movimiento>", methods=["GET", "POST"])
 def registrar_cobro(id_movimiento):
     if request.method == "POST":
@@ -1516,7 +1516,7 @@ def registrar_cobro(id_movimiento):
         flash(f"❌ Error al cargar datos: {str(e)}", "danger")
         app.logger.error(f"Error en GET registrar_cobro: {str(e)}")
         return redirect(url_for("cobros"))
-    
+#######################################################################################
 @app.route("/cancelar_deuda/<int:id_movimiento>", methods=["POST"])
 def cancelar_deuda(id_movimiento):
     try:
@@ -1567,10 +1567,8 @@ def cancelar_deuda(id_movimiento):
     except Exception as e:
         flash(f"❌ Error al cancelar la deuda: {str(e)}", "danger")
         return redirect(url_for("cobros"))
-        
-
 #fin de rutas de cobros
-
+#######################################################################################
 # ruta de pagos
 @app.route("/pagos", methods=["GET"])
 def pagos():
@@ -1599,7 +1597,7 @@ def pagos():
         flash(f"❌ Error al cargar los pagos: {str(e)}", "danger")
         app.logger.error(f"Error en pagos: {str(e)}")
         return redirect(url_for("home"))
-    
+#######################################################################################
 @app.route("/actualizar_saldos", methods=["GET"])
 def actualizar_saldos():
     try:
@@ -1619,8 +1617,7 @@ def actualizar_saldos():
         return jsonify(cuentas)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
+#######################################################################################
 @app.route("/registrar_pago/<int:id_cuenta>", methods=["GET", "POST"])
 def registrar_pago(id_cuenta):
     if request.method == "POST":
@@ -1775,7 +1772,7 @@ def registrar_pago(id_cuenta):
         flash(f"❌ Error al cargar datos: {str(e)}", "danger")
         app.logger.error(f"Error en GET registrar_pago: {str(e)}")
         return redirect(url_for("pagos"))
-
+#######################################################################################
 # Ruta para ver el detalle de la cuenta con los pagos
 @app.route("/detalle_cuenta/<int:id_cuenta>")
 def detalle_cuenta(id_cuenta):
@@ -1824,8 +1821,7 @@ def detalle_cuenta(id_cuenta):
         flash(f"❌ Error al cargar detalles: {str(e)}", "danger")
         app.logger.error(f"Error en detalle_cuenta: {str(e)}")
         return redirect(url_for("pagos"))
-
-
+#######################################################################################
 @app.route("/historial_pagos_pagar/<int:id_cuenta>")
 def historial_pagos_pagar(id_cuenta):
     try:
@@ -1872,12 +1868,11 @@ def historial_pagos_pagar(id_cuenta):
         app.logger.error(f"Error en historial_pagos_pagar: {str(e)}")
         return redirect(url_for("pagos"))
 #fin de ruta de pagos
-
+#######################################################################################
 # Ruta Factura impresion
 def format_currency(value):
     return "{:,.2f}".format(value)
-
-
+#######################################################################################
 @app.route("/factura_alterna", methods=["GET", "POST"])
 @login_required
 def factura_alterna():
@@ -2138,7 +2133,7 @@ def factura_alterna():
                            productos=[],
                            bodegas=[],
                            next_id=1)
-
+#######################################################################################
 @app.route("/api/stock/<int:producto_id>/<int:bodega_id>", methods=["GET"])
 @login_required
 def get_stock(producto_id, bodega_id):
@@ -2160,7 +2155,7 @@ def get_stock(producto_id, bodega_id):
     except Exception as e:
         print(f"Error en get_stock: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
+#######################################################################################
 @app.route("/factura/pdf/<int:venta_id>")
 def generar_factura_pdf(venta_id):
     venta = db.execute("""
@@ -2197,9 +2192,7 @@ def generar_factura_pdf(venta_id):
     )
     pdf = HTML(string=rendered).write_pdf()
     return Response(pdf, mimetype='application/pdf')
-
-
-
+#######################################################################################
 @app.route("/facturas", methods=["GET", "POST"])
 def visualizar_facturas():
     cliente = request.args.get("cliente", "").strip()
@@ -2224,7 +2217,7 @@ def visualizar_facturas():
 
     facturas = db.execute(query, *params)
     return render_template("facturas.html", facturas=facturas, cliente=cliente, fecha=fecha)
-
+#######################################################################################
 #ruta de bodega e inventario
 @app.route("/bodega", methods=["GET", "POST"])
 def ver_bodega():
@@ -2289,8 +2282,7 @@ def ver_bodega():
     return render_template("bodega.html", 
                          bodegas=bodegas, 
                          inventario_por_bodega=inventario_por_bodega)
-
-
+#######################################################################################
 # Ruta para manejar acciones AJAX (opcional, para mejor experiencia de usuario)
 @app.route("/bodega/acciones", methods=["POST"])
 def acciones_bodega():
@@ -2336,7 +2328,7 @@ def acciones_bodega():
         })
     
     return jsonify({"error": "Acción no válida"}), 400
-
+#######################################################################################
 @app.route("/inventario", methods=["GET", "POST"])
 def gestionar_inventario():
     productos = db.execute("SELECT ID_Producto, Descripcion, Existencias FROM Productos ORDER BY Descripcion")
@@ -2352,7 +2344,7 @@ def gestionar_inventario():
         flash("Ajuste realizado correctamente.", "success")
         return redirect(url_for("gestionar_inventario"))
     return render_template("inventario.html", productos=productos)
-
+#######################################################################################
 @app.route("/historial_inventario")
 def historial_inventario():
     productos = db.execute("SELECT ID_Producto, Descripcion FROM Productos ORDER BY Descripcion")
@@ -2389,7 +2381,7 @@ def historial_inventario():
     movimientos = db.execute(query, *params)
     return render_template("historial_inventario.html", movimientos=movimientos, productos=productos, tipos=tipos, producto_id=producto_id, tipo_id=tipo_id, fecha=fecha)
 #fin de ruta de bodega e inventario
-
+#######################################################################################
 #ruta de vehiculos
 @app.route("/vehiculos", methods=["GET", "POST"])
 def vehiculos():
@@ -2426,7 +2418,7 @@ def vehiculos():
         ORDER BY Placa ASC
     """)
     return render_template("vehiculos.html", vehiculos=vehiculos)
-
+#######################################################################################
 @app.route("/vehiculos/<int:id>/editar", methods=["GET", "POST"])
 def editar_vehiculo(id):
     vehiculo = db.execute("SELECT * FROM Vehiculos WHERE ID_Vehiculo = ?", id)
@@ -2455,7 +2447,7 @@ def editar_vehiculo(id):
         return redirect(url_for("vehiculos"))
 
     return render_template("editar_vehiculo.html", vehiculo=vehiculo)
-
+#######################################################################################
 @app.route("/vehiculos/<int:id>/eliminar")
 def eliminar_vehiculo(id):
     vehiculo = db.execute("SELECT * FROM Vehiculos WHERE ID_Vehiculo = ?", id)
@@ -2465,7 +2457,7 @@ def eliminar_vehiculo(id):
         db.execute("DELETE FROM Vehiculos WHERE ID_Vehiculo = ?", id)
         flash("Vehículo eliminado correctamente.", "success")
     return redirect(url_for("vehiculos"))
-
+#######################################################################################
 @app.route("/combustible", methods=["GET", "POST"])
 def combustible():
     # --- REGISTRO DE GASTO (POST) ---
@@ -2524,8 +2516,7 @@ def combustible():
         fecha=fecha_filtro,
         id_vehiculo=id_vehiculo_filtro
     )
-
-
+#######################################################################################
 @app.route("/clientes", methods=["GET", "POST"])
 def clientes():
     if request.method == "POST":
@@ -2548,7 +2539,7 @@ def clientes():
     # Mostrar lista de clientes
     clientes = db.execute("SELECT * FROM Clientes ORDER BY Nombre")
     return render_template("clientes.html", clientes=clientes)
-
+#######################################################################################
 # Editar Cliente
 @app.route("/clientes/<int:id>/editar", methods=["GET", "POST"])
 def editar_cliente(id):
@@ -2573,7 +2564,7 @@ def editar_cliente(id):
         return redirect(url_for("clientes"))
 
     return render_template("editar_cliente.html", cliente=cliente)
-
+#######################################################################################
 # Eliminar Cliente
 @app.route("/clientes/<int:id>/eliminar")
 def eliminar_cliente(id):
@@ -2604,7 +2595,7 @@ def proveedores():
     # Mostrar lista de proveedores
     proveedores = db.execute("SELECT * FROM Proveedores ORDER BY Nombre")
     return render_template("proveedores.html", proveedores=proveedores)
-
+#######################################################################################
 # Editar Proveedor
 @app.route("/proveedores/<int:id>/editar", methods=["GET", "POST"])
 def editar_proveedor(id):
@@ -2629,15 +2620,14 @@ def editar_proveedor(id):
         return redirect(url_for("proveedores"))
 
     return render_template("editar_proveedor.html", proveedor=proveedor)
-
+#######################################################################################
 # Eliminar Proveedor
 @app.route("/proveedores/<int:id>/eliminar")
 def eliminar_proveedor(id):
     db.execute("DELETE FROM Proveedores WHERE ID_Proveedor = ?", id)
     flash("Proveedor eliminado correctamente.", "success")
     return redirect(url_for("proveedores"))
-
-
+#######################################################################################
 # Añadir Empresa (generalmente se gestiona solo una, pero igual aquí)
 @app.route("/empresa", methods=["GET", "POST"])
 def empresa():
@@ -2653,7 +2643,7 @@ def empresa():
 
     empresas = db.execute("SELECT * FROM Empresa ORDER BY ID_Empresa")
     return render_template("empresa.html", empresas=empresas)
-
+#######################################################################################
 # Editar Empresa
 @app.route("/empresa/<int:id>/editar", methods=["GET", "POST"])
 def editar_empresa(id):
@@ -2674,14 +2664,14 @@ def editar_empresa(id):
         return redirect(url_for("empresa"))
 
     return render_template("editar_empresa.html", empresa=empresa)
-
+#######################################################################################
 # Eliminar Empresa
 @app.route("/empresa/<int:id>/eliminar")
 def eliminar_empresa(id):
     db.execute("DELETE FROM Empresa WHERE ID_Empresa = ?", id)
     flash("Empresa eliminada correctamente.", "success")
     return redirect(url_for("empresa"))
-
+#######################################################################################
 # Listar y Agregar Producto
 @app.route("/productos", methods=["GET", "POST"])
 def productos():
@@ -2829,8 +2819,7 @@ def productos():
         tipos=tipos, 
         bodegas=bodegas
     )
-
-
+#######################################################################################
 # Editar Producto
 @app.route("/productos/<int:id>/editar", methods=["GET", "POST"])
 def editar_producto(id):
@@ -2868,15 +2857,14 @@ def editar_producto(id):
     tipos = db.execute("SELECT ID_TipoProducto, Descripcion FROM Tipo_Producto")
 
     return render_template("editar_producto.html", producto=producto, unidades=unidades, familias=familias, tipos=tipos)
-
-
+#######################################################################################
 # Eliminar Producto
 @app.route("/productos/<int:id>/eliminar")
 def eliminar_producto(id):
     db.execute("DELETE FROM Productos WHERE ID_Producto = ?", id)
     flash("Producto eliminado correctamente.", "success")
     return redirect(url_for("productos"))
-
+#######################################################################################
 # Listar y Agregar Familia
 @app.route("/familia", methods=["GET", "POST"])
 def familia():
@@ -2891,7 +2879,7 @@ def familia():
 
     familias = db.execute("SELECT * FROM Familia ORDER BY Descripcion")
     return render_template("familia.html", familias=familias)
-
+#######################################################################################
 # Editar Familia
 @app.route("/familia/<int:id>/editar", methods=["GET", "POST"])
 def editar_familia(id):
@@ -2909,7 +2897,7 @@ def editar_familia(id):
         flash("Familia actualizada correctamente.", "success")
         return redirect(url_for("familia"))
     return render_template("editar_familia.html", familia=familia)
-
+#######################################################################################
 # Listar y Agregar Tipo de Producto
 @app.route("/tipo_producto", methods=["GET", "POST"])
 def tipo_producto():
@@ -2924,7 +2912,7 @@ def tipo_producto():
 
     tipos = db.execute("SELECT * FROM Tipo_Producto ORDER BY Descripcion")
     return render_template("tipo_producto.html", tipos=tipos)
-
+#######################################################################################
 # Editar Tipo de Producto
 @app.route("/tipo_producto/<int:id>/editar", methods=["GET", "POST"])
 def editar_tipo_producto(id):
@@ -2942,6 +2930,84 @@ def editar_tipo_producto(id):
         flash("Tipo de producto actualizado correctamente.", "success")
         return redirect(url_for("tipo_producto"))
     return render_template("editar_tipo_producto.html", tipo=tipo)
+#######################################################################################
+
+# Ruta para gestión de rutas - Versión corregida
+@app.route("/rutas", methods=["GET", "POST"])
+@login_required  # Asegúrate de tener este decorador definido
+def gestion_rutas():
+    if request.method == "POST":
+        # Procesar formulario de nueva ruta
+        nombre = request.form.get("nombre")
+        descripcion = request.form.get("descripcion", "").strip()
+        
+        if not nombre:
+            flash("El nombre de la ruta es obligatorio", "danger")
+        else:
+            try:
+                # Insertar nueva ruta usando CS50 db.execute
+                db.execute(
+                    "INSERT INTO Rutas (Nombre, Descripcion) VALUES (?, ?)",
+                    nombre, descripcion
+                )
+                flash("Ruta creada exitosamente", "success")
+                return redirect(url_for("gestion_rutas"))
+            except Exception as e:
+                flash(f"Error al crear la ruta: {str(e)}", "danger")
+    
+    # Obtener todas las rutas
+    rutas = db.execute("SELECT ID_Ruta, Nombre, Descripcion FROM Rutas ORDER BY Nombre")
+    
+    return render_template("gestion_rutas.html", rutas=rutas)
+
+@app.route("/rutas/editar/<int:id>", methods=["GET", "POST"])
+@login_required
+def editar_ruta(id):
+    if request.method == "POST":
+        nombre = request.form.get("nombre")
+        descripcion = request.form.get("descripcion", "").strip()
+        
+        if not nombre:
+            flash("El nombre de la ruta es obligatorio", "danger")
+            return render_template("editar_ruta.html", ruta={"ID_Ruta": id, "Nombre": nombre, "Descripcion": descripcion})
+        
+        try:
+            db.execute(
+                "UPDATE Rutas SET Nombre = ?, Descripcion = ? WHERE ID_Ruta = ?",
+                nombre, descripcion, id
+            )
+            flash("Ruta actualizada exitosamente", "success")
+            return redirect(url_for("gestion_rutas"))
+        except Exception as e:
+            flash(f"Error al actualizar la ruta: {str(e)}", "danger")
+            return render_template("editar_ruta.html", ruta={"ID_Ruta": id, "Nombre": nombre, "Descripcion": descripcion})
+    
+    # GET - Mostrar formulario con datos actuales
+    ruta = db.execute("SELECT ID_Ruta, Nombre, Descripcion FROM Rutas WHERE ID_Ruta = ?", id)
+    
+    if not ruta:
+        flash("Ruta no encontrada", "danger")
+        return redirect(url_for("gestion_rutas"))
+    
+    return render_template("editar_ruta.html", ruta=ruta[0])
+
+@app.route("/rutas/eliminar/<int:id>", methods=["POST"])
+@login_required
+def eliminar_ruta(id):
+    try:
+        # Verificar si la ruta está en uso
+        en_uso = db.execute("SELECT COUNT(*) FROM Vehiculo_Ruta WHERE ID_Ruta = ?", id)[0]["COUNT(*)"]
+        
+        if en_uso > 0:
+            flash("No se puede eliminar la ruta porque está asignada a vehículos", "danger")
+            return redirect(url_for("gestion_rutas"))
+        
+        db.execute("DELETE FROM Rutas WHERE ID_Ruta = ?", id)
+        flash("Ruta eliminada exitosamente", "success")
+    except Exception as e:
+        flash(f"Error al eliminar la ruta: {str(e)}", "danger")
+    
+    return redirect(url_for("gestion_rutas"))
 
 if __name__ == '__main__':
     app.run(debug=True)
