@@ -946,34 +946,32 @@ def ventas():
 def gestionar_ventas():
     try:
         # Obtener las ventas con datos del cliente y el total de cada factura
+        # ORDENADO PRINCIPALMENTE POR NÚMERO DE FACTURA DESCENDENTE (más reciente primero)
         ventas = db.execute("""
             SELECT f.ID_Factura, f.Fecha, c.Nombre AS Cliente, 
                    f.Credito_Contado, f.Observacion,
                    (SELECT SUM(Total) FROM Detalle_Facturacion WHERE ID_Factura = f.ID_Factura) AS Total
             FROM Facturacion f
             JOIN Clientes c ON c.ID_Cliente = f.IDCliente
-            ORDER BY f.Fecha DESC
+            ORDER BY f.ID_Factura DESC
         """)
 
-        # Obtener los detalles (productos por venta)
+        # Resto del código (detalles, agrupación, formateo)...
         detalles = db.execute("""
             SELECT df.ID_Factura, p.Descripcion, df.Cantidad, df.Total AS Subtotal
             FROM Detalle_Facturacion df
             JOIN Productos p ON df.ID_Producto = p.ID_Producto
         """)
 
-        # Agrupar productos por factura
         productos_por_venta = {}
         for d in detalles:
             productos_por_venta.setdefault(d["ID_Factura"], []).append(
                 f"{d['Cantidad']} x {d['Descripcion']} (C$ {d['Subtotal']:,.2f})"
             )
 
-        # Preparar datos para mostrar en la plantilla
         for venta in ventas:
             venta["Productos"] = productos_por_venta.get(venta["ID_Factura"], [])
             venta["NumeroFactura"] = f"F-{venta['ID_Factura']:05d}"
-            # Formatear el total como moneda
             venta["TotalFormateado"] = f"C${venta['Total']:,.2f}" if venta['Total'] else "C$ 0.00"
 
         return render_template("gestionar_ventas.html", ventas=ventas)

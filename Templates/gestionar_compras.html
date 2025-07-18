@@ -118,7 +118,6 @@
                         <table class="table table-striped table-hover">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>ID</th>
                                     <th>Fecha</th>
                                     <th>Proveedor</th>
                                     <th>Factura</th>
@@ -129,9 +128,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for compra in compras %}
+                                {% for compra in compras %} 
                                 <tr>
-                                    <td data-label="ID">{{ compra.id }}</td>
                                     <td data-label="Fecha">{{ compra.fecha }}</td>
                                     <td data-label="Proveedor">{{ compra.proveedor }}</td>
                                     <td data-label="Factura">{{ compra.factura or 'N/A' }}</td>
