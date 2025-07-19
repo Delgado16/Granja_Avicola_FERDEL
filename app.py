@@ -9,6 +9,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import traceback
 import json
+from functools import wraps
 
 
 
@@ -2931,81 +2932,256 @@ def editar_tipo_producto(id):
 #######################################################################################
 
 # Ruta para gestión de rutas - Versión corregida
+
+def login_required(f):
+    """Decorador para requerir autenticación"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Aquí iría tu lógica de verificación de sesión
+        # Ejemplo: if not session.get("user_id"):
+        #     return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def handle_db_errors(f):
+    """Decorador para manejar errores de base de datos"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as e:
+            app.logger.error(f"Error de base de datos: {str(e)}")
+            flash("Ocurrió un error en la base de datos", "danger")
+            return redirect(url_for("gestion_rutas"))
+    return decorated_function
+
+
 @app.route("/rutas", methods=["GET", "POST"])
-@login_required  # Asegúrate de tener este decorador definido
+@login_required
+@handle_db_errors
 def gestion_rutas():
+    """Gestión principal de rutas - Listar y crear"""
     if request.method == "POST":
-        # Procesar formulario de nueva ruta
-        nombre = request.form.get("nombre")
-        descripcion = request.form.get("descripcion", "").strip()
-        
-        if not nombre:
-            flash("El nombre de la ruta es obligatorio", "danger")
-        else:
-            try:
-                # Insertar nueva ruta usando CS50 db.execute
-                db.execute(
-                    "INSERT INTO Rutas (Nombre, Descripcion) VALUES (?, ?)",
-                    nombre, descripcion
-                )
-                flash("Ruta creada exitosamente", "success")
-                return redirect(url_for("gestion_rutas"))
-            except Exception as e:
-                flash(f"Error al crear la ruta: {str(e)}", "danger")
+        return crear_ruta()
     
-    # Obtener todas las rutas
-    rutas = db.execute("SELECT ID_Ruta, Nombre, Descripcion FROM Rutas ORDER BY Nombre")
+    return listar_rutas()
+
+def crear_ruta():
+    """Lógica para crear una nueva ruta"""
+    nombre = request.form.get("nombre").strip()
+    descripcion = request.form.get("descripcion", "").strip()
     
+    if not nombre:
+        flash("El nombre de la ruta es obligatorio", "danger")
+    else:
+        db.execute(
+            "INSERT INTO Rutas (Nombre, Descripcion, Estado) VALUES (?, ?, ?)",
+            nombre, descripcion, 1  # 1 = activo
+        )
+        flash("Ruta creada exitosamente", "success")
+    
+    return redirect(url_for("gestion_rutas"))
+
+def listar_rutas():
+    """Obtener y mostrar todas las rutas"""
+    rutas = db.execute("""
+        SELECT ID_Ruta, Nombre, Descripcion, 
+               CASE WHEN Estado = 1 THEN 'Activo' ELSE 'Inactivo' END as Estado
+        FROM Rutas 
+        ORDER BY Nombre
+    """)
     return render_template("gestion_rutas.html", rutas=rutas)
 
-@app.route("/rutas/editar/<int:id>", methods=["GET", "POST"])
+@app.route("/rutas/<int:id>", methods=["GET", "PUT", "DELETE"])
 @login_required
-def editar_ruta(id):
-    if request.method == "POST":
-        nombre = request.form.get("nombre")
-        descripcion = request.form.get("descripcion", "").strip()
-        
-        if not nombre:
-            flash("El nombre de la ruta es obligatorio", "danger")
-            return render_template("editar_ruta.html", ruta={"ID_Ruta": id, "Nombre": nombre, "Descripcion": descripcion})
-        
-        try:
-            db.execute(
-                "UPDATE Rutas SET Nombre = ?, Descripcion = ? WHERE ID_Ruta = ?",
-                nombre, descripcion, id
-            )
-            flash("Ruta actualizada exitosamente", "success")
-            return redirect(url_for("gestion_rutas"))
-        except Exception as e:
-            flash(f"Error al actualizar la ruta: {str(e)}", "danger")
-            return render_template("editar_ruta.html", ruta={"ID_Ruta": id, "Nombre": nombre, "Descripcion": descripcion})
-    
-    # GET - Mostrar formulario con datos actuales
-    ruta = db.execute("SELECT ID_Ruta, Nombre, Descripcion FROM Rutas WHERE ID_Ruta = ?", id)
+@handle_db_errors
+def ruta_detalle(id):
+    """Endpoint unificado para una ruta específica"""
+    if request.method == "GET":
+        return obtener_ruta(id)
+    elif request.method == "PUT":
+        return actualizar_ruta(id)
+    elif request.method == "DELETE":
+        return eliminar_ruta(id)
+
+def obtener_ruta(id):
+    """Obtener detalles de una ruta específica"""
+    ruta = db.execute("""
+        SELECT ID_Ruta, Nombre, Descripcion, Estado
+        FROM Rutas 
+        WHERE ID_Ruta = ?
+    """, id)
     
     if not ruta:
         flash("Ruta no encontrada", "danger")
         return redirect(url_for("gestion_rutas"))
     
-    return render_template("editar_ruta.html", ruta=ruta[0])
+    return jsonify(ruta[0]) if request.is_json else render_template(
+        "editar_ruta.html", 
+        ruta=ruta[0]
+    )
 
-@app.route("/rutas/eliminar/<int:id>", methods=["POST"])
-@login_required
+def actualizar_ruta(id):
+    """Actualizar una ruta existente"""
+    if request.is_json:
+        data = request.get_json()
+        nombre = data.get("nombre").strip()
+        descripcion = data.get("descripcion", "").strip()
+        estado = data.get("estado", 1)
+    else:
+        nombre = request.form.get("nombre").strip()
+        descripcion = request.form.get("descripcion", "").strip()
+        estado = 1 if request.form.get("estado") == "on" else 0
+    
+    if not nombre:
+        error_msg = "El nombre de la ruta es obligatorio"
+        if request.is_json:
+            return jsonify({"error": error_msg}), 400
+        flash(error_msg, "danger")
+        return redirect(url_for("editar_ruta", id=id))
+    
+    db.execute("""
+        UPDATE Rutas 
+        SET Nombre = ?, Descripcion = ?, Estado = ?
+        WHERE ID_Ruta = ?
+    """, nombre, descripcion, estado, id)
+    
+    success_msg = "Ruta actualizada exitosamente"
+    if request.is_json:
+        return jsonify({"message": success_msg})
+    flash(success_msg, "success")
+    return redirect(url_for("gestion_rutas"))
+
 def eliminar_ruta(id):
-    try:
-        # Verificar si la ruta está en uso
-        en_uso = db.execute("SELECT COUNT(*) FROM Vehiculo_Ruta WHERE ID_Ruta = ?", id)[0]["COUNT(*)"]
-        
-        if en_uso > 0:
-            flash("No se puede eliminar la ruta porque está asignada a vehículos", "danger")
-            return redirect(url_for("gestion_rutas"))
-        
+    """Eliminar una ruta (si no está en uso)"""
+    # Verificar si la ruta está en uso
+    en_uso = db.execute("""
+        SELECT COUNT(*) as count 
+        FROM Sesiones_Ruta 
+        WHERE ID_Ruta = ?
+    """, id)[0]["count"]
+    
+    if en_uso > 0:
+        error_msg = "No se puede eliminar: la ruta tiene sesiones asociadas"
+        if request.is_json:
+            return jsonify({"error": error_msg}), 400
+        flash(error_msg, "danger")
+    else:
         db.execute("DELETE FROM Rutas WHERE ID_Ruta = ?", id)
-        flash("Ruta eliminada exitosamente", "success")
-    except Exception as e:
-        flash(f"Error al eliminar la ruta: {str(e)}", "danger")
+        success_msg = "Ruta eliminada exitosamente"
+        if request.is_json:
+            return jsonify({"message": success_msg})
+        flash(success_msg, "success")
     
     return redirect(url_for("gestion_rutas"))
+
+# -----------------------------------------------
+# Rutas para gestión de sesiones de ruta
+# -----------------------------------------------
+
+@app.route("/rutas/<int:id>/sesiones", methods=["GET", "POST"])
+@login_required
+@handle_db_errors
+def gestion_sesiones_ruta(id):
+    """Gestión de sesiones para una ruta específica"""
+    if request.method == "POST":
+        return crear_sesion_ruta(id)
+    
+    return listar_sesiones_ruta(id)
+
+def crear_sesion_ruta(ruta_id):
+    """Crear una nueva sesión para una ruta"""
+    vehiculo_id = request.form.get("vehiculo_id")
+    conductor_id = request.form.get("conductor_id")
+    
+    if not vehiculo_id or not conductor_id:
+        flash("Vehículo y conductor son requeridos", "danger")
+        return redirect(url_for("gestion_sesiones_ruta", id=ruta_id))
+    
+    # Crear la sesión
+    sesion_id = db.execute("""
+        INSERT INTO Sesiones_Ruta (
+            ID_Ruta, ID_Vehiculo, Fecha, Estado
+        ) VALUES (?, ?, DATE('now'), 'pendiente')
+        RETURNING ID_Sesion
+    """, ruta_id, vehiculo_id)[0]["ID_Sesion"]
+    
+    # Asignar conductor
+    db.execute("""
+        INSERT INTO Vehiculo_Conductor (
+            ID_Vehiculo, ID_Conductor, FechaAsignacion
+        ) VALUES (?, ?, DATE('now'))
+    """, vehiculo_id, conductor_id)
+    
+    flash("Sesión de ruta iniciada", "success")
+    return redirect(url_for("detalle_sesion_ruta", id=ruta_id, sesion_id=sesion_id))
+
+def listar_sesiones_ruta(ruta_id):
+    """Listar todas las sesiones de una ruta"""
+    sesiones = db.execute("""
+        SELECT sr.ID_Sesion, sr.Fecha, sr.Estado, v.Placa, c.Nombre as Conductor
+        FROM Sesiones_Ruta sr
+        JOIN Vehiculos v ON sr.ID_Vehiculo = v.ID_Vehiculo
+        LEFT JOIN Vehiculo_Conductor vc ON vc.ID_Vehiculo = v.ID_Vehiculo 
+            AND vc.FechaAsignacion = (
+                SELECT MAX(FechaAsignacion) 
+                FROM Vehiculo_Conductor 
+                WHERE ID_Vehiculo = v.ID_Vehiculo
+            )
+        LEFT JOIN Conductores c ON vc.ID_Conductor = c.ID_Conductor
+        WHERE sr.ID_Ruta = ?
+        ORDER BY sr.Fecha DESC
+    """, ruta_id)
+    
+    return render_template(
+        "sesiones_ruta.html", 
+        ruta_id=ruta_id, 
+        sesiones=sesiones
+    )
+
+# -----------------------------------------------
+# Otras rutas relacionadas (simplificadas)
+# -----------------------------------------------
+
+@app.route("/rutas/<int:id>/reporte", methods=["GET"])
+@login_required
+@handle_db_errors
+def reporte_ruta(id):
+    """Generar reporte consolidado de una ruta"""
+    datos = {
+        "ruta": db.execute("SELECT * FROM Rutas WHERE ID_Ruta = ?", id)[0],
+        "sesiones": db.execute("""
+            SELECT COUNT(*) as total_sesiones,
+                   SUM(CASE WHEN Estado = 'completada' THEN 1 ELSE 0 END) as completadas
+            FROM Sesiones_Ruta
+            WHERE ID_Ruta = ?
+        """, id)[0],
+        "ventas": db.execute("""
+            SELECT COUNT(*) as total_ventas, SUM(Total) as monto_total
+            FROM Ventas_Ruta vr
+            JOIN Sesiones_Ruta sr ON vr.ID_Sesion = sr.ID_Sesion
+            WHERE sr.ID_Ruta = ?
+        """, id)[0]
+    }
+    return render_template("reporte_ruta.html", **datos)
+
+@app.route("/rutas/buscar", methods=["GET"])
+@login_required
+@handle_db_errors
+def buscar_rutas():
+    """Búsqueda de rutas"""
+    termino = request.args.get("q", "").strip()
+    if not termino:
+        return redirect(url_for("gestion_rutas"))
+    
+    rutas = db.execute("""
+        SELECT ID_Ruta, Nombre, Descripcion
+        FROM Rutas
+        WHERE Nombre LIKE ? OR Descripcion LIKE ?
+        ORDER BY Nombre
+    """, f"%{termino}%", f"%{termino}%")
+    
+    return render_template("gestion_rutas.html", rutas=rutas, termino_busqueda=termino)
 
 if __name__ == '__main__':
     app.run(debug=True)
