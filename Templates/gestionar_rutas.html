@@ -1,0 +1,199 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestión de Rutas{% endblock %}
+
+{% block main %}
+<div class="container-fluid px-4">
+  <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+    <div>
+      <h2 class="mb-0"><i class="fas fa-route me-2"></i>Rutas de Venta</h2>
+      <p class="text-muted mb-0">Administración de rutas comerciales y sus sesiones</p>
+    </div>
+    <a href="/rutas/crear" class="btn btn-success shadow-sm">
+      <i class="fas fa-plus-circle me-2"></i>Nueva Ruta
+    </a>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Listado de Rutas</h5>
+      <div class="d-flex">
+        <input type="text" id="searchInput" class="form-control form-control-sm me-2" placeholder="Buscar ruta..." style="max-width: 200px;">
+        <select id="statusFilter" class="form-select form-select-sm" style="max-width: 150px;">
+          <option value="all">Todos los estados</option>
+          <option value="active">Activas</option>
+          <option value="inactive">Inactivas</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="table-responsive">
+      <table class="table table-hover mb-0" id="routesTable">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">Nombre</th>
+            <th>Zona</th>
+            <th>Días Operación</th>
+            <th>Estado</th>
+            <th class="text-end pe-4">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ruta in rutas %}
+          <tr>
+            <td class="ps-4 fw-semibold align-middle">
+              <i class="fas fa-map-marked-alt text-primary me-2"></i>
+              {{ ruta.Nombre }}
+            </td>
+            <td class="align-middle">
+              <span class="badge bg-light text-dark border">
+                <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                {{ ruta.Zona }}
+              </span>
+            </td>
+            <td class="align-middle">
+              {% for dia in (ruta.Dias_operacion or '').split(',') if dia %}
+                <span class="badge bg-info bg-opacity-10 text-info me-1">{{ dia }}</span>
+              {% else %}
+                <span class="text-muted">No especificado</span>
+              {% endfor %}
+            </td> 
+            <td class="align-middle">
+              <span class="badge rounded-pill bg-{{ 'success' if ruta.Estado else 'secondary' }}">
+                {{ 'Activa' if ruta.Estado else 'Inactiva' }}
+              </span>
+            </td>
+            <td class="text-end pe-4 align-middle">
+              <div class="btn-group btn-group-sm" role="group">
+                <a href="/rutas/{{ ruta.ID_Ruta }}/editar" class="btn btn-outline-primary" data-bs-toggle="tooltip" title="Editar">
+                  <i class="fas fa-edit">Editar</i>
+                </a>
+                <form action="/rutas/{{ ruta.ID_Ruta }}/eliminar" method="post" class="d-inline">
+                  <button type="submit" class="btn btn-outline-danger" onclick="return confirm('¿Está seguro de eliminar esta ruta?')" data-bs-toggle="tooltip" title="Eliminar">
+                    <i class="fas fa-trash-alt">Eliminar</i>
+                  </button>
+                </form>
+                <a href="/sesiones?ruta={{ ruta.ID_Ruta }}" class="btn btn-outline-info" data-bs-toggle="tooltip" title="Ver sesiones">
+                  <i class="fas fa-calendar-day">Sesiones</i>
+                </a>
+                <button class="btn btn-outline-secondary toggle-status" data-id="{{ ruta.ID_Ruta }}" data-status="{{ ruta.Estado }}" data-bs-toggle="tooltip" title="{{ 'Desactivar' if ruta.Estado else 'Activar' }}">
+                  <i class="fas fa-power-off">Estado</i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+      <div class="text-muted small">
+        Mostrando <span id="showingCount">{{ rutas|length }}</span> de {{ rutas|length }} rutas
+      </div>
+      <nav aria-label="Page navigation">
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item disabled">
+            <a class="page-link" href="#" tabindex="-1">Anterior</a>
+          </li>
+          <li class="page-item active"><a class="page-link" href="#">1</a></li>
+          <li class="page-item"><a class="page-link" href="#">2</a></li>
+          <li class="page-item"><a class="page-link" href="#">3</a></li>
+          <li class="page-item">
+            <a class="page-link" href="#">Siguiente</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para cambiar estado -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cambiar estado</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p id="statusModalText">¿Desea activar esta ruta?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="confirmStatusChange">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+  // Inicializar tooltips
+  $('[data-bs-toggle="tooltip"]').tooltip();
+  
+  // Filtro de búsqueda
+  $('#searchInput').on('keyup', function() {
+    const value = $(this).val().toLowerCase();
+    $('#routesTable tbody tr').filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+    });
+    updateShowingCount();
+  });
+  
+  // Filtro por estado
+  $('#statusFilter').change(function() {
+    const value = $(this).val();
+    $('#routesTable tbody tr').each(function() {
+      const isActive = $(this).find('.badge').hasClass('bg-success');
+      if (value === 'all' || 
+          (value === 'active' && isActive) || 
+          (value === 'inactive' && !isActive)) {
+        $(this).show();
+      } else {
+        $(this).hide();
+      }
+    });
+    updateShowingCount();
+  });
+  
+  // Actualizar contador de resultados
+  function updateShowingCount() {
+    const showing = $('#routesTable tbody tr:visible').length;
+    $('#showingCount').text(showing);
+  }
+  
+  // Manejar cambio de estado
+  $('.toggle-status').click(function() {
+    const routeId = $(this).data('id');
+    const currentStatus = $(this).data('status');
+    const newStatus = !currentStatus;
+    const routeName = $(this).closest('tr').find('td:first').text().trim();
+    
+    $('#statusModalText').text(`¿Desea ${newStatus ? 'activar' : 'desactivar'} la ruta "${routeName}"?`);
+    
+    const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+    modal.show();
+    
+    $('#confirmStatusChange').off('click').on('click', function() {
+      // Aquí iría la llamada AJAX para actualizar el estado en el servidor
+      $.ajax({
+        url: `/rutas/${routeId}/estado`,
+        method: 'POST',
+        data: { estado: newStatus },
+        success: function(response) {
+          location.reload();
+        },
+        error: function() {
+          alert('Error al actualizar el estado');
+        }
+      });
+      modal.hide();
+    });
+  });
+});
+</script>
+{% endblock %}

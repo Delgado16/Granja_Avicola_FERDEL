@@ -1,0 +1,245 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ 'Editar' if ruta else 'Crear' }} Ruta{% endblock %}
+
+{% block main %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <!-- Encabezado mejorado con breadcrumb y estado -->
+        <div class="card-header bg-primary text-white py-3">
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb breadcrumb-light mb-0">
+              <li class="breadcrumb-item"><a href="/" class="text-white">Inicio</a></li>
+              <li class="breadcrumb-item"><a href="/rutas" class="text-white">Rutas</a></li>
+              <li class="breadcrumb-item active text-white">{{ 'Editar' if ruta else 'Crear' }} Ruta</li>
+            </ol>
+          </nav>
+          <div class="d-flex justify-content-between align-items-center mt-2">
+            <h3 class="mb-0">
+              <i class="fas fa-route me-2"></i>{{ 'Editar' if ruta else 'Crear' }} Ruta
+            </h3>
+            {% if ruta %}
+            <span class="badge rounded-pill bg-{{ 'success' if ruta.Estado else 'secondary' }}">
+              {{ 'Activa' if ruta.Estado else 'Inactiva' }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Cuerpo del formulario con mejor estructura -->
+        <div class="card-body p-4">
+          <form action="{{ url_for('editar_ruta', id=ruta.ID_Ruta) if ruta else url_for('crear_ruta') }}" method="post" class="needs-validation" novalidate>
+            <!-- Sección Información Básica -->
+            <div class="mb-4">
+              <h5 class="mb-3 text-primary border-bottom pb-2">
+                <i class="fas fa-info-circle me-2"></i>Información Básica
+              </h5>
+              
+              <!-- Campo Nombre con validación -->
+              <div class="mb-4">
+                <label for="nombre" class="form-label fw-semibold">
+                  <i class="fas fa-signature me-2 text-primary"></i>Nombre de la Ruta <span class="text-danger">*</span>
+                </label>
+                <input type="text" class="form-control form-control-lg" id="nombre" name="nombre" 
+                      value="{{ ruta.Nombre if ruta }}" required
+                      placeholder="Ej: Ruta Norte, Ruta Centro Comercial"
+                      minlength="3" maxlength="50">
+                <div class="invalid-feedback">
+                  Por favor ingrese un nombre válido (3-50 caracteres).
+                </div>
+                <small class="form-text text-muted">Nombre descriptivo que identifique la ruta</small>
+              </div>
+              
+              <!-- Campo Descripción con contador -->
+              <div class="mb-4">
+                <label for="descripcion" class="form-label fw-semibold">
+                  <i class="fas fa-info-circle me-2 text-primary"></i>Descripción
+                </label>
+                <textarea class="form-control" id="descripcion" name="descripcion" rows="3"
+                          placeholder="Detalles importantes sobre la ruta, clientes frecuentes, etc."
+                          maxlength="255">{{ ruta.Descripcion if ruta }}</textarea>
+                <div class="d-flex justify-content-end">
+                  <small class="text-muted"><span id="descripcion-counter">0</span>/255 caracteres</small>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Sección Configuración -->
+            <div class="mb-4">
+              <h5 class="mb-3 text-primary border-bottom pb-2">
+                <i class="fas fa-cog me-2"></i>Configuración
+              </h5>
+              
+              <div class="row g-3">
+                <!-- Campo Zona con icono dinámico -->
+                <div class="col-md-6">
+                  <label for="zona" class="form-label fw-semibold">
+                    <i class="fas fa-map-marked-alt me-2 text-primary"></i>Zona <span class="text-danger">*</span>
+                  </label>
+                  <select class="form-select" id="zona" name="zona" required>
+                    <option value="" disabled selected>Seleccione una zona</option>
+                    <option value="Norte" {{ 'selected' if ruta and ruta.Zona == 'Norte' }} data-icon="fa-compass">Zona Norte</option>
+                    <option value="Sur" {{ 'selected' if ruta and ruta.Zona == 'Sur' }} data-icon="fa-compass">Zona Sur</option>
+                    <option value="Este" {{ 'selected' if ruta and ruta.Zona == 'Este' }} data-icon="fa-compass">Zona Este</option>
+                    <option value="Oeste" {{ 'selected' if ruta and ruta.Zona == 'Oeste' }} data-icon="fa-compass">Zona Oeste</option>
+                    <option value="Centro" {{ 'selected' if ruta and ruta.Zona == 'Centro' }} data-icon="fa-city">Centro</option>
+                  </select>
+                  <div class="invalid-feedback">
+                    Por favor seleccione una zona.
+                  </div>
+                </div>
+                
+                <!-- Campo Días de Operación mejorado -->
+                <div class="col-md-6">
+                  <label for="dias_operacion" class="form-label fw-semibold">
+                    <i class="fas fa-calendar-alt me-2 text-primary"></i>Días de Operación <span class="text-danger">*</span>
+                  </label>
+                  <select class="form-select select2-multiple" id="dias_operacion" name="dias_operacion" multiple="multiple" required>
+                    <option value="Lunes" {{ 'selected' if ruta and 'Lunes' in ruta.Dias_operacion }}>Lunes</option>
+                    <option value="Martes" {{ 'selected' if ruta and 'Martes' in ruta.Dias_operacion }}>Martes</option>
+                    <option value="Miércoles" {{ 'selected' if ruta and 'Miércoles' in ruta.Dias_operacion }}>Miércoles</option>
+                    <option value="Jueves" {{ 'selected' if ruta and 'Jueves' in ruta.Dias_operacion }}>Jueves</option>
+                    <option value="Viernes" {{ 'selected' if ruta and 'Viernes' in ruta.Dias_operacion }}>Viernes</option>
+                    <option value="Sábado" {{ 'selected' if ruta and 'Sábado' in ruta.Dias_operacion }}>Sábado</option>
+                    <option value="Domingo" {{ 'selected' if ruta and 'Domingo' in ruta.Dias_operacion }}>Domingo</option>
+                  </select>
+                  <div class="invalid-feedback">
+                    Seleccione al menos un día de operación.
+                  </div>
+                  <small class="form-text text-muted">Seleccione los días de atención</small>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Estado con mejor diseño -->
+            {% if ruta %}
+            <div class="mb-4">
+              <div class="form-check form-switch ps-0">
+                <div class="d-flex align-items-center">
+                  <input class="form-check-input ms-0" type="checkbox" role="switch" id="estado" name="estado" {{ 'checked' if ruta.Estado }} style="width: 3em; height: 1.5em;">
+                  <label class="form-check-label fw-semibold ms-3" for="estado">
+                    <i class="fas fa-power-off me-2 text-primary"></i>Ruta Activa
+                  </label>
+                </div>
+                <small class="form-text text-muted">Desactive para pausar temporalmente esta ruta</small>
+              </div>
+            </div>
+            {% endif %}
+            
+            <!-- Botones de acción mejorados -->
+            <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+              <a href="/rutas" class="btn btn-outline-secondary px-4 rounded-pill">
+                <i class="fas fa-arrow-left me-2"></i>Volver
+              </a>
+              <div>
+                {% if ruta %}
+                <button type="button" class="btn btn-outline-danger me-2 rounded-pill" data-bs-toggle="modal" data-bs-target="#confirmModal">
+                  <i class="fas fa-trash-alt me-2"></i>Eliminar
+                </button>
+                {% endif %}
+                <button type="submit" class="btn btn-primary px-4 rounded-pill">
+                  <i class="fas fa-save me-2"></i>{{ 'Guardar Cambios' if ruta else 'Crear Ruta' }}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmación para eliminar -->
+{% if ruta %}
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="confirmModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Confirmar Eliminación</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        ¿Está seguro que desea eliminar permanentemente la ruta "{{ ruta.Nombre }}"?
+        <div class="alert alert-warning mt-3">
+          <i class="fas fa-exclamation-circle me-2"></i>Esta acción no se puede deshacer y afectará a todos los registros asociados.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+        <a href="{{ url_for('eliminar_ruta', id=ruta.ID_Ruta) }}" class="btn btn-danger rounded-pill">
+          <i class="fas fa-trash-alt me-2"></i>Eliminar Definitivamente
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<!-- Incluir Select2 para selección múltiple -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- Incluir select2-bootstrap-5-theme -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
+<script>
+$(document).ready(function() {
+  // Inicializar Select2 con tema Bootstrap 5
+  $('.select2-multiple').select2({
+    theme: 'bootstrap-5',
+    placeholder: "Seleccione los días",
+    allowClear: true,
+    width: '100%',
+    closeOnSelect: false
+  });
+
+  // Formatear días existentes si estamos en edición
+  {% if ruta and ruta.Dias_operacion %}
+    const diasSeleccionados = "{{ ruta.Dias_operacion }}".split(',');
+    $('.select2-multiple').val(diasSeleccionados).trigger('change');
+  {% endif %}
+
+  // Contador de caracteres para descripción
+  $('#descripcion').on('input', function() {
+    const currentLength = $(this).val().length;
+    $('#descripcion-counter').text(currentLength);
+  });
+
+  // Inicializar contador
+  $('#descripcion').trigger('input');
+
+  // Validación de formulario
+  (function() {
+    'use strict';
+    
+    // Fetch all the forms we want to apply custom Bootstrap validation styles to
+    const forms = document.querySelectorAll('.needs-validation');
+    
+    // Loop over them and prevent submission
+    Array.prototype.slice.call(forms).forEach(function(form) {
+      form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        
+        form.classList.add('was-validated');
+      }, false);
+    });
+  })();
+
+  // Cambiar ícono según zona seleccionada
+  $('#zona').change(function() {
+    const selectedOption = $(this).find('option:selected');
+    const iconClass = selectedOption.data('icon');
+    $(this).prev('label').find('i').removeClass().addClass('fas me-2 text-primary').addClass(iconClass);
+  });
+
+  // Inicializar ícono de zona
+  $('#zona').trigger('change');
+});
+</script>
+{% endblock %}

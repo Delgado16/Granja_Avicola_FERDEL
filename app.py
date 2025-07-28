@@ -9,7 +9,6 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import traceback
 import json
-from functools import wraps
 
 
 
@@ -53,6 +52,10 @@ def after_request(response):
     return response
 
 # Ruta raíz
+from datetime import datetime, timedelta
+from flask import render_template
+from flask_login import login_required
+
 @app.route('/')
 @login_required
 def home():
@@ -63,23 +66,24 @@ def home():
         result = db.execute(query, params) if params else db.execute(query)
         return result[0]['total'] if result and result[0]['total'] is not None else 0
 
-    # 1. Total sales (today and month)
+    # 1. Total sales (today and month) - Contado solamente
     total_ventas_hoy = execute_query("""
-        SELECT SUM(df.Total) AS total 
+        SELECT COALESCE(SUM(df.Total), 0) AS total 
         FROM Detalle_Facturacion df
         JOIN Facturacion f ON df.ID_Factura = f.ID_Factura
         WHERE f.Fecha = ?
+        AND f.Credito_Contado = 0  -- 0 para contado, 1 para crédito
     """, [today])
 
     total_ventas_mes = execute_query("""
-        SELECT SUM(df.Total) AS total 
+        SELECT COALESCE(SUM(df.Total), 0) AS total 
         FROM Detalle_Facturacion df
         JOIN Facturacion f ON df.ID_Factura = f.ID_Factura
         WHERE strftime('%Y-%m', f.Fecha) = ?
+        AND f.Credito_Contado = 0
     """, [current_month])
 
-
-# 2. Total purchases (today and month) - VERSION CORREGIDA
+    # 2. Total purchases (today and month)
     total_compras_hoy = execute_query("""
         SELECT COALESCE(SUM(dm.Costo_Total), 0) AS total
         FROM Detalle_Movimiento_Inventario dm
@@ -87,6 +91,7 @@ def home():
         JOIN Catalogo_Movimientos cm ON mi.ID_TipoMovimiento = cm.ID_TipoMovimiento
         WHERE DATE(mi.Fecha) = DATE(?)
         AND LOWER(cm.Descripcion) LIKE '%compra%'
+        AND mi.Contado_Credito = 0
     """, [today])
 
     total_compras_mes = execute_query("""
@@ -96,96 +101,109 @@ def home():
         JOIN Catalogo_Movimientos cm ON mi.ID_TipoMovimiento = cm.ID_TipoMovimiento
         WHERE strftime('%Y-%m', mi.Fecha) = ?
         AND LOWER(cm.Descripcion) LIKE '%compra%'
+        AND mi.Contado_Credito = 0
     """, [current_month])
 
-    # 3. Inventory by warehouse
+    # 3. Inventory by warehouse (limitado a 100 registros para mejor performance)
     inventario_bodegas = db.execute("""
         SELECT b.Nombre AS bodega, p.Descripcion AS producto, ib.Existencias
         FROM Inventario_Bodega ib
         JOIN Bodegas b ON ib.ID_Bodega = b.ID_Bodega
         JOIN Productos p ON ib.ID_Producto = p.ID_Producto
         ORDER BY b.Nombre, p.Descripcion
+        LIMIT 100
     """)
 
-    # 4. Vehicle information
+    # 4. Vehicle information (corregido nombre de tabla Mantenimientos)
     vehiculos = db.execute("""
         SELECT v.Placa, v.Marca, v.Modelo, v.Color, v.Estado,
-               (SELECT MAX(Kilometraje) FROM Mantenimiento_Vehiculo 
+               (SELECT MAX(Kilometraje) FROM Mantenimientos 
                 WHERE ID_Vehiculo = v.ID_Vehiculo) AS kilometraje
         FROM Vehiculos v
         ORDER BY v.Estado DESC, v.Placa
     """)
 
-    # 5. Top customers
+    # 5. Top customers (últimos 30 días)
     top_clientes = db.execute("""
         SELECT c.Nombre, SUM(df.Total) AS total_comprado
         FROM Clientes c
         JOIN Facturacion f ON c.ID_Cliente = f.IDCliente
         JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
+        WHERE f.Fecha >= DATE('now', '-30 days')
         GROUP BY c.ID_Cliente
         ORDER BY total_comprado DESC
         LIMIT 5
     """)
 
-    # 6. Latest invoice and today's date
+    # 6. Latest invoice (hoy solamente)
     ultima_factura = db.execute("""
         SELECT f.ID_Factura, f.Fecha, c.Nombre AS cliente, SUM(df.Total) AS total
         FROM Facturacion f
         JOIN Clientes c ON f.IDCliente = c.ID_Cliente
         JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
+        WHERE f.Fecha = ?
         GROUP BY f.ID_Factura
         ORDER BY f.Fecha DESC
         LIMIT 1
-    """)
+    """, [today])
 
-    # 7. Accounts receivable
+    # 7. Accounts receivable (usando Saldo_Pendiente)
     cuentas_cobrar = execute_query("""
-        SELECT SUM(Monto_Movimiento) AS total
+        SELECT COALESCE(SUM(Saldo_Pendiente), 0) AS total
         FROM Detalle_Cuentas_Por_Cobrar
         WHERE Fecha_Vencimiento >= DATE('now')
+        AND Saldo_Pendiente > 0
     """)
 
     cuentas_cobrar_vencidas = execute_query("""
-        SELECT SUM(Monto_Movimiento) AS total
+        SELECT COALESCE(SUM(Saldo_Pendiente), 0) AS total
         FROM Detalle_Cuentas_Por_Cobrar
         WHERE Fecha_Vencimiento < DATE('now')
+        AND Saldo_Pendiente > 0
     """)
 
-    # 8. Product stock alerts
+    # 8. Product stock alerts (comparando con Stock_Minimo)
     productos_stock_bajo = db.execute("""
-        SELECT B.Nombre AS Bodega, P.COD_Producto, P.Descripcion, I.Existencias, U.Abreviatura
+        SELECT B.Nombre AS Bodega, P.COD_Producto, P.Descripcion, 
+               I.Existencias, P.Stock_Minimo, U.Abreviatura
         FROM Inventario_Bodega I
         JOIN Bodegas B ON B.ID_Bodega = I.ID_Bodega
         JOIN Productos P ON P.ID_Producto = I.ID_Producto
         LEFT JOIN Unidades_Medida U ON U.ID_Unidad = P.Unidad_Medida
-        WHERE I.Existencias <= 5
+        WHERE I.Existencias <= P.Stock_Minimo
         AND P.Estado = 1
-        ORDER BY B.Nombre, I.Existencias ASC
+        ORDER BY I.Existencias ASC
+        LIMIT 20
     """)
 
-    # 9. Upcoming vehicle maintenance
+    # 9. Upcoming vehicle maintenance (corregido nombre de tabla Mantenimientos)
     proximos_mantenimientos = db.execute("""
-        SELECT mv.*, v.Placa
-        FROM Mantenimiento_Vehiculo mv
-        JOIN Vehiculos v ON mv.ID_Vehiculo = v.ID_Vehiculo
-        WHERE mv.Fecha >= DATE('now')
-        ORDER BY mv.Fecha ASC
+        SELECT m.ID_Mantenimiento, v.Placa, m.Tipo, m.Fecha, m.Descripcion
+        FROM Mantenimientos m
+        JOIN Vehiculos v ON m.ID_Vehiculo = v.ID_Vehiculo
+        WHERE m.Fecha BETWEEN DATE('now') AND DATE('now', '+30 days')
+        ORDER BY m.Fecha ASC
         LIMIT 5
     """)
 
-    # 10. Sales by product type (for chart)
+    # 10. Sales by product type (último mes, solo contado)
     ventas_por_tipo = db.execute("""
-        SELECT tp.Descripcion AS tipo, SUM(df.Cantidad) AS cantidad, SUM(df.Total) AS total
+        SELECT tp.Descripcion AS tipo, 
+               SUM(df.Cantidad) AS cantidad, 
+               COALESCE(SUM(df.Total), 0) AS total
         FROM Detalle_Facturacion df
         JOIN Productos p ON df.ID_Producto = p.ID_Producto
         JOIN Tipo_Producto tp ON p.Tipo = tp.ID_TipoProducto
         JOIN Facturacion f ON df.ID_Factura = f.ID_Factura
         WHERE strftime('%Y-%m', f.Fecha) = ?
+        AND f.Credito_Contado = 0
         GROUP BY tp.ID_TipoProducto
+        ORDER BY total DESC
     """, [current_month])
 
     return render_template("index.html",
         today=today,
+        current_month=current_month,
         total_ventas_hoy=total_ventas_hoy,
         total_ventas_mes=total_ventas_mes,
         total_compras_hoy=total_compras_hoy,
@@ -915,7 +933,7 @@ def ventas():
             db.execute("COMMIT")
             transaction_active = False
             flash("Venta registrada correctamente.", "success")
-            return redirect(url_for("gestionar_ventas"))
+            return redirect(url_for("ver_factura", venta_id=factura_id))
 
         except Exception as e:
             print(traceback.format_exc())
@@ -941,6 +959,19 @@ def ventas():
     except Exception as e:
         flash(f"Error al cargar datos: {str(e)}", "danger")
         return redirect(url_for("ventas"))
+    
+@app.route("/ventas/factura/<int:venta_id>")
+@login_required
+def ver_factura(venta_id):
+    """Endpoint para visualizar la factura recién creada"""
+    n_factura = f"F-{venta_id:05d}"
+    return render_template("ver_factura.html", venta_id=venta_id, n_factura=n_factura)
+
+@app.route("/ventas/pdf/<int:venta_id>")
+@login_required
+def generar_factura_venta_pdf(venta_id):
+    """Nueva ruta específica para facturas de ventas (similar a tu ruta original pero con prefijo /ventas)"""
+    return generar_factura_pdf(venta_id)
 
 ############################################################################
 @app.route("/gestionar_ventas", methods=["GET"])
@@ -1807,7 +1838,7 @@ def detalle_cuenta(id_cuenta):
                 pago['Detalles'] = {}
         
         return render_template(
-            "detalle_cuenta.html",
+            "pago.html",
             factura=cuenta,
             cuenta=cuenta,
             pagos=pagos
@@ -2384,137 +2415,344 @@ def historial_inventario():
 #ruta de vehiculos
 @app.route("/vehiculos", methods=["GET", "POST"])
 def vehiculos():
-    # Agregar nuevo vehículo
-    if request.method == "POST":
-        placa = request.form.get("placa", "").strip()
-        marca = request.form.get("marca", "").strip()
-        modelo = request.form.get("modelo", "").strip()
-        año = request.form.get("año", "").strip()
-        color = request.form.get("color", "").strip()
-        chasis = request.form.get("chasis", "").strip()
-        motor = request.form.get("motor", "").strip()
-        estado = int(request.form.get("estado", 1))
+    try:
+        if request.method == "POST":
+            # Datos del formulario con nueva estructura
+            data = {
+                'placa': request.form.get("placa", "").strip().upper(),
+                'marca': request.form.get("marca", "").strip(),
+                'modelo': request.form.get("modelo", "").strip(),
+                'año': int(request.form.get("año", 0)) if request.form.get("año") else None,
+                'color': request.form.get("color", "").strip(),
+                'chasis': request.form.get("chasis", "").strip(),
+                'motor': request.form.get("motor", "").strip(),
+                'capacidad_carga': float(request.form.get("capacidad_carga", 0)),
+                'estado': 'activo',  # Valor por defecto según nueva estructura
+                'kilometraje': float(request.form.get("kilometraje", 0)),
+                'fecha_adquisicion': request.form.get("fecha_adquisicion", "")
+            }
 
-        # Validación básica
-        if not placa:
-            flash("La placa es obligatoria.", "danger")
+            # Validación reforzada
+            if not data['placa']:
+                flash("La placa es obligatoria.", "danger")
+                return redirect(url_for("vehiculos"))
+
+            # Insertar usando NUEVA ESTRUCTURA
+            db.execute("""
+                INSERT INTO Vehiculos 
+                (Placa, Marca, Modelo, Año, Color, NumeroChasis, NumeroMotor, 
+                 Capacidad_Carga, Estado, Ultimo_Kilometraje, Fecha_Adquisicion)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, data['placa'], data['marca'], data['modelo'], data['año'],
+                 data['color'], data['chasis'], data['motor'], data['capacidad_carga'],
+                 data['estado'], data['kilometraje'], data['fecha_adquisicion'] or None)
+
+            flash("Vehículo agregado correctamente.", "success")
             return redirect(url_for("vehiculos"))
 
-        db.execute("""
-            INSERT INTO Vehiculos 
-            (Placa, Marca, Modelo, Año, Color, NumeroChasis, NumeroMotor, Estado)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, placa, marca, modelo, año, color, chasis, motor, estado)
-        flash("Vehículo agregado correctamente.", "success")
+        # GET: Listar vehículos con nueva estructura
+        estado_filtro = request.args.get("estado", "activo")
+        search = request.args.get("search", "").strip()
+
+        query = """
+            SELECT 
+                ID_Vehiculo, Placa, Marca, Modelo, Año, Color, Estado,
+                Capacidad_Carga, Ultimo_Kilometraje, Fecha_Adquisicion
+            FROM Vehiculos
+            WHERE 1=1
+        """
+        params = []
+
+        if estado_filtro != "todos":
+            query += " AND Estado = ?"
+            params.append(estado_filtro)
+
+        if search:
+            query += " AND (Placa LIKE ? OR Marca LIKE ? OR Modelo LIKE ?)"
+            params.extend([f"%{search}%"] * 3)
+
+        query += " ORDER BY Placa ASC"
+        vehiculos = db.execute(query, *params)
+
+        return render_template("vehiculos.html", 
+                            vehiculos=vehiculos,
+                            estados=['activo', 'mantenimiento', 'inactivo', 'baja'],
+                            estado_filtro=estado_filtro,
+                            search=search)
+
+    except ValueError:
+        flash("Error en los datos numéricos proporcionados.", "danger")
+        return redirect(url_for("vehiculos"))
+    except Exception as e:
+        flash(f"Error inesperado: {str(e)}", "danger")
         return redirect(url_for("vehiculos"))
 
-    # Mostrar lista de vehículos
-    vehiculos = db.execute("""
-        SELECT 
-            ID_Vehiculo, Placa, Marca, Modelo, Año, Color, 
-            NumeroChasis, NumeroMotor, Estado
-        FROM Vehiculos
-        ORDER BY Placa ASC
-    """)
-    return render_template("vehiculos.html", vehiculos=vehiculos)
-#######################################################################################
+##########################################################################
+
 @app.route("/vehiculos/<int:id>/editar", methods=["GET", "POST"])
 def editar_vehiculo(id):
-    vehiculo = db.execute("SELECT * FROM Vehiculos WHERE ID_Vehiculo = ?", id)
-    if not vehiculo:
-        flash("Vehículo no encontrado.", "danger")
-        return redirect(url_for("vehiculos"))
-    vehiculo = vehiculo[0]
-
-    if request.method == "POST":
-        placa = request.form.get("placa", "").strip()
-        marca = request.form.get("marca", "").strip()
-        modelo = request.form.get("modelo", "").strip()
-        año = request.form.get("año", "").strip()
-        color = request.form.get("color", "").strip()
-        chasis = request.form.get("chasis", "").strip()
-        motor = request.form.get("motor", "").strip()
-        estado = int(request.form.get("estado", 1))
-
-        db.execute("""
-            UPDATE Vehiculos
-            SET Placa = ?, Marca = ?, Modelo = ?, Año = ?, Color = ?, 
-                NumeroChasis = ?, NumeroMotor = ?, Estado = ?
+    try:
+        # Obtener el vehículo con la nueva estructura
+        vehiculo = db.execute("""
+            SELECT 
+                ID_Vehiculo, Placa, Marca, Modelo, Año, Color,
+                NumeroChasis, NumeroMotor, Estado, Capacidad_Carga,
+                Ultimo_Kilometraje, Fecha_Adquisicion
+            FROM Vehiculos 
             WHERE ID_Vehiculo = ?
-        """, placa, marca, modelo, año, color, chasis, motor, estado, id)
-        flash("Vehículo actualizado correctamente.", "success")
-        return redirect(url_for("vehiculos"))
+        """, id)
+        
+        if not vehiculo:
+            flash("Vehículo no encontrado.", "danger")
+            return redirect(url_for("vehiculos"))
+        vehiculo = vehiculo[0]
 
-    return render_template("editar_vehiculo.html", vehiculo=vehiculo)
-#######################################################################################
-@app.route("/vehiculos/<int:id>/eliminar")
-def eliminar_vehiculo(id):
-    vehiculo = db.execute("SELECT * FROM Vehiculos WHERE ID_Vehiculo = ?", id)
-    if not vehiculo:
-        flash("Vehículo no encontrado.", "danger")
-    else:
-        db.execute("DELETE FROM Vehiculos WHERE ID_Vehiculo = ?", id)
-        flash("Vehículo eliminado correctamente.", "success")
-    return redirect(url_for("vehiculos"))
+        if request.method == "POST":
+            # Recoger y validar datos del formulario
+            data = {
+                'placa': request.form.get("placa", "").strip().upper(),
+                'marca': request.form.get("marca", "").strip(),
+                'modelo': request.form.get("modelo", "").strip(),
+                'año': request.form.get("año", ""),
+                'color': request.form.get("color", "").strip(),
+                'chasis': request.form.get("chasis", "").strip(),
+                'motor': request.form.get("motor", "").strip(),
+                'estado': request.form.get("estado", "activo"),
+                'capacidad_carga': request.form.get("capacidad_carga", "0"),
+                'kilometraje': request.form.get("kilometraje", "0"),
+                'fecha_adquisicion': request.form.get("fecha_adquisicion", "")
+            }
+
+            # Validaciones
+            errores = []
+            
+            if not data['placa']:
+                errores.append("La placa es obligatoria")
+                
+            if data['año'] and not data['año'].isdigit():
+                errores.append("El año debe ser un número válido")
+                
+            try:
+                data['capacidad_carga'] = float(data['capacidad_carga'])
+            except ValueError:
+                errores.append("La capacidad de carga debe ser un número")
+                
+            try:
+                data['kilometraje'] = float(data['kilometraje'])
+            except ValueError:
+                errores.append("El kilometraje debe ser un número válido")
+
+            # Si hay errores, mostrarlos y recargar el formulario
+            if errores:
+                for error in errores:
+                    flash(error, "danger")
+                return render_template("editar_vehiculo.html", 
+                                      vehiculo=vehiculo,
+                                      estados=['activo', 'mantenimiento', 'inactivo', 'baja'])
+
+            # Convertir año a entero si existe
+            data['año'] = int(data['año']) if data['año'] else None
+
+            # Actualizar el vehículo en la nueva estructura
+            db.execute("""
+                UPDATE Vehiculos SET
+                    Placa = ?,
+                    Marca = ?,
+                    Modelo = ?,
+                    Año = ?,
+                    Color = ?,
+                    NumeroChasis = ?,
+                    NumeroMotor = ?,
+                    Estado = ?,
+                    Capacidad_Carga = ?,
+                    Ultimo_Kilometraje = ?,
+                    Fecha_Adquisicion = ?
+                WHERE ID_Vehiculo = ?
+            """, 
+            data['placa'], data['marca'], data['modelo'], data['año'],
+            data['color'], data['chasis'], data['motor'], data['estado'],
+            data['capacidad_carga'], data['kilometraje'], 
+            data['fecha_adquisicion'] if data['fecha_adquisicion'] else None,
+            id)
+
+            flash("Vehículo actualizado correctamente.", "success")
+            return redirect(url_for("vehiculos"))
+
+        # Mostrar formulario de edición
+        return render_template("editar_vehiculo.html", 
+                            vehiculo=vehiculo,
+                            estados=['activo', 'mantenimiento', 'inactivo', 'baja'])
+
+    except Exception as e:
+        # Manejo de errores inesperados
+        flash(f"Error al actualizar el vehículo: {str(e)}", "danger")
+        return redirect(url_for("vehiculos"))
+    
 #######################################################################################
 @app.route("/combustible", methods=["GET", "POST"])
 def combustible():
-    # --- REGISTRO DE GASTO (POST) ---
-    if request.method == "POST":
-        fecha = request.form.get("fecha")
-        id_vehiculo = request.form.get("vehiculo")
-        monto = request.form.get("monto")
-        litros = request.form.get("litros") or None
-        kilometraje = request.form.get("kilometraje") or None
-        observacion = request.form.get("observacion") or ""
-        id_bodega = request.form.get("bodega") or None
-        id_empresa = 1  # O según tu lógica
+    try:
+        if request.method == "POST":
+            # Datos del formulario adaptados al esquema real
+            data = {
+                'fecha': request.form.get("fecha"),
+                'id_vehiculo': request.form.get("vehiculo"),
+                'monto': float(request.form.get("monto", 0)),
+                'litros': float(request.form.get("litros", 0)) if request.form.get("litros") else None,
+                'kilometraje': float(request.form.get("kilometraje", 0)) if request.form.get("kilometraje") else None,
+                'observacion': request.form.get("observaciones", "").strip(),
+                'id_bodega': request.form.get("bodega"),
+                'id_empresa': 1  # Asumiendo un valor por defecto
+            }
 
-        if not fecha or not id_vehiculo or not monto:
-            flash("Fecha, vehículo y monto son obligatorios.", "danger")
+            # Validación
+            if not all([data['fecha'], data['id_vehiculo'], data['monto'] > 0]):
+                flash("Fecha, vehículo y monto son obligatorios.", "danger")
+                return redirect(url_for("combustible"))
+
+            # Insertar usando la estructura REAL de la tabla
+            db.execute("""
+                INSERT INTO Gastos_Combustible 
+                (Fecha, ID_Vehiculo, Monto, Litros, Kilometraje, Observacion, ID_Bodega, ID_Empresa)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, data['fecha'], data['id_vehiculo'], data['monto'], data['litros'],
+                 data['kilometraje'], data['observacion'], data['id_bodega'], data['id_empresa'])
+
+            # Actualizar kilometraje del vehículo
+            if data['kilometraje']:
+                db.execute("""
+                    UPDATE Vehiculos
+                    SET Ultimo_Kilometraje = ?
+                    WHERE ID_Vehiculo = ?
+                """, data['kilometraje'], data['id_vehiculo'])
+
+            flash("Registro de combustible guardado.", "success")
             return redirect(url_for("combustible"))
 
-        db.execute("""
-            INSERT INTO Gastos_Combustible 
-            (Fecha, ID_Vehiculo, Monto, Litros, Kilometraje, Observacion, ID_Bodega, ID_Empresa)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, fecha, id_vehiculo, monto, litros, kilometraje, observacion, id_bodega, id_empresa)
+        # GET: Listar registros con filtros
+        filtros = {
+            'fecha': request.args.get("fecha"),
+            'id_vehiculo': request.args.get("vehiculo"),
+            'mes': request.args.get("mes")
+        }
 
-        flash("Gasto de combustible registrado correctamente.", "success")
+        query = """
+            SELECT 
+                gc.ID_Gasto, gc.Fecha, gc.Monto, gc.Litros,
+                gc.Kilometraje, gc.Observacion,
+                v.Placa, v.Marca, v.Modelo,
+                b.Nombre AS Bodega
+            FROM Gastos_Combustible gc
+            JOIN Vehiculos v ON v.ID_Vehiculo = gc.ID_Vehiculo
+            LEFT JOIN Bodegas b ON b.ID_Bodega = gc.ID_Bodega
+            WHERE 1=1
+        """
+        params = []
+
+        if filtros['fecha']:
+            query += " AND gc.Fecha = ?"
+            params.append(filtros['fecha'])
+        elif filtros['mes']:
+            query += " AND strftime('%Y-%m', gc.Fecha) = ?"
+            params.append(filtros['mes'])
+            
+        if filtros['id_vehiculo']:
+            query += " AND gc.ID_Vehiculo = ?"
+            params.append(filtros['id_vehiculo'])
+            
+        query += " ORDER BY gc.Fecha DESC"
+
+        gastos = db.execute(query, *params)
+        vehiculos = db.execute("SELECT ID_Vehiculo, Placa FROM Vehiculos WHERE Estado = 'activo' ORDER BY Placa")
+        bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas ORDER BY Nombre")
+
+        return render_template(
+            "combustible.html",
+            gastos=gastos,
+            vehiculos=vehiculos,
+            bodegas=bodegas,
+            filtros=filtros
+        )
+
+    except ValueError:
+        flash("Error en los datos numéricos.", "danger")
         return redirect(url_for("combustible"))
+    except Exception as e:
+        flash(f"Error inesperado: {str(e)}", "danger")
+        return redirect(url_for("combustible"))
+    
+######################################################################################
 
-    # --- FILTRO Y LISTADO DE GASTOS (GET) ---
-    fecha_filtro = request.args.get("fecha")
-    id_vehiculo_filtro = request.args.get("vehiculo")
+@app.route("/vehiculos/<int:id>/mantenimientos", methods=["GET", "POST"])
+def mantenimientos_vehiculo(id):
+    try:
+        # Verificar que el vehículo existe
+        vehiculo = db.execute("SELECT ID_Vehiculo, Placa FROM Vehiculos WHERE ID_Vehiculo = ?", id)
+        if not vehiculo:
+            flash("Vehículo no encontrado.", "danger")
+            return redirect(url_for("vehiculos"))
+        vehiculo = vehiculo[0]
 
-    # Consulta base
-    consulta = """
-        SELECT g.Fecha, v.Placa, v.Marca, v.Modelo, g.Monto, g.Litros, g.Kilometraje, g.Observacion
-        FROM Gastos_Combustible g
-        JOIN Vehiculos v ON v.ID_Vehiculo = g.ID_Vehiculo
-        WHERE 1=1
-    """
-    params = []
-    if fecha_filtro:
-        consulta += " AND g.Fecha = ?"
-        params.append(fecha_filtro)
-    if id_vehiculo_filtro:
-        consulta += " AND g.ID_Vehiculo = ?"
-        params.append(id_vehiculo_filtro)
-    consulta += " ORDER BY g.Fecha DESC"
+        if request.method == "POST":
+            # Datos del formulario con nueva estructura
+            data = {
+                'tipo': request.form.get("tipo"),
+                'fecha': request.form.get("fecha"),
+                'descripcion': request.form.get("descripcion", "").strip(),
+                'costo': float(request.form.get("costo", 0)),
+                'kilometraje': float(request.form.get("kilometraje", 0)),
+                'proveedor': request.form.get("proveedor", "").strip(),
+                'observaciones': request.form.get("observaciones", "").strip()
+            }
 
-    gastos = db.execute(consulta, *params)
-    vehiculos = db.execute("SELECT ID_Vehiculo, Placa, Marca, Modelo FROM Vehiculos WHERE Estado=1")
-    bodegas = db.execute("SELECT ID_Bodega, Nombre FROM Bodegas")
+            # Validación
+            if not all([data['tipo'], data['fecha']]):
+                flash("Tipo y fecha son obligatorios.", "danger")
+                return redirect(url_for("mantenimientos_vehiculo", id=id))
 
-    return render_template(
-        "combustible.html",
-        vehiculos=vehiculos,
-        bodegas=bodegas,
-        gastos=gastos,
-        fecha=fecha_filtro,
-        id_vehiculo=id_vehiculo_filtro
-    )
+            # Insertar usando NUEVA ESTRUCTURA
+            db.execute("""
+                INSERT INTO Mantenimientos 
+                (ID_Vehiculo, Tipo, Fecha, Descripcion, Costo, 
+                 Kilometraje, Proveedor, Observaciones)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, id, data['tipo'], data['fecha'], data['descripcion'],
+                 data['costo'], data['kilometraje'], data['proveedor'],
+                 data['observaciones'])
+
+            # Actualizar kilometraje del vehículo si es mayor al actual
+            if data['kilometraje']:
+                db.execute("""
+                    UPDATE Vehiculos
+                    SET Ultimo_Kilometraje = ?,
+                        Fecha_Ultimo_Mantenimiento = ?
+                    WHERE ID_Vehiculo = ? AND (Ultimo_Kilometraje < ? OR Ultimo_Kilometraje IS NULL)
+                """, data['kilometraje'], data['fecha'], id, data['kilometraje'])
+
+            flash("Mantenimiento registrado correctamente.", "success")
+            return redirect(url_for("mantenimientos_vehiculo", id=id))
+
+        # GET: Listar mantenimientos del vehículo
+        mantenimientos = db.execute("""
+            SELECT * FROM Mantenimientos
+            WHERE ID_Vehiculo = ?
+            ORDER BY Fecha DESC
+        """, id)
+
+        return render_template(
+            "mantenimientos.html",
+            vehiculo=vehiculo,
+            mantenimientos=mantenimientos,
+            tipos_mantenimiento=['preventivo', 'correctivo', 'revision', 'lavado', 'neumaticos', 'frenos']
+        )
+
+    except ValueError:
+        flash("Error en los datos numéricos.", "danger")
+        return redirect(url_for("mantenimientos_vehiculo", id=id))
+    except Exception as e:
+        flash(f"Error inesperado: {str(e)}", "danger")
+        return redirect(url_for("mantenimientos_vehiculo", id=id))
+
 #######################################################################################
 @app.route("/clientes", methods=["GET", "POST"])
 def clientes():
@@ -2931,257 +3169,339 @@ def editar_tipo_producto(id):
     return render_template("editar_tipo_producto.html", tipo=tipo)
 #######################################################################################
 
-# Ruta para gestión de rutas - Versión corregida
-
-def login_required(f):
-    """Decorador para requerir autenticación"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Aquí iría tu lógica de verificación de sesión
-        # Ejemplo: if not session.get("user_id"):
-        #     return redirect(url_for("login"))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def handle_db_errors(f):
-    """Decorador para manejar errores de base de datos"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except Exception as e:
-            app.logger.error(f"Error de base de datos: {str(e)}")
-            flash("Ocurrió un error en la base de datos", "danger")
-            return redirect(url_for("gestion_rutas"))
-    return decorated_function
-
-
-@app.route("/rutas", methods=["GET", "POST"])
+@app.route("/rutas")
 @login_required
-@handle_db_errors
-def gestion_rutas():
-    """Gestión principal de rutas - Listar y crear"""
-    if request.method == "POST":
-        return crear_ruta()
-    
-    return listar_rutas()
+def gestionar_rutas():
+    """Listar todas las rutas"""
+    rutas = db.execute("SELECT * FROM Rutas ORDER BY Nombre")
+    return render_template("gestionar_rutas.html", rutas=rutas)
 
+@app.route("/rutas/crear", methods=["GET", "POST"])
+@login_required
 def crear_ruta():
-    """Lógica para crear una nueva ruta"""
-    nombre = request.form.get("nombre").strip()
-    descripcion = request.form.get("descripcion", "").strip()
-    
-    if not nombre:
-        flash("El nombre de la ruta es obligatorio", "danger")
-    else:
+    """Crear una nueva ruta"""
+    if request.method == "POST":
+        nombre = request.form.get("nombre")
+        descripcion = request.form.get("descripcion")
+        zona = request.form.get("zona")
+        dias = request.form.get("dias_operacion")
+
+        if not nombre:
+            flash("El nombre de la ruta es obligatorio", "danger")
+            return redirect("/rutas/crear")
+
         db.execute(
-            "INSERT INTO Rutas (Nombre, Descripcion, Estado) VALUES (?, ?, ?)",
-            nombre, descripcion, 1  # 1 = activo
+            "INSERT INTO Rutas (Nombre, Descripcion, Zona, Dias_operacion, Estado) VALUES (?, ?, ?, ?, 1)",
+            nombre, descripcion, zona, dias
         )
         flash("Ruta creada exitosamente", "success")
-    
-    return redirect(url_for("gestion_rutas"))
+        return redirect("/rutas")
 
-def listar_rutas():
-    """Obtener y mostrar todas las rutas"""
-    rutas = db.execute("""
-        SELECT ID_Ruta, Nombre, Descripcion, 
-               CASE WHEN Estado = 1 THEN 'Activo' ELSE 'Inactivo' END as Estado
-        FROM Rutas 
-        ORDER BY Nombre
-    """)
-    return render_template("gestion_rutas.html", rutas=rutas)
+    return render_template("rutas.html")
 
-@app.route("/rutas/<int:id>", methods=["GET", "PUT", "DELETE"])
+@app.route("/rutas/<int:id>/editar", methods=["GET", "POST"])
 @login_required
-@handle_db_errors
-def ruta_detalle(id):
-    """Endpoint unificado para una ruta específica"""
-    if request.method == "GET":
-        return obtener_ruta(id)
-    elif request.method == "PUT":
-        return actualizar_ruta(id)
-    elif request.method == "DELETE":
-        return eliminar_ruta(id)
-
-def obtener_ruta(id):
-    """Obtener detalles de una ruta específica"""
-    ruta = db.execute("""
-        SELECT ID_Ruta, Nombre, Descripcion, Estado
-        FROM Rutas 
-        WHERE ID_Ruta = ?
-    """, id)
-    
+def editar_ruta(id):
+    """Editar una ruta existente"""
+    ruta = db.execute("SELECT * FROM Rutas WHERE ID_Ruta = ?", id)
     if not ruta:
         flash("Ruta no encontrada", "danger")
-        return redirect(url_for("gestion_rutas"))
-    
-    return jsonify(ruta[0]) if request.is_json else render_template(
-        "editar_ruta.html", 
-        ruta=ruta[0]
-    )
+        return redirect("/rutas")
 
-def actualizar_ruta(id):
-    """Actualizar una ruta existente"""
-    if request.is_json:
-        data = request.get_json()
-        nombre = data.get("nombre").strip()
-        descripcion = data.get("descripcion", "").strip()
-        estado = data.get("estado", 1)
-    else:
-        nombre = request.form.get("nombre").strip()
-        descripcion = request.form.get("descripcion", "").strip()
-        estado = 1 if request.form.get("estado") == "on" else 0
-    
-    if not nombre:
-        error_msg = "El nombre de la ruta es obligatorio"
-        if request.is_json:
-            return jsonify({"error": error_msg}), 400
-        flash(error_msg, "danger")
-        return redirect(url_for("editar_ruta", id=id))
-    
-    db.execute("""
-        UPDATE Rutas 
-        SET Nombre = ?, Descripcion = ?, Estado = ?
-        WHERE ID_Ruta = ?
-    """, nombre, descripcion, estado, id)
-    
-    success_msg = "Ruta actualizada exitosamente"
-    if request.is_json:
-        return jsonify({"message": success_msg})
-    flash(success_msg, "success")
-    return redirect(url_for("gestion_rutas"))
-
-def eliminar_ruta(id):
-    """Eliminar una ruta (si no está en uso)"""
-    # Verificar si la ruta está en uso
-    en_uso = db.execute("""
-        SELECT COUNT(*) as count 
-        FROM Sesiones_Ruta 
-        WHERE ID_Ruta = ?
-    """, id)[0]["count"]
-    
-    if en_uso > 0:
-        error_msg = "No se puede eliminar: la ruta tiene sesiones asociadas"
-        if request.is_json:
-            return jsonify({"error": error_msg}), 400
-        flash(error_msg, "danger")
-    else:
-        db.execute("DELETE FROM Rutas WHERE ID_Ruta = ?", id)
-        success_msg = "Ruta eliminada exitosamente"
-        if request.is_json:
-            return jsonify({"message": success_msg})
-        flash(success_msg, "success")
-    
-    return redirect(url_for("gestion_rutas"))
-
-# -----------------------------------------------
-# Rutas para gestión de sesiones de ruta
-# -----------------------------------------------
-
-@app.route("/rutas/<int:id>/sesiones", methods=["GET", "POST"])
-@login_required
-@handle_db_errors
-def gestion_sesiones_ruta(id):
-    """Gestión de sesiones para una ruta específica"""
     if request.method == "POST":
-        return crear_sesion_ruta(id)
-    
-    return listar_sesiones_ruta(id)
+        nombre = request.form.get("nombre")
+        descripcion = request.form.get("descripcion")
+        zona = request.form.get("zona")
+        dias = request.form.get("dias_operacion")
+        estado = 1 if request.form.get("estado") else 0
 
-def crear_sesion_ruta(ruta_id):
-    """Crear una nueva sesión para una ruta"""
-    vehiculo_id = request.form.get("vehiculo_id")
-    conductor_id = request.form.get("conductor_id")
-    
-    if not vehiculo_id or not conductor_id:
-        flash("Vehículo y conductor son requeridos", "danger")
-        return redirect(url_for("gestion_sesiones_ruta", id=ruta_id))
-    
-    # Crear la sesión
-    sesion_id = db.execute("""
-        INSERT INTO Sesiones_Ruta (
-            ID_Ruta, ID_Vehiculo, Fecha, Estado
-        ) VALUES (?, ?, DATE('now'), 'pendiente')
-        RETURNING ID_Sesion
-    """, ruta_id, vehiculo_id)[0]["ID_Sesion"]
-    
-    # Asignar conductor
-    db.execute("""
-        INSERT INTO Vehiculo_Conductor (
-            ID_Vehiculo, ID_Conductor, FechaAsignacion
-        ) VALUES (?, ?, DATE('now'))
-    """, vehiculo_id, conductor_id)
-    
-    flash("Sesión de ruta iniciada", "success")
-    return redirect(url_for("detalle_sesion_ruta", id=ruta_id, sesion_id=sesion_id))
+        db.execute(
+            "UPDATE Rutas SET Nombre = ?, Descripcion = ?, Zona = ?, Dias_operacion = ?, Estado = ? WHERE ID_Ruta = ?",
+            nombre, descripcion, zona, dias, estado, id
+        )
+        flash("Ruta actualizada exitosamente", "success")
+        return redirect("/rutas")
 
-def listar_sesiones_ruta(ruta_id):
-    """Listar todas las sesiones de una ruta"""
+    return render_template("editar_rutas.html", ruta=ruta[0])
+
+@app.route("/rutas/<int:id>/eliminar", methods=["POST"])
+@login_required
+def eliminar_ruta(id):
+    """Eliminar una ruta"""
+    # Verificar si tiene sesiones asociadas
+    sesiones = db.execute("SELECT COUNT(*) as total FROM Sesiones_Ruta WHERE ID_Ruta = ?", id)
+    if sesiones[0]["total"] > 0:
+        flash("No se puede eliminar: la ruta tiene sesiones asociadas", "danger")
+        return redirect("/rutas")
+
+    db.execute("DELETE FROM Rutas WHERE ID_Ruta = ?", id)
+    flash("Ruta eliminada exitosamente", "success")
+    return redirect("/rutas")
+
+@app.route("/sesiones")
+@login_required
+def listar_sesiones():
+    """Listar todas las sesiones de ruta"""
     sesiones = db.execute("""
-        SELECT sr.ID_Sesion, sr.Fecha, sr.Estado, v.Placa, c.Nombre as Conductor
+        SELECT sr.*, r.Nombre as Ruta, v.Placa, c.Nombre as Conductor
         FROM Sesiones_Ruta sr
+        JOIN Rutas r ON sr.ID_Ruta = r.ID_Ruta
         JOIN Vehiculos v ON sr.ID_Vehiculo = v.ID_Vehiculo
-        LEFT JOIN Vehiculo_Conductor vc ON vc.ID_Vehiculo = v.ID_Vehiculo 
-            AND vc.FechaAsignacion = (
-                SELECT MAX(FechaAsignacion) 
-                FROM Vehiculo_Conductor 
-                WHERE ID_Vehiculo = v.ID_Vehiculo
-            )
-        LEFT JOIN Conductores c ON vc.ID_Conductor = c.ID_Conductor
-        WHERE sr.ID_Ruta = ?
-        ORDER BY sr.Fecha DESC
-    """, ruta_id)
-    
-    return render_template(
-        "sesiones_ruta.html", 
-        ruta_id=ruta_id, 
-        sesiones=sesiones
-    )
+        LEFT JOIN Conductores c ON sr.ID_Conductor = c.ID_Conductor
+        ORDER BY sr.Fecha DESC, sr.Hora_Inicio DESC
+    """)
+    return render_template("sesion_rutas.html", sesiones=sesiones, estados=get_estados_sesion())
 
-# -----------------------------------------------
-# Otras rutas relacionadas (simplificadas)
-# -----------------------------------------------
+def get_estados_sesion():
+    return ['pendiente', 'en_ruta', 'completada', 'cancelada']
 
-@app.route("/rutas/<int:id>/reporte", methods=["GET"])
+@app.route("/sesiones/crear", methods=["GET", "POST"])
 @login_required
-@handle_db_errors
-def reporte_ruta(id):
-    """Generar reporte consolidado de una ruta"""
-    datos = {
-        "ruta": db.execute("SELECT * FROM Rutas WHERE ID_Ruta = ?", id)[0],
-        "sesiones": db.execute("""
-            SELECT COUNT(*) as total_sesiones,
-                   SUM(CASE WHEN Estado = 'completada' THEN 1 ELSE 0 END) as completadas
-            FROM Sesiones_Ruta
-            WHERE ID_Ruta = ?
-        """, id)[0],
-        "ventas": db.execute("""
-            SELECT COUNT(*) as total_ventas, SUM(Total) as monto_total
-            FROM Ventas_Ruta vr
-            JOIN Sesiones_Ruta sr ON vr.ID_Sesion = sr.ID_Sesion
-            WHERE sr.ID_Ruta = ?
-        """, id)[0]
-    }
-    return render_template("reporte_ruta.html", **datos)
+def crear_sesion():
+    """Crear nueva sesión de ruta"""
+    if request.method == "POST":
+        id_ruta = request.form.get("id_ruta")
+        id_vehiculo = request.form.get("id_vehiculo")
+        id_conductor = request.form.get("id_conductor")
+        fecha = request.form.get("fecha")
+        hora_inicio = request.form.get("hora_inicio")
+        kilometraje = request.form.get("kilometraje")
 
-@app.route("/rutas/buscar", methods=["GET"])
+        if not all([id_ruta, id_vehiculo, id_conductor, fecha, hora_inicio]):
+            flash("Todos los campos son obligatorios", "danger")
+            return redirect("/sesiones/crear")
+
+        # Verificar disponibilidad del vehículo
+        vehiculo_ocupado = db.execute("""
+            SELECT * FROM Sesiones_Ruta 
+            WHERE ID_Vehiculo = ? AND Estado = 'en_ruta' AND Fecha = ?
+        """, id_vehiculo, fecha)
+
+        if vehiculo_ocupado:
+            flash("El vehículo ya está asignado a otra ruta en esta fecha", "danger")
+            return redirect("/sesiones/crear")
+
+        db.execute("""
+            INSERT INTO Sesiones_Ruta 
+            (ID_Ruta, ID_Vehiculo, ID_Conductor, Fecha, Hora_Inicio, Kilometraje_Inicial, Estado)
+            VALUES (?, ?, ?, ?, ?, ?, 'pendiente')
+        """, id_ruta, id_vehiculo, id_conductor, fecha, hora_inicio, kilometraje)
+
+        flash("Sesión de ruta creada exitosamente", "success")
+        return redirect("/sesiones")
+
+    rutas = db.execute("SELECT * FROM Rutas WHERE Estado = 1")
+    vehiculos = db.execute("SELECT * FROM Vehiculos WHERE Estado = 'disponible'")
+    conductores = db.execute("SELECT * FROM Conductores")
+
+    return render_template("crear_sesion_ruta.html", 
+                         rutas=rutas, 
+                         vehiculos=vehiculos, 
+                         conductores=conductores)
+
+@app.route("/sesiones/<int:id>/iniciar", methods=["POST"])
 @login_required
-@handle_db_errors
-def buscar_rutas():
-    """Búsqueda de rutas"""
-    termino = request.args.get("q", "").strip()
-    if not termino:
-        return redirect(url_for("gestion_rutas"))
-    
-    rutas = db.execute("""
-        SELECT ID_Ruta, Nombre, Descripcion
-        FROM Rutas
-        WHERE Nombre LIKE ? OR Descripcion LIKE ?
-        ORDER BY Nombre
-    """, f"%{termino}%", f"%{termino}%")
-    
-    return render_template("gestion_rutas.html", rutas=rutas, termino_busqueda=termino)
+def iniciar_sesion(id):
+    """Cambiar estado de sesión a 'en_ruta'"""
+    db.execute("UPDATE Sesiones_Ruta SET Estado = 'en_ruta' WHERE ID_Sesion = ?", id)
+    flash("Sesión de ruta iniciada", "success")
+    return redirect("/sesiones")
+
+@app.route("/sesiones/<int:id>/finalizar", methods=["GET", "POST"])
+@login_required
+def finalizar_sesion(id):
+    """Finalizar una sesión de ruta"""
+    if request.method == "POST":
+        hora_fin = request.form.get("hora_fin")
+        kilometraje_final = request.form.get("kilometraje_final")
+        observaciones = request.form.get("observaciones")
+
+        db.execute("""
+            UPDATE Sesiones_Ruta 
+            SET Estado = 'completada', Hora_Fin = ?, Kilometraje_Final = ?, Observaciones = ?
+            WHERE ID_Sesion = ?
+        """, hora_fin, kilometraje_final, observaciones, id)
+
+        flash("Sesión de ruta finalizada exitosamente", "success")
+        return redirect("/sesiones")
+
+    sesion = db.execute("SELECT * FROM Sesiones_Ruta WHERE ID_Sesion = ?", id)
+    if not sesion:
+        flash("Sesión no encontrada", "danger")
+        return redirect("/sesiones")
+
+    return render_template("sesiones/finalizar.html", sesion=sesion[0])
+
+@app.route("/sesiones/<int:id_sesion>/carga", methods=["GET", "POST"])
+@login_required
+def gestion_carga(id_sesion):
+    """Gestionar carga inicial para una sesión"""
+    sesion = db.execute("""
+        SELECT sr.*, r.Nombre as Ruta, v.Placa
+        FROM Sesiones_Ruta sr
+        JOIN Rutas r ON sr.ID_Ruta = r.ID_Ruta
+        JOIN Vehiculos v ON sr.ID_Vehiculo = v.ID_Vehiculo
+        WHERE sr.ID_Sesion = ?
+    """, id_sesion)
+
+    if not sesion:
+        flash("Sesión no encontrada", "danger")
+        return redirect("/sesiones")
+
+    if request.method == "POST":
+        id_bodega = request.form.get("id_bodega")
+        productos = request.form.getlist("productos[]")
+        cantidades = request.form.getlist("cantidades[]")
+        precios = request.form.getlist("precios[]")
+
+        if not id_bodega:
+            flash("Debe seleccionar una bodega", "danger")
+            return redirect(f"/sesiones/{id_sesion}/carga")
+
+        # Crear registro de carga
+        carga_id = db.execute("""
+            INSERT INTO Carga_Inicial_Ruta (ID_Sesion, ID_Bodega, Observaciones)
+            VALUES (?, ?, ?)
+            RETURNING ID_Carga
+        """, id_sesion, id_bodega, "Carga inicial")[0]["ID_Carga"]
+
+        # Registrar productos
+        for i in range(len(productos)):
+            db.execute("""
+                INSERT INTO Detalle_Carga_Ruta 
+                (ID_Carga, ID_Producto, Cantidad, Precio_Unitario)
+                VALUES (?, ?, ?, ?)
+            """, carga_id, productos[i], cantidades[i], precios[i])
+
+            # Descontar del inventario
+            db.execute("""
+                UPDATE Inventario_Bodega 
+                SET Existencias = Existencias - ?
+                WHERE ID_Bodega = ? AND ID_Producto = ?
+            """, cantidades[i], id_bodega, productos[i])
+
+        flash("Carga inicial registrada exitosamente", "success")
+        return redirect(f"/sesiones/{id_sesion}")
+
+    # Obtener bodegas y productos disponibles
+    bodegas = db.execute("SELECT * FROM Bodegas")
+    productos = db.execute("""
+        SELECT p.*, ib.Existencias, um.Abreviatura
+        FROM Productos p
+        JOIN Inventario_Bodega ib ON p.ID_Producto = ib.ID_Producto
+        JOIN Unidades_Medida um ON p.Unidad_Medida = um.ID_Unidad
+        WHERE ib.Existencias > 0
+        ORDER BY p.Descripcion
+    """)
+
+    # Verificar si ya tiene carga registrada
+    carga_existente = db.execute("""
+        SELECT * FROM Carga_Inicial_Ruta WHERE ID_Sesion = ?
+    """, id_sesion)
+
+    detalles_carga = []
+    if carga_existente:
+        detalles_carga = db.execute("""
+            SELECT d.*, p.Descripcion as Producto, um.Abreviatura
+            FROM Detalle_Carga_Ruta d
+            JOIN Productos p ON d.ID_Producto = p.ID_Producto
+            JOIN Unidades_Medida um ON p.Unidad_Medida = um.ID_Unidad
+            WHERE d.ID_Carga = ?
+        """, carga_existente[0]["ID_Carga"])
+
+    return render_template("sesiones/carga.html", 
+                         sesion=sesion[0], 
+                         bodegas=bodegas, 
+                         productos=productos,
+                         carga_existente=carga_existente,
+                         detalles_carga=detalles_carga)
+
+@app.route("/sesiones/<int:id_sesion>/ventas", methods=["GET", "POST"])
+@login_required
+def gestion_ventas(id_sesion):
+    """Registrar ventas durante la ruta"""
+    sesion = db.execute("""
+        SELECT sr.*, r.Nombre as Ruta, v.Placa, c.Nombre as Conductor
+        FROM Sesiones_Ruta sr
+        JOIN Rutas r ON sr.ID_Ruta = r.ID_Ruta
+        JOIN Vehiculos v ON sr.ID_Vehiculo = v.ID_Vehiculo
+        LEFT JOIN Conductores c ON sr.ID_Conductor = c.ID_Conductor
+        WHERE sr.ID_Sesion = ?
+    """, id_sesion)
+
+    if not sesion:
+        flash("Sesión no encontrada", "danger")
+        return redirect("/sesiones")
+
+    if sesion[0]["Estado"] != "en_ruta":
+        flash("Solo se pueden registrar ventas en sesiones activas", "warning")
+        return redirect(f"/sesiones/{id_sesion}")
+
+    if request.method == "POST":
+        productos = request.form.getlist("productos[]")
+        cantidades = request.form.getlist("cantidades[]")
+        precios = request.form.getlist("precios[]")
+        cliente = request.form.get("cliente")
+        ubicacion = request.form.get("ubicacion")
+
+        if not productos:
+            flash("Debe agregar al menos un producto", "danger")
+            return redirect(f"/sesiones/{id_sesion}/ventas")
+
+        # Calcular total
+        total = sum(float(cantidades[i]) * float(precios[i]) for i in range(len(productos)))
+
+        # Crear venta
+        venta_id = db.execute("""
+            INSERT INTO Ventas_Ruta 
+            (ID_Sesion, Total, Estado, Ubicacion_GPS)
+            VALUES (?, ?, 'registrada', ?)
+            RETURNING ID_Venta
+        """, id_sesion, total, ubicacion)[0]["ID_Venta"]
+
+        # Registrar productos
+        for i in range(len(productos)):
+            db.execute("""
+                INSERT INTO Detalle_Venta_Ruta 
+                (ID_Venta, ID_Producto, Cantidad, Precio_Unitario)
+                VALUES (?, ?, ?, ?)
+            """, venta_id, productos[i], cantidades[i], precios[i])
+
+        flash("Venta registrada exitosamente", "success")
+        return redirect(f"/sesiones/{id_sesion}/ventas")
+
+    # Obtener productos de la carga inicial
+    productos_carga = db.execute("""
+        SELECT dc.ID_Producto, p.Descripcion, um.Abreviatura, 
+               dc.Cantidad as Cargado,
+               (dc.Cantidad - COALESCE((
+                   SELECT SUM(dv.Cantidad) 
+                   FROM Detalle_Venta_Ruta dv
+                   JOIN Ventas_Ruta v ON dv.ID_Venta = v.ID_Venta
+                   WHERE v.ID_Sesion = ? AND dv.ID_Producto = dc.ID_Producto
+               ), 0)) as Disponible
+        FROM Detalle_Carga_Ruta dc
+        JOIN Productos p ON dc.ID_Producto = p.ID_Producto
+        JOIN Unidades_Medida um ON p.Unidad_Medida = um.ID_Unidad
+        WHERE dc.ID_Carga = (
+            SELECT ID_Carga FROM Carga_Inicial_Ruta WHERE ID_Sesion = ?
+        )
+        HAVING Disponible > 0
+    """, id_sesion, id_sesion)
+
+    # Obtener ventas existentes
+    ventas = db.execute("""
+        SELECT v.*, 
+               (SELECT COUNT(*) FROM Detalle_Venta_Ruta WHERE ID_Venta = v.ID_Venta) as Items
+        FROM Ventas_Ruta v
+        WHERE v.ID_Sesion = ?
+        ORDER BY v.Fecha_Hora DESC
+    """, id_sesion)
+
+    return render_template("sesiones/ventas.html", 
+                         sesion=sesion[0], 
+                         productos=productos_carga,
+                         ventas=ventas)
 
 if __name__ == '__main__':
     app.run(debug=True)

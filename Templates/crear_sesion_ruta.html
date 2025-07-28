@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+
+{% block title %}Crear Sesión de Ruta{% endblock %}
+
+{% block main %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Programar Sesión de Ruta</h4>
+      </div>
+      <div class="card-body">
+        <form action="/sesiones/crear" method="post">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_ruta" class="form-label">Ruta</label>
+              <select class="form-select" id="id_ruta" name="id_ruta" required>
+                <option value="">Seleccionar Ruta</option>
+                {% for ruta in rutas %}
+                <option value="{{ ruta.ID_Ruta }}">{{ ruta.Nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-md-6 mb-3">
+              <label for="fecha" class="form-label">Fecha</label>
+              <input type="date" class="form-control" id="fecha" name="fecha" required>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_vehiculo" class="form-label">Vehículo</label>
+              <select class="form-select" id="id_vehiculo" name="id_vehiculo" required>
+                <option value="">Seleccionar Vehículo</option>
+                {% for vehiculo in vehiculos %}
+                <option value="{{ vehiculo.ID_Vehiculo }}">{{ vehiculo.Placa }} - {{ vehiculo.Marca }} {{ vehiculo.Modelo }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-md-6 mb-3">
+              <label for="id_conductor" class="form-label">Conductor</label>
+              <select class="form-select" id="id_conductor" name="id_conductor" required>
+                <option value="">Seleccionar Conductor</option>
+                {% for conductor in conductores %}
+                <option value="{{ conductor.ID_Conductor }}">{{ conductor.Nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="hora_inicio" class="form-label">Hora de Inicio</label>
+              <input type="time" class="form-control" id="hora_inicio" name="hora_inicio" required>
+            </div>
+            
+            <div class="col-md-6 mb-3">
+              <label for="kilometraje" class="form-label">Kilometraje Inicial</label>
+              <input type="number" class="form-control" id="kilometraje" name="kilometraje" required>
+            </div>
+          </div>
+          
+          <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="/sesiones" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Programar Sesión</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends "layout.html" %}
+
+{% block main %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Factura #{{ n_factura }}</h2>
+            <p class="text-muted mb-0"><i class="far fa-calendar-alt"></i> {{ fecha_emision }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('gestionar_ventas') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left"></i> Volver a ventas
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-file-invoice"></i> Resumen de la Factura</h5>
+        </div>
+        <div class="card-body">
+            <!-- Notificación de éxito mejorada -->
+            <div class="alert alert-success d-flex align-items-center">
+                <i class="fas fa-check-circle fa-2x me-3"></i>
+                <div>
+                    <h5 class="alert-heading mb-1">¡Venta registrada con éxito!</h5>
+                    <p class="mb-0">La factura #{{ n_factura }} ha sido generada correctamente.</p>
+                </div>
+            </div>
+            
+            <!-- Vista previa del PDF con controles -->
+            <div class="mb-4">
+                <h5 class="mb-3"><i class="fas fa-file-pdf"></i> Vista previa</h5>
+                <div class="border rounded position-relative" style="min-height: 500px;">
+                    <div class="position-absolute top-0 end-0 p-2 bg-white border-bottom border-left">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="zoomIn()">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="zoomOut()">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="resetZoom()">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                    <iframe 
+                        id="pdf-viewer"
+                        src="{{ url_for('generar_factura_venta_pdf', venta_id=venta_id) }}" 
+                        class="w-100 h-100"
+                        style="border: none; min-height: 500px;">
+                    </iframe>
+                </div>
+            </div>
+
+            <!-- Resumen rápido de la factura -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6><i class="fas fa-info-circle"></i> Detalles de la Factura</h6>
+                            <hr>
+                            <p><strong>Número:</strong> {{ n_factura }}</p>
+                            <p><strong>Fecha:</strong> {{ fecha_emision }}</p>
+                            <p><strong>Cliente:</strong> {{ nombre_cliente }}</p>
+                            <p><strong>Total:</strong> {{ total_venta }} €</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6><i class="fas fa-tasks"></i> Acciones</h6>
+                            <hr>
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('generar_factura_venta_pdf', venta_id=venta_id) }}" 
+                                   class="btn btn-primary" download="Factura_{{ n_factura }}.pdf">
+                                    <i class="fas fa-download"></i> Descargar PDF
+                                </a>
+                                <button onclick="window.print()" class="btn btn-outline-secondary">
+                                    <i class="fas fa-print"></i> Imprimir Factura
+                                </button>
+                                <a href="mailto:?subject=Factura {{ n_factura }}&body=Adjunto encontrarás la factura #{{ n_factura }}" 
+                                   class="btn btn-outline-primary">
+                                    <i class="fas fa-envelope"></i> Enviar por Email
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Funciones para controlar el zoom del PDF
+    let currentZoom = 1;
+    const zoomStep = 0.25;
+    const pdfViewer = document.getElementById('pdf-viewer');
+    
+    function zoomIn() {
+        currentZoom += zoomStep;
+        pdfViewer.style.transform = `scale(${currentZoom})`;
+    }
+    
+    function zoomOut() {
+        if (currentZoom > zoomStep) {
+            currentZoom -= zoomStep;
+            pdfViewer.style.transform = `scale(${currentZoom})`;
+        }
+    }
+    
+    function resetZoom() {
+        currentZoom = 1;
+        pdfViewer.style.transform = 'scale(1)';
+    }
+</script>
+
+<style>
+    #pdf-viewer {
+        transition: transform 0.3s ease;
+        transform-origin: 0 0;
+    }
+    .card-header {
+        font-weight: 500;
+    }
+    .btn-outline-primary:hover {
+        background-color: var(--bs-primary);
+        color: white;
+    }
+</style>
+{% endblock %}

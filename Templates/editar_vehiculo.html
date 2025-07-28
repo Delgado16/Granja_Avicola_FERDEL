@@ -1,52 +1,103 @@
-{% extends 'layout.html' %}
-{% block title %}Editar Vehículo{% endblock %}
+{% extends "layout.html" %}
+
 {% block main %}
-<div class="container" style="max-width:700px; margin-top:30px;">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h3 class="text-center mb-3 text-primary" style="font-weight: 700;">Editar Vehículo</h3>
-            <form method="post" class="row g-2 justify-content-center">
-                <div class="col-md-3 col-6">
-                    <label class="form-label">Placa</label>
-                    <input type="text" name="placa" class="form-control" value="{{ vehiculo['Placa'] }}" required>
-                </div>
-                <div class="col-md-3 col-6">
-                    <label class="form-label">Marca</label>
-                    <input type="text" name="marca" class="form-control" value="{{ vehiculo['Marca'] }}">
-                </div>
-                <div class="col-md-3 col-6">
-                    <label class="form-label">Modelo</label>
-                    <input type="text" name="modelo" class="form-control" value="{{ vehiculo['Modelo'] }}">
-                </div>
-                <div class="col-md-2 col-3">
-                    <label class="form-label">Año</label>
-                    <input type="number" name="año" class="form-control" value="{{ vehiculo['Año'] }}">
-                </div>
-                <div class="col-md-2 col-3">
-                    <label class="form-label">Color</label>
-                    <input type="text" name="color" class="form-control" value="{{ vehiculo['Color'] }}">
-                </div>
-                <div class="col-md-3 col-6">
-                    <label class="form-label">Chasis</label>
-                    <input type="text" name="chasis" class="form-control" value="{{ vehiculo['NumeroChasis'] }}">
-                </div>
-                <div class="col-md-3 col-6">
-                    <label class="form-label">Motor</label>
-                    <input type="text" name="motor" class="form-control" value="{{ vehiculo['NumeroMotor'] }}">
-                </div>
-                <div class="col-md-2 col-6">
-                    <label class="form-label">Estado</label>
-                    <select name="estado" class="form-select">
-                        <option value="1" {% if vehiculo['Estado'] == 1 %}selected{% endif %}>Activo</option>
-                        <option value="0" {% if vehiculo['Estado'] == 0 %}selected{% endif %}>Inactivo</option>
-                    </select>
-                </div>
-                <div class="col-12 text-center mt-2">
-                    <button type="submit" class="btn btn-success px-5 fw-bold">Guardar Cambios</button>
-                    <a href="{{ url_for('vehiculos') }}" class="btn btn-secondary ms-2">Cancelar</a>
-                </div>
-            </form>
+<h2>Editar Vehículo</h2>
+<form method="POST">
+    <div class="form-group">
+        <label for="placa">Placa*</label>
+        <input type="text" class="form-control" id="placa" name="placa" 
+               value="{{ vehiculo.Placa }}" required>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="marca">Marca</label>
+                <input type="text" class="form-control" id="marca" name="marca" 
+                       value="{{ vehiculo.Marca }}">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="modelo">Modelo</label>
+                <input type="text" class="form-control" id="modelo" name="modelo" 
+                       value="{{ vehiculo.Modelo }}">
+            </div>
         </div>
     </div>
-</div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-group">
+                <label for="año">Año</label>
+                <input type="number" class="form-control" id="año" name="año" 
+                       value="{{ vehiculo.Año }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-group">
+                <label for="color">Color</label>
+                <input type="text" class="form-control" id="color" name="color" 
+                       value="{{ vehiculo.Color }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-group">
+                <label for="estado">Estado</label>
+                <select class="form-control" id="estado" name="estado">
+                    {% for estado in estados %}
+                        <option value="{{ estado }}" 
+                            {% if vehiculo.Estado == estado %}selected{% endif %}>
+                            {{ estado|capitalize }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="chasis">Número de Chasis</label>
+                <input type="text" class="form-control" id="chasis" name="chasis" 
+                       value="{{ vehiculo.NumeroChasis }}">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="motor">Número de Motor</label>
+                <input type="text" class="form-control" id="motor" name="motor" 
+                       value="{{ vehiculo.NumeroMotor }}">
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-group">
+                <label for="capacidad_carga">Capacidad de Carga (kg)</label>
+                <input type="number" step="0.01" class="form-control" id="capacidad_carga" 
+                       name="capacidad_carga" value="{{ vehiculo.Capacidad_Carga }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-group">
+                <label for="kilometraje">Kilometraje Actual</label>
+                <input type="number" step="0.01" class="form-control" id="kilometraje" 
+                       name="kilometraje" value="{{ vehiculo.Ultimo_Kilometraje }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-group">
+                <label for="fecha_adquisicion">Fecha de Adquisición</label>
+                <input type="date" class="form-control" id="fecha_adquisicion" 
+                       name="fecha_adquisicion" value="{{ vehiculo.Fecha_Adquisicion }}">
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+    <a href="{{ url_for('vehiculos') }}" class="btn btn-secondary">Cancelar</a>
+</form>
 {% endblock %}

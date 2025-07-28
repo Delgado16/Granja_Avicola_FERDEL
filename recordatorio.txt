@@ -1,0 +1,10 @@
+28/07/25
+
+organizacion de flota vehicular, ajustes en combustible (edicion), vehiculos (problemas, todos se marcan como activos, ajustar para activos e inactivo), 
+mantenimientos ajustar mejor la pestaña.
+
+Gestion de ruta proximamente:
+
+ajustes de organizacion. ruta, vehiculos, conductores,carga, movimientos
+
+tambien que todos sean responsivos con los dispositivos mobiles
