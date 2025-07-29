@@ -528,7 +528,7 @@
                                             <div class="invalid-feedback">Ingrese descuento</div>
                                         </td>
                                         <td data-label="Subtotal" class="subtotal-cell">
-                                            $0.00
+                                            C$0.00
                                         </td>
                                         <td>
                                             <button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)">
@@ -545,19 +545,19 @@
                     <div class="total-summary mb-4">
                         <div class="total-row">
                             <span class="total-label">Subtotal:</span>
-                            <span class="total-value" id="subtotal">$0.00</span>
+                            <span class="total-value" id="subtotal">C$0.00</span>
                         </div>
                         <div class="total-row">
                             <span class="total-label">IVA:</span>
-                            <span class="total-value" id="iva-total">$0.00</span>
+                            <span class="total-value" id="iva-total">C$0.00</span>
                         </div>
                         <div class="total-row">
                             <span class="total-label">Descuentos:</span>
-                            <span class="total-value" id="descuento-total">$0.00</span>
+                            <span class="total-value" id="descuento-total">C$0.00</span>
                         </div>
                         <div class="total-row grand-total">
                             <span class="total-label">Total:</span>
-                            <span class="total-value" id="total-compra">$0.00</span>
+                            <span class="total-value" id="total-compra">C$0.00</span>
                         </div>
                     </div>
 
@@ -613,7 +613,7 @@
         select.onchange = function() { calcularSubtotalFila(this); };
         
         // Resetear subtotal
-        nuevaFila.querySelector(".subtotal-cell").textContent = "$0.00";
+        nuevaFila.querySelector(".subtotal-cell").textContent = "C$0.00";
         
         // Ocultar mensajes de error
         nuevaFila.querySelectorAll(".invalid-feedback").forEach(feedback => {
@@ -706,15 +706,15 @@
 
     // Función para formatear números como moneda
     function formatCurrency(amount) {
-        return '$' + amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+        return 'C$' + amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, 'C$&,');
     }
 
     function mostrarAlerta(tipo, titulo, mensaje) {
         const alerta = document.createElement('div');
-        alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
+        alerta.className = `alert alert-C${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
         alerta.style.zIndex = '1100';
         alerta.innerHTML = `
-            <strong>${titulo}</strong> ${mensaje}
+            <strong>C${titulo}</strong> C${mensaje}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         document.body.appendChild(alerta);
@@ -805,7 +805,7 @@
             <p class="mt-2">Cargando stock...</p>
         `;
 
-        fetch(`/stock_por_bodega/${idBodega}`)
+        fetch(`/stock_por_bodega/C${idBodega}`)
             .then(res => res.json())
             .then(data => {
                 loadingElement.style.display = 'none';
@@ -821,8 +821,8 @@
                     const stockClass = producto.stock <= 5 ? 'stock-low' : '';
                     html += `
                         <tr>
-                            <td>${producto.descripcion}</td>
-                            <td class="${stockClass}">${producto.stock}</td>
+                            <td>C${producto.descripcion}</td>
+                            <td class="C${stockClass}">C${producto.stock}</td>
                         </tr>
                     `;
                 });

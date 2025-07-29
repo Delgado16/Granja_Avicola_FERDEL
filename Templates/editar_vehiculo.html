@@ -1,103 +1,176 @@
 {% extends "layout.html" %}
 
 {% block main %}
-<h2>Editar Vehículo</h2>
-<form method="POST">
-    <div class="form-group">
-        <label for="placa">Placa*</label>
-        <input type="text" class="form-control" id="placa" name="placa" 
-               value="{{ vehiculo.Placa }}" required>
-    </div>
-    
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label for="marca">Marca</label>
-                <input type="text" class="form-control" id="marca" name="marca" 
-                       value="{{ vehiculo.Marca }}">
-            </div>
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0"><i class="fas fa-car mr-2"></i>Editar Vehículo</h2>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label for="modelo">Modelo</label>
-                <input type="text" class="form-control" id="modelo" name="modelo" 
-                       value="{{ vehiculo.Modelo }}">
-            </div>
-        </div>
-    </div>
+        <div class="card-body">
+            <form method="POST" id="vehiculoForm" novalidate>
+                <!-- Sección 1: Información Básica -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="fas fa-info-circle mr-2"></i>Información Básica</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="placa">Placa*</label>
+                                <input type="text" class="form-control" id="placa" name="placa" 
+                                       value="{{ vehiculo.Placa }}" required
+                                       pattern="[A-Za-z0-9]{3,10}" 
+                                       title="La placa debe contener entre 3 y 10 caracteres alfanuméricos">
+                                <div class="invalid-feedback">Por favor ingrese una placa válida</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="estado">Estado*</label>
+                                <select class="form-control" id="estado" name="estado" required>
+                                    {% for estado in estados %}
+                                        <option value="{{ estado }}" 
+                                            {% if vehiculo.Estado == estado %}selected{% endif %}>
+                                            {{ estado|capitalize }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="invalid-feedback">Seleccione el estado del vehículo</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="marca">Marca*</label>
+                                <input type="text" class="form-control" id="marca" name="marca" 
+                                       value="{{ vehiculo.Marca }}" required
+                                       maxlength="50">
+                                <div class="invalid-feedback">Ingrese la marca del vehículo</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="modelo">Modelo*</label>
+                                <input type="text" class="form-control" id="modelo" name="modelo" 
+                                       value="{{ vehiculo.Modelo }}" required
+                                       maxlength="50">
+                                <div class="invalid-feedback">Ingrese el modelo del vehículo</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="año">Año*</label>
+                                <input type="number" class="form-control" id="año" name="año" 
+                                       value="{{ vehiculo.Año }}" required
+                                       min="1900" max="{{ current_year }}"
+                                       title="Ingrese el año del vehículo (1900-{{ current_year }})">
+                                <div class="invalid-feedback">Ingrese un año válido</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    <div class="row">
-        <div class="col-md-4">
-            <div class="form-group">
-                <label for="año">Año</label>
-                <input type="number" class="form-control" id="año" name="año" 
-                       value="{{ vehiculo.Año }}">
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="form-group">
-                <label for="color">Color</label>
-                <input type="text" class="form-control" id="color" name="color" 
-                       value="{{ vehiculo.Color }}">
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="form-group">
-                <label for="estado">Estado</label>
-                <select class="form-control" id="estado" name="estado">
-                    {% for estado in estados %}
-                        <option value="{{ estado }}" 
-                            {% if vehiculo.Estado == estado %}selected{% endif %}>
-                            {{ estado|capitalize }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
+                <!-- Sección 2: Características Físicas -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="fas fa-paint-brush mr-2"></i>Características Físicas</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="color">Color</label>
+                                <input type="text" class="form-control" id="color" name="color" 
+                                       value="{{ vehiculo.Color }}" maxlength="30">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="capacidad_carga">Capacidad de Carga (kg)</label>
+                                <input type="number" step="0.01" class="form-control" id="capacidad_carga" 
+                                       name="capacidad_carga" value="{{ vehiculo.Capacidad_Carga }}"
+                                       min="0" max="100000">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="kilometraje">Kilometraje Actual</label>
+                                <input type="number" step="0.01" class="form-control" id="kilometraje" 
+                                       name="kilometraje" value="{{ vehiculo.Ultimo_Kilometraje }}"
+                                       min="0" max="1000000">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 3: Información Técnica -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="fas fa-cogs mr-2"></i>Información Técnica</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="chasis">Número de Chasis</label>
+                                <input type="text" class="form-control" id="chasis" name="chasis" 
+                                       value="{{ vehiculo.NumeroChasis }}" maxlength="50">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="motor">Número de Motor</label>
+                                <input type="text" class="form-control" id="motor" name="motor" 
+                                       value="{{ vehiculo.NumeroMotor }}" maxlength="50">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 4: Información de Adquisición -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="fas fa-calendar-alt mr-2"></i>Información de Adquisición</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="fecha_adquisicion">Fecha de Adquisición</label>
+                                <input type="date" class="form-control" id="fecha_adquisicion" 
+                                       name="fecha_adquisicion" value="{{ vehiculo.Fecha_Adquisicion }}"
+                                       max="{{ current_date }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="form-actions mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save mr-2"></i>Guardar Cambios
+                    </button>
+                    <a href="{{ url_for('vehiculos') }}" class="btn btn-outline-secondary btn-lg ml-2">
+                        <i class="fas fa-times mr-2"></i>Cancelar
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label for="chasis">Número de Chasis</label>
-                <input type="text" class="form-control" id="chasis" name="chasis" 
-                       value="{{ vehiculo.NumeroChasis }}">
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label for="motor">Número de Motor</label>
-                <input type="text" class="form-control" id="motor" name="motor" 
-                       value="{{ vehiculo.NumeroMotor }}">
-            </div>
-        </div>
-    </div>
+{% block scripts %}
+<script>
+// Validación del formulario
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var form = document.getElementById('vehiculoForm');
+        form.addEventListener('submit', function(event) {
+            if (form.checkValidity() === false) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    }, false);
+})();
 
-    <div class="row">
-        <div class="col-md-4">
-            <div class="form-group">
-                <label for="capacidad_carga">Capacidad de Carga (kg)</label>
-                <input type="number" step="0.01" class="form-control" id="capacidad_carga" 
-                       name="capacidad_carga" value="{{ vehiculo.Capacidad_Carga }}">
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="form-group">
-                <label for="kilometraje">Kilometraje Actual</label>
-                <input type="number" step="0.01" class="form-control" id="kilometraje" 
-                       name="kilometraje" value="{{ vehiculo.Ultimo_Kilometraje }}">
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="form-group">
-                <label for="fecha_adquisicion">Fecha de Adquisición</label>
-                <input type="date" class="form-control" id="fecha_adquisicion" 
-                       name="fecha_adquisicion" value="{{ vehiculo.Fecha_Adquisicion }}">
-            </div>
-        </div>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-    <a href="{{ url_for('vehiculos') }}" class="btn btn-secondary">Cancelar</a>
-</form>
+// Inicializar tooltips (requiere jQuery y Popper.js)
+$(function () {
+    $('[data-toggle="tooltip"]').tooltip();
+});
+</script>
 {% endblock %}

@@ -10,10 +10,10 @@
         <div class="card-body">
             <div class="row mb-4">
                 <div class="col-md-6">
-                    <p><strong>Monto Total:</strong> ${{ "%.2f"|format(cuenta.Monto_Movimiento) }}</p>
+                    <p><strong>Monto Total:</strong> C${{ "%.2f"|format(cuenta.Monto_Movimiento) }}</p>
                 </div>
                 <div class="col-md-6">
-                    <p><strong>Saldo Pendiente:</strong> ${{ "%.2f"|format(cuenta.Saldo_Pendiente) }}</p>
+                    <p><strong>Saldo Pendiente:</strong> C${{ "%.2f"|format(cuenta.Saldo_Pendiente) }}</p>
                 </div>
             </div>
 
@@ -33,7 +33,7 @@
                             {% for pago in pagos %}
                             <tr>
                                 <td>{{ pago.Fecha }}</td>
-                                <td>${{ "%.2f"|format(pago.Monto) }}</td>
+                                <td>C${{ "%.2f"|format(pago.Monto) }}</td>
                                 <td>{{ pago.Metodo }}</td>
                                 <td>{{ pago.Comentarios or '' }}</td>
                                 <td>

@@ -352,11 +352,11 @@
         }
         
         try {
-            const response = await fetch(`/api/stock/${productoId}/${bodegaId}`);
+            const response = await fetch(`/api/stock/C${productoId}/C${bodegaId}`);
             if (!response.ok) throw new Error('Error al obtener stock');
             
             const data = await response.json();
-            stockInfo.textContent = `Stock: ${data.existencias}`;
+            stockInfo.textContent = `Stock: C${data.existencias}`;
             stockInfo.classList.remove('d-none', 'stock-disponible', 'stock-insuficiente');
             
             const cantidadInput = fila.querySelector('.cantidad');
@@ -399,7 +399,7 @@
         if (!productoId || !bodegaId || cantidad <= 0) return;
         
         try {
-            const response = await fetch(`/api/stock/${productoId}/${bodegaId}`);
+            const response = await fetch(`/api/stock/C${productoId}/C${bodegaId}`);
             if (!response.ok) throw new Error('Error al verificar stock');
             
             const data = await response.json();
@@ -517,12 +517,12 @@
                 const cantidadVal = parseFloat(cantidad.value);
                 
                 try {
-                    const response = await fetch(`/api/stock/${productoId}/${bodegaId}`);
+                    const response = await fetch(`/api/stock/C${productoId}/C${bodegaId}`);
                     if (!response.ok) throw new Error('Error al verificar stock');
                     
                     const data = await response.json();
                     if (cantidadVal > data.existencias) {
-                        errores.push(`Stock insuficiente para ${select.selectedOptions[0].text}`);
+                        errores.push(`Stock insuficiente para C${select.selectedOptions[0].text}`);
                         valido = false;
                     }
                 } catch (error) {
@@ -543,10 +543,10 @@
 
     function mostrarAlerta(tipo, titulo, mensaje = '') {
         const alerta = document.createElement('div');
-        alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
+        alerta.className = `alert alert-C${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
         alerta.style.zIndex = '1100';
         alerta.innerHTML = `
-            <strong>${titulo}</strong> ${mensaje}
+            <strong>C${titulo}</strong> C${mensaje}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         document.body.appendChild(alerta);

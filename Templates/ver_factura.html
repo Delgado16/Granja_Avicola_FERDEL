@@ -2,46 +2,57 @@
 
 {% block main %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="mb-1">Factura #{{ n_factura }}</h2>
-            <p class="text-muted mb-0"><i class="far fa-calendar-alt"></i> {{ fecha_emision }}</p>
+    <!-- Encabezado con efecto gradiente -->
+    <div class="d-flex justify-content-between align-items-center mb-4 p-4 rounded-3" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);">
+        <div class="text-white">
+            <h2 class="mb-1 fw-bold">Factura #{{ n_factura }}</h2>
+            <p class="mb-0 opacity-75"><i class="far fa-calendar-alt me-2"></i> {{ fecha_emision }}</p>
         </div>
         <div>
-            <a href="{{ url_for('gestionar_ventas') }}" class="btn btn-outline-primary">
-                <i class="fas fa-arrow-left"></i> Volver a ventas
+            <a href="{{ url_for('gestionar_ventas') }}" class="btn btn-light btn-rounded">
+                <i class="fas fa-arrow-left me-2"></i> Volver a ventas
             </a>
         </div>
     </div>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="fas fa-file-invoice"></i> Resumen de la Factura</h5>
+    <!-- Tarjeta principal con sombra suave -->
+    <div class="card shadow-sm mb-4 border-0 overflow-hidden">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="mb-0 fw-semibold"><i class="fas fa-file-invoice me-2 text-primary"></i> Resumen de la Factura</h5>
         </div>
-        <div class="card-body">
-            <!-- Notificación de éxito mejorada -->
-            <div class="alert alert-success d-flex align-items-center">
-                <i class="fas fa-check-circle fa-2x me-3"></i>
+        
+        <div class="card-body p-4">
+            <!-- Notificación de éxito con icono animado -->
+            <div class="alert alert-success border-0 shadow-sm d-flex align-items-center animate__animated animate__fadeIn">
+                <div class="flex-shrink-0 me-3">
+                    <i class="fas fa-check-circle fa-2x text-success"></i>
+                </div>
                 <div>
-                    <h5 class="alert-heading mb-1">¡Venta registrada con éxito!</h5>
+                    <h5 class="alert-heading mb-1 fw-semibold">¡Venta registrada con éxito!</h5>
                     <p class="mb-0">La factura #{{ n_factura }} ha sido generada correctamente.</p>
                 </div>
             </div>
             
-            <!-- Vista previa del PDF con controles -->
-            <div class="mb-4">
-                <h5 class="mb-3"><i class="fas fa-file-pdf"></i> Vista previa</h5>
-                <div class="border rounded position-relative" style="min-height: 500px;">
-                    <div class="position-absolute top-0 end-0 p-2 bg-white border-bottom border-left">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="zoomIn()">
+            <!-- Sección de vista previa del PDF -->
+            <div class="mb-5 mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-semibold mb-0"><i class="fas fa-file-pdf me-2 text-danger"></i> Vista previa del documento</h5>
+                    <div class="btn-group shadow-sm">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="zoomIn()" title="Acercar">
                             <i class="fas fa-search-plus"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="zoomOut()">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="zoomOut()" title="Alejar">
                             <i class="fas fa-search-minus"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="resetZoom()">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="resetZoom()" title="Tamaño original">
                             <i class="fas fa-expand"></i>
                         </button>
+                    </div>
+                </div>
+                
+                <div class="border rounded-3 position-relative overflow-hidden" style="min-height: 500px; background-color: #f8f9fa;">
+                    <div class="position-absolute top-0 end-0 m-2">
+                        <span class="badge bg-primary">Vista previa</span>
                     </div>
                     <iframe 
                         id="pdf-viewer"
@@ -52,36 +63,57 @@
                 </div>
             </div>
 
-            <!-- Resumen rápido de la factura -->
-            <div class="row mt-4">
-                <div class="col-md-6">
-                    <div class="card border-0 bg-light">
+            <!-- Sección de información y acciones -->
+            <div class="row g-4">
+                <!-- Detalles de la factura -->
+                <div class="col-lg-6">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h6 class="mb-0 fw-semibold"><i class="fas fa-info-circle me-2 text-info"></i> Detalles de la Factura</h6>
+                        </div>
                         <div class="card-body">
-                            <h6><i class="fas fa-info-circle"></i> Detalles de la Factura</h6>
-                            <hr>
-                            <p><strong>Número:</strong> {{ n_factura }}</p>
-                            <p><strong>Fecha:</strong> {{ fecha_emision }}</p>
-                            <p><strong>Cliente:</strong> {{ nombre_cliente }}</p>
-                            <p><strong>Total:</strong> {{ total_venta }} €</p>
+                            <div class="list-group list-group-flush">
+                                <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between">
+                                    <span class="fw-medium text-muted">Número:</span>
+                                    <span class="fw-semibold">{{ n_factura }}</span>
+                                </div>
+                                <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between">
+                                    <span class="fw-medium text-muted">Fecha:</span>
+                                    <span class="fw-semibold">{{ fecha_emision }}</span>
+                                </div>
+                                <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between">
+                                    <span class="fw-medium text-muted">Cliente:</span>
+                                    <span class="fw-semibold">{{ nombre_cliente }}</span>
+                                </div>
+                                <div class="list-group-item border-0 px-0 py-2 d-flex justify-content-between">
+                                    <span class="fw-medium text-muted">Total:</span>
+                                    <span class="fw-bold text-primary fs-5">{{ total_venta }} €</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card border-0 bg-light">
+                
+                <!-- Acciones -->
+                <div class="col-lg-6">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h6 class="mb-0 fw-semibold"><i class="fas fa-rocket me-2 text-warning"></i> Acciones rápidas</h6>
+                        </div>
                         <div class="card-body">
-                            <h6><i class="fas fa-tasks"></i> Acciones</h6>
-                            <hr>
-                            <div class="d-grid gap-2">
+                            <div class="d-grid gap-3">
                                 <a href="{{ url_for('generar_factura_venta_pdf', venta_id=venta_id) }}" 
-                                   class="btn btn-primary" download="Factura_{{ n_factura }}.pdf">
-                                    <i class="fas fa-download"></i> Descargar PDF
+                                   class="btn btn-primary btn-rounded py-3 fw-semibold" download="Factura_{{ n_factura }}.pdf">
+                                    <i class="fas fa-download me-2"></i> Descargar PDF
                                 </a>
-                                <button onclick="window.print()" class="btn btn-outline-secondary">
-                                    <i class="fas fa-print"></i> Imprimir Factura
+                                
+                                <button onclick="window.print()" class="btn btn-outline-secondary btn-rounded py-3 fw-semibold">
+                                    <i class="fas fa-print me-2"></i> Imprimir Factura
                                 </button>
+                                
                                 <a href="mailto:?subject=Factura {{ n_factura }}&body=Adjunto encontrarás la factura #{{ n_factura }}" 
-                                   class="btn btn-outline-primary">
-                                    <i class="fas fa-envelope"></i> Enviar por Email
+                                   class="btn btn-outline-primary btn-rounded py-3 fw-semibold">
+                                    <i class="fas fa-paper-plane me-2"></i> Enviar por Email
                                 </a>
                             </div>
                         </div>
@@ -93,40 +125,80 @@
 </div>
 
 <script>
-    // Funciones para controlar el zoom del PDF
+    // Funciones para controlar el zoom del PDF con animación
     let currentZoom = 1;
     const zoomStep = 0.25;
     const pdfViewer = document.getElementById('pdf-viewer');
     
     function zoomIn() {
         currentZoom += zoomStep;
-        pdfViewer.style.transform = `scale(${currentZoom})`;
+        applyZoomWithAnimation();
     }
     
     function zoomOut() {
         if (currentZoom > zoomStep) {
             currentZoom -= zoomStep;
-            pdfViewer.style.transform = `scale(${currentZoom})`;
+            applyZoomWithAnimation();
         }
     }
     
     function resetZoom() {
         currentZoom = 1;
-        pdfViewer.style.transform = 'scale(1)';
+        applyZoomWithAnimation();
+    }
+    
+    function applyZoomWithAnimation() {
+        pdfViewer.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
+        pdfViewer.style.transform = `scale(${currentZoom})`;
+        
+        // Eliminar la transición después de que termine para mejor rendimiento
+        setTimeout(() => {
+            pdfViewer.style.transition = 'none';
+        }, 300);
     }
 </script>
 
 <style>
+    /* Estilos personalizados */
+    body {
+        background-color: #f5f7fa;
+    }
+    
+    .card {
+        border-radius: 12px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    
+    .btn-rounded {
+        border-radius: 50px !important;
+    }
+    
     #pdf-viewer {
-        transition: transform 0.3s ease;
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         transform-origin: 0 0;
     }
-    .card-header {
-        font-weight: 500;
+    
+    .list-group-item {
+        background-color: transparent;
     }
-    .btn-outline-primary:hover {
-        background-color: var(--bs-primary);
-        color: white;
+    
+    .alert {
+        border-radius: 10px;
+    }
+    
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        
+        body, html {
+            background: white !important;
+        }
     }
 </style>
 {% endblock %}

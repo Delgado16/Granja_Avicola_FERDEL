@@ -170,7 +170,7 @@ def home():
         JOIN Bodegas B ON B.ID_Bodega = I.ID_Bodega
         JOIN Productos P ON P.ID_Producto = I.ID_Producto
         LEFT JOIN Unidades_Medida U ON U.ID_Unidad = P.Unidad_Medida
-        WHERE I.Existencias <= P.Stock_Minimo
+        WHERE I.Existencias <= 50
         AND P.Estado = 1
         ORDER BY I.Existencias ASC
         LIMIT 20
@@ -2830,7 +2830,7 @@ def proveedores():
         return redirect(url_for("proveedores"))
 
     # Mostrar lista de proveedores
-    proveedores = db.execute("SELECT * FROM Proveedores ORDER BY Nombre")
+    proveedores = db.execute("SELECT * FROM Proveedores ORDER BY ID_Proveedor")
     return render_template("proveedores.html", proveedores=proveedores)
 #######################################################################################
 # Editar Proveedor

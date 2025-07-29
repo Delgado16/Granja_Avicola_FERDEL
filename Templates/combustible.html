@@ -73,7 +73,7 @@
                         <tr>
                             <td>{{ gasto.Fecha }}</td>
                             <td>{{ gasto.Placa }} ({{ gasto.Marca }} {{ gasto.Modelo }})</td>
-                            <td>${{ "{:,.2f}".format(gasto.Monto) }}</td>
+                            <td>C${{ "{:,.2f}".format(gasto.Monto) }}</td>
                             <td>{{ "{:,.2f}".format(gasto.Litros) if gasto.Litros else '-' }}</td>
                             <td>{{ "{:,.0f}".format(gasto.Kilometraje) if gasto.Kilometraje else '-' }} km</td>
                             <td>{{ gasto.Bodega or '-' }}</td>
@@ -173,7 +173,7 @@ function calcularPrecioLitro() {
     if (litros > 0) {
         const precioLitro = monto / litros;
         // Puedes mostrar esto al usuario si lo deseas
-        console.log(`Precio por litro calculado: $${precioLitro.toFixed(2)}`);
+        console.log(`Precio por litro calculado: C${precioLitro.toFixed(2)}`);
     }
 }
 </script>

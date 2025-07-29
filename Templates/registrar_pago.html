@@ -34,7 +34,7 @@
                 </div>
                 <div class="mt-2">
                     <p class="mb-0"><strong><i class="bi bi-currency-dollar me-2"></i>Saldo Pendiente:</strong>
-                    <span class="badge bg-primary rounded-pill fs-6 ms-2">${{ "%0.2f"|format(factura.Saldo_Pendiente or factura.Monto_Movimiento) }}</span></p>
+                    <span class="badge bg-primary rounded-pill fs-6 ms-2">C${{ "%0.2f"|format(factura.Saldo_Pendiente or factura.Monto_Movimiento) }}</span></p>
                 </div>
             </div>
 
@@ -68,7 +68,7 @@
                                         -
                                     {% endif %}
                                 </td>
-                                <td>${{ "%0.2f"|format(pago.Monto) }}</td>
+                                <td>C${{ "%0.2f"|format(pago.Monto) }}</td>
                                 <td>{{ pago.MetodoPago }}</td>
                                 <td>{{ pago.Comentarios|truncate(20) if pago.Comentarios else '-' }}</td>
                             </tr>
@@ -87,15 +87,15 @@
                             <i class="bi bi-currency-dollar me-2"></i>Monto a Pagar
                         </label>
                         <div class="input-group">
-                            <span class="input-group-text">$</span>
+                            <span class="input-group-text">C$</span>
                             <input type="number" class="form-control py-2" id="monto" name="monto" 
                                    step="0.01" min="0.01" max="{{ factura.Saldo_Pendiente or factura.Monto_Movimiento }}" 
                                    placeholder="0.00" required>
                             <div class="invalid-feedback">
-                                Ingrese un monto válido (máximo ${{ "%0.2f"|format(factura.Saldo_Pendiente or factura.Monto_Movimiento) }})
+                                Ingrese un monto válido (máximo C${{ "%0.2f"|format(factura.Saldo_Pendiente or factura.Monto_Movimiento) }})
                             </div>
                         </div>
-                        <small class="text-muted">Monto máximo disponible: ${{ "%0.2f"|format(factura.Saldo_Pendiente or factura.Monto_Movimiento) }}</small>
+                        <small class="text-muted">Monto máximo disponible: C${{ "%0.2f"|format(factura.Saldo_Pendiente or factura.Monto_Movimiento) }}</small>
                     </div>
                     
                     <div class="col-md-6">
@@ -123,7 +123,7 @@
                     <div class="mb-3">
                         <label for="efectivo_recibido" class="form-label">Efectivo Recibido</label>
                         <div class="input-group">
-                            <span class="input-group-text">$</span>
+                            <span class="input-group-text">C$</span>
                             <input type="number" class="form-control" id="efectivo_recibido" 
                                    name="efectivo_recibido" step="0.01" min="0">
                         </div>
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (monto > maxMonto) {
                 e.preventDefault();
-                alert('El monto no puede ser mayor al saldo pendiente ($' + maxMonto.toFixed(2) + ')');
+                alert('El monto no puede ser mayor al saldo pendiente (C$' + maxMonto.toFixed(2) + ')');
                 montoInput.focus();
                 return false;
             }

@@ -434,7 +434,7 @@
 </div>
 
 <script>
-    $(document).ready(function() {
+    C$(document).ready(function() {
         // Plantilla para nueva fila de producto
         const nuevaFilaProducto = `
         <tr class="producto-row">
@@ -475,17 +475,17 @@
         </tr>`;
         
         // Agregar nueva fila de producto
-        $('#agregar-producto').click(function() {
-            $('#productos-container').append(nuevaFilaProducto);
+        C$('#agregar-producto').click(function() {
+            C$('#productos-container').append(nuevaFilaProducto);
             
             // Inicializar los data-labels para la nueva fila
-            const nuevaFila = $('#productos-container tr').last();
+            const nuevaFila = C$('#productos-container tr').last();
             const celdas = nuevaFila.find('td');
             const etiquetas = ["Producto", "Cantidad", "Costo Unitario", "IVA", "Descuento", "Total"];
             
             celdas.each(function(index) {
                 if (index < etiquetas.length) {
-                    $(this).attr('data-label', etiquetas[index]);
+                    C$(this).attr('data-label', etiquetas[index]);
                 }
             });
             
@@ -498,9 +498,9 @@
         });
         
         // Eliminar fila de producto
-        $(document).on('click', '.eliminar-producto', function() {
-            if ($('.producto-row').length > 1) {
-                $(this).closest('tr').remove();
+        C$(document).on('click', '.eliminar-producto', function() {
+            if (C$('.producto-row').length > 1) {
+                C$(this).closest('tr').remove();
                 calcularTotales();
             } else {
                 mostrarAlerta('warning', 'Advertencia!', 'Debe haber al menos un producto en la venta.');
@@ -508,8 +508,8 @@
         });
         
         // Calcular total cuando cambian los valores
-        $(document).on('change', '.cantidad, .costo, .iva, .descuento', function() {
-            const row = $(this).closest('tr');
+        C$(document).on('change', '.cantidad, .costo, .iva, .descuento', function() {
+            const row = C$(this).closest('tr');
             const cantidad = parseFloat(row.find('.cantidad').val()) || 0;
             const costo = parseFloat(row.find('.costo').val()) || 0;
             const iva = parseFloat(row.find('.iva').val()) || 0;
@@ -522,34 +522,34 @@
         });
         
         // Autocompletar precio al seleccionar producto
-        $(document).on('change', '.producto-select', function() {
-            const precio = $(this).find('option:selected').data('precio');
+        C$(document).on('change', '.producto-select', function() {
+            const precio = C$(this).find('option:selected').data('precio');
             if (precio) {
-                $(this).closest('tr').find('.costo').val(precio).trigger('change');
+                C$(this).closest('tr').find('.costo').val(precio).trigger('change');
             }
         });
         
         // Calcular total general
         function calcularTotales() {
             let totalVenta = 0;
-            $('.producto-row').each(function() {
-                const total = parseFloat($(this).find('.total').val()) || 0;
+            C$('.producto-row').each(function() {
+                const total = parseFloat(C$(this).find('.total').val()) || 0;
                 totalVenta += total;
             });
-            $('#total-venta').val(totalVenta.toFixed(2));
+            C$('#total-venta').val(totalVenta.toFixed(2));
         }
         
         // Calcular totales al cargar la página
-        $('.cantidad, .costo, .iva, .descuento').trigger('change');
+        C$('.cantidad, .costo, .iva, .descuento').trigger('change');
         
         // Inicializar los data-labels para las filas existentes
-        $('.producto-row').each(function() {
-            const celdas = $(this).find('td');
+        C$('.producto-row').each(function() {
+            const celdas = C$(this).find('td');
             const etiquetas = ["Producto", "Cantidad", "Costo Unitario", "IVA", "Descuento", "Total"];
             
             celdas.each(function(index) {
                 if (index < etiquetas.length) {
-                    $(this).attr('data-label', etiquetas[index]);
+                    C$(this).attr('data-label', etiquetas[index]);
                 }
             });
         });
@@ -557,10 +557,10 @@
     
     function mostrarAlerta(tipo, titulo, mensaje) {
         const alerta = document.createElement('div');
-        alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
+        alerta.className = `alert alert-C${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
         alerta.style.zIndex = '1100';
         alerta.innerHTML = `
-            <strong>${titulo}</strong> ${mensaje}
+            <strong>C${titulo}</strong> C${mensaje}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         document.body.appendChild(alerta);

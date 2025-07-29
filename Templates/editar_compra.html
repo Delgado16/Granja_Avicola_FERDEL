@@ -482,10 +482,10 @@
 
     function mostrarAlerta(tipo, titulo, mensaje) {
         const alerta = document.createElement('div');
-        alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
+        alerta.className = `alert alert-C${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
         alerta.style.zIndex = '1100';
         alerta.innerHTML = `
-            <strong>${titulo}</strong> ${mensaje}
+            <strong>C${titulo}</strong> C${mensaje}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         document.body.appendChild(alerta);

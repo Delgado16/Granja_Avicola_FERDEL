@@ -7,7 +7,7 @@
 
     <p><strong>Cliente:</strong> {{ factura.Cliente }}</p>
     <p><strong>Factura:</strong> {{ factura.Num_Documento }}</p>
-    <p><strong>Saldo Pendiente:</strong> ${{ "%.2f"|format(factura.Monto_Movimiento) }}</p>
+    <p><strong>Saldo Pendiente:</strong> C${{ "%.2f"|format(factura.Monto_Movimiento) }}</p>
 
     <form method="POST">
         <div class="mb-3">
