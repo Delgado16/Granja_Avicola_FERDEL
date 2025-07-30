@@ -825,7 +825,7 @@
 
     // Función para formatear números como moneda
     function formatCurrency(amount) {
-        return 'C$' + amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, 'C$&,');
+        return 'C$' + amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
     }
 
     // Función para actualizar el stock en el panel derecho
@@ -850,7 +850,7 @@
             <p class="mt-2">Cargando stock...</p>
         `;
 
-        fetch(`/stock_por_bodega/C${idBodega}`)
+        fetch(`/stock_por_bodega/${idBodega}`)
             .then(res => res.json())
             .then(data => {
                 loadingElement.style.display = 'none';
@@ -866,8 +866,8 @@
                     const stockClass = producto.stock <= 5 ? 'stock-low' : '';
                     html += `
                         <tr>
-                            <td>C${producto.descripcion}</td>
-                            <td class="C${stockClass}">C${producto.stock}</td>
+                            <td>${producto.descripcion}</td>
+                            <td class="${stockClass}">${producto.stock}</td>
                         </tr>
                     `;
                 });
@@ -887,12 +887,12 @@
         // Actualizar el select de productos en el formulario
         if (!idBodega) return;
 
-        fetch(`/productos_por_bodega/C${idBodega}`)
+        fetch(`/productos_por_bodega/${idBodega}`)
             .then(res => res.json())
             .then(data => {
                 const opciones = ['<option value="" disabled selected>Seleccione un producto</option>'];
                 data.forEach(producto => {
-                    opciones.push(`<option value="C${producto.id}" data-stock="C${producto.stock}">C${producto.descripcion}</option>`);
+                    opciones.push(`<option value="${producto.id}" data-stock="${producto.stock}">${producto.descripcion}</option>`);
                 });
 
                 document.querySelectorAll(".producto-select").forEach(select => {
@@ -917,7 +917,7 @@
 
             if (stock && cantidadInput) {
                 cantidadInput.setAttribute('max', stock);
-                cantidadInput.setAttribute('title', `Máximo disponible: C${stock}`);
+                cantidadInput.setAttribute('title', `Máximo disponible: ${stock}`);
             }
         }
     });

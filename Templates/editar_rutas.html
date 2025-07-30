@@ -5,10 +5,10 @@
 {% block main %}
 <div class="container py-4">
   <div class="row justify-content-center">
-    <div class="col-lg-8">
+    <div class="col-lg-10 col-xl-8">
       <div class="card border-0 shadow-sm">
-        <!-- Encabezado mejorado con breadcrumb y estado -->
-        <div class="card-header bg-primary text-white py-3">
+        <!-- Encabezado con breadcrumb y estado -->
+        <div class="card-header bg-gradient-primary text-white py-3">
           <nav aria-label="breadcrumb">
             <ol class="breadcrumb breadcrumb-light mb-0">
               <li class="breadcrumb-item"><a href="/" class="text-white">Inicio</a></li>
@@ -18,49 +18,78 @@
           </nav>
           <div class="d-flex justify-content-between align-items-center mt-2">
             <h3 class="mb-0">
-              <i class="fas fa-route me-2"></i>{{ 'Editar' if ruta else 'Crear' }} Ruta
+              <i class="fas fa-route me-2"></i>{{ 'Editar' if ruta else 'Crear nueva' }} Ruta
             </h3>
             {% if ruta %}
-            <span class="badge rounded-pill bg-{{ 'success' if ruta.Estado else 'secondary' }}">
+            <span class="badge rounded-pill bg-{{ 'success' if ruta.Estado else 'secondary' }} fs-6">
               {{ 'Activa' if ruta.Estado else 'Inactiva' }}
             </span>
             {% endif %}
           </div>
         </div>
 
-        <!-- Cuerpo del formulario con mejor estructura -->
+        <!-- Cuerpo del formulario -->
         <div class="card-body p-4">
-          <form action="{{ url_for('editar_ruta', id=ruta.ID_Ruta) if ruta else url_for('crear_ruta') }}" method="post" class="needs-validation" novalidate>
+          <form id="rutaForm" action="{{ url_for('editar_ruta', id=ruta.ID_Ruta) if ruta else url_for('crear_ruta') }}" method="post" class="needs-validation" novalidate>
             <!-- Sección Información Básica -->
             <div class="mb-4">
-              <h5 class="mb-3 text-primary border-bottom pb-2">
-                <i class="fas fa-info-circle me-2"></i>Información Básica
+              <h5 class="mb-3 text-primary d-flex align-items-center">
+                <span class="bg-primary bg-opacity-10 p-2 rounded-circle me-3">
+                  <i class="fas fa-info-circle"></i>
+                </span>
+                Información Básica
               </h5>
               
-              <!-- Campo Nombre con validación -->
-              <div class="mb-4">
-                <label for="nombre" class="form-label fw-semibold">
-                  <i class="fas fa-signature me-2 text-primary"></i>Nombre de la Ruta <span class="text-danger">*</span>
-                </label>
-                <input type="text" class="form-control form-control-lg" id="nombre" name="nombre" 
-                      value="{{ ruta.Nombre if ruta }}" required
-                      placeholder="Ej: Ruta Norte, Ruta Centro Comercial"
-                      minlength="3" maxlength="50">
-                <div class="invalid-feedback">
-                  Por favor ingrese un nombre válido (3-50 caracteres).
+              <div class="row g-3">
+                <!-- Campo Nombre -->
+                <div class="col-md-8">
+                  <label for="nombre" class="form-label fw-semibold">
+                    <i class="fas fa-signature me-2 text-primary"></i>Nombre de la Ruta <span class="text-danger">*</span>
+                  </label>
+                  <input type="text" class="form-control" id="nombre" name="nombre" 
+                        value="{{ ruta.Nombre if ruta }}" required
+                        placeholder="Ej: Ruta Norte, Ruta Centro Comercial"
+                        minlength="3" maxlength="50"
+                        data-bs-toggle="tooltip" data-bs-placement="top" 
+                        title="Use un nombre descriptivo que identifique fácilmente la ruta">
+                  <div class="invalid-feedback">
+                    El nombre debe tener entre 3 y 50 caracteres.
+                  </div>
                 </div>
-                <small class="form-text text-muted">Nombre descriptivo que identifique la ruta</small>
+                
+                <!-- Campo Código (autogenerado o editable) -->
+                <div class="col-md-4">
+                  <label for="codigo" class="form-label fw-semibold">
+                    <i class="fas fa-barcode me-2 text-primary"></i>Código
+                  </label>
+                  <div class="input-group">
+                    <input type="text" class="form-control" id="codigo" name="codigo" 
+                          value="{{ ruta.Codigo if ruta and ruta.Codigo else '' }}"
+                          placeholder="Opcional"
+                          pattern="[A-Z0-9\-]+"
+                          maxlength="10">
+                    <button class="btn btn-outline-secondary" type="button" id="generarCodigo">
+                      <i class="fas fa-sync-alt"></i>
+                    </button>
+                  </div>
+                  <small class="form-text text-muted">Código único para identificación rápida</small>
+                </div>
               </div>
               
-              <!-- Campo Descripción con contador -->
-              <div class="mb-4">
+              <!-- Campo Descripción con contador y markdown -->
+              <div class="mt-3">
                 <label for="descripcion" class="form-label fw-semibold">
                   <i class="fas fa-info-circle me-2 text-primary"></i>Descripción
                 </label>
                 <textarea class="form-control" id="descripcion" name="descripcion" rows="3"
-                          placeholder="Detalles importantes sobre la ruta, clientes frecuentes, etc."
+                          placeholder="Detalles importantes sobre la ruta, clientes frecuentes, horarios especiales, etc."
                           maxlength="255">{{ ruta.Descripcion if ruta }}</textarea>
-                <div class="d-flex justify-content-end">
+                <div class="d-flex justify-content-between mt-1">
+                  <small class="text-muted">
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelp">
+                      <i class="fas fa-markdown me-1"></i>Soporta formato Markdown
+                    </a>
+                  </small>
                   <small class="text-muted"><span id="descripcion-counter">0</span>/255 caracteres</small>
                 </div>
               </div>
@@ -68,70 +97,158 @@
             
             <!-- Sección Configuración -->
             <div class="mb-4">
-              <h5 class="mb-3 text-primary border-bottom pb-2">
-                <i class="fas fa-cog me-2"></i>Configuración
+              <h5 class="mb-3 text-primary d-flex align-items-center">
+                <span class="bg-primary bg-opacity-10 p-2 rounded-circle me-3">
+                  <i class="fas fa-cog"></i>
+                </span>
+                Configuración
               </h5>
               
               <div class="row g-3">
-                <!-- Campo Zona con icono dinámico -->
+                <!-- Campo Zona -->
                 <div class="col-md-6">
                   <label for="zona" class="form-label fw-semibold">
                     <i class="fas fa-map-marked-alt me-2 text-primary"></i>Zona <span class="text-danger">*</span>
                   </label>
-                  <select class="form-select" id="zona" name="zona" required>
+                  <select class="form-select select2-single" id="zona" name="zona" required>
                     <option value="" disabled selected>Seleccione una zona</option>
-                    <option value="Norte" {{ 'selected' if ruta and ruta.Zona == 'Norte' }} data-icon="fa-compass">Zona Norte</option>
-                    <option value="Sur" {{ 'selected' if ruta and ruta.Zona == 'Sur' }} data-icon="fa-compass">Zona Sur</option>
-                    <option value="Este" {{ 'selected' if ruta and ruta.Zona == 'Este' }} data-icon="fa-compass">Zona Este</option>
-                    <option value="Oeste" {{ 'selected' if ruta and ruta.Zona == 'Oeste' }} data-icon="fa-compass">Zona Oeste</option>
-                    <option value="Centro" {{ 'selected' if ruta and ruta.Zona == 'Centro' }} data-icon="fa-city">Centro</option>
+                    <option value="Norte" {{ 'selected' if ruta and ruta.Zona == 'Norte' }}>Zona Norte</option>
+                    <option value="Sur" {{ 'selected' if ruta and ruta.Zona == 'Sur' }}>Zona Sur</option>
+                    <option value="Este" {{ 'selected' if ruta and ruta.Zona == 'Este' }}>Zona Este</option>
+                    <option value="Oeste" {{ 'selected' if ruta and ruta.Zona == 'Oeste' }}>Zona Oeste</option>
+                    <option value="Centro" {{ 'selected' if ruta and ruta.Zona == 'Centro' }}>Centro</option>
+                    <option value="Rural" {{ 'selected' if ruta and ruta.Zona == 'Rural' }}>Zona Rural</option>
                   </select>
                   <div class="invalid-feedback">
                     Por favor seleccione una zona.
                   </div>
                 </div>
                 
-                <!-- Campo Días de Operación mejorado -->
+                <!-- Campo Frecuencia -->
                 <div class="col-md-6">
-                  <label for="dias_operacion" class="form-label fw-semibold">
-                    <i class="fas fa-calendar-alt me-2 text-primary"></i>Días de Operación <span class="text-danger">*</span>
+                  <label for="frecuencia" class="form-label fw-semibold">
+                    <i class="fas fa-clock me-2 text-primary"></i>Frecuencia <span class="text-danger">*</span>
                   </label>
-                  <select class="form-select select2-multiple" id="dias_operacion" name="dias_operacion" multiple="multiple" required>
-                    <option value="Lunes" {{ 'selected' if ruta and 'Lunes' in ruta.Dias_operacion }}>Lunes</option>
-                    <option value="Martes" {{ 'selected' if ruta and 'Martes' in ruta.Dias_operacion }}>Martes</option>
-                    <option value="Miércoles" {{ 'selected' if ruta and 'Miércoles' in ruta.Dias_operacion }}>Miércoles</option>
-                    <option value="Jueves" {{ 'selected' if ruta and 'Jueves' in ruta.Dias_operacion }}>Jueves</option>
-                    <option value="Viernes" {{ 'selected' if ruta and 'Viernes' in ruta.Dias_operacion }}>Viernes</option>
-                    <option value="Sábado" {{ 'selected' if ruta and 'Sábado' in ruta.Dias_operacion }}>Sábado</option>
-                    <option value="Domingo" {{ 'selected' if ruta and 'Domingo' in ruta.Dias_operacion }}>Domingo</option>
+                  <select class="form-select" id="frecuencia" name="frecuencia" required>
+                    <option value="" disabled selected>Seleccione frecuencia</option>
+                    <option value="Diaria" {{ 'selected' if ruta and ruta.Frecuencia == 'Diaria' }}>Diaria</option>
+                    <option value="Semanal" {{ 'selected' if ruta and ruta.Frecuencia == 'Semanal' }}>Semanal</option>
+                    <option value="Quincenal" {{ 'selected' if ruta and ruta.Frecuencia == 'Quincenal' }}>Quincenal</option>
+                    <option value="Mensual" {{ 'selected' if ruta and ruta.Frecuencia == 'Mensual' }}>Mensual</option>
                   </select>
                   <div class="invalid-feedback">
-                    Seleccione al menos un día de operación.
+                    Seleccione la frecuencia de la ruta.
                   </div>
-                  <small class="form-text text-muted">Seleccione los días de atención</small>
+                </div>
+              </div>
+              
+              <!-- Días de Operación con mejor diseño -->
+              <div class="mt-3">
+                <label class="form-label fw-semibold">
+                  <i class="fas fa-calendar-alt me-2 text-primary"></i>Días de Operación <span class="text-danger">*</span>
+                </label>
+                <div class="dias-container bg-light p-3 rounded">
+                  <div class="row g-2">
+                    {% set dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'] %}
+                    {% for dia in dias %}
+                    <div class="col-6 col-md-4 col-lg-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="dias_operacion" 
+                               id="dia_{{ loop.index }}" value="{{ dia }}"
+                               {{ 'checked' if ruta and dia in ruta.Dias_operacion }}>
+                        <label class="form-check-label" for="dia_{{ loop.index }}">
+                          {{ dia }}
+                        </label>
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+                <div class="invalid-feedback dias-feedback" style="display: none;">
+                  Seleccione al menos un día de operación.
+                </div>
+              </div>
+              
+              <!-- Horario de Operación -->
+              <div class="row mt-3 g-3">
+                <div class="col-md-6">
+                  <label for="hora_inicio" class="form-label fw-semibold">
+                    <i class="fas fa-sun me-2 text-primary"></i>Hora de Inicio <span class="text-danger">*</span>
+                  </label>
+                  <input type="time" class="form-control" id="hora_inicio" name="hora_inicio" 
+                         value="{{ ruta.Hora_inicio if ruta and ruta.Hora_inicio else '08:00' }}" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="hora_fin" class="form-label fw-semibold">
+                    <i class="fas fa-moon me-2 text-primary"></i>Hora de Fin <span class="text-danger">*</span>
+                  </label>
+                  <input type="time" class="form-control" id="hora_fin" name="hora_fin" 
+                         value="{{ ruta.Hora_fin if ruta and ruta.Hora_fin else '17:00' }}" required>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Sección Responsable -->
+            <div class="mb-4">
+              <h5 class="mb-3 text-primary d-flex align-items-center">
+                <span class="bg-primary bg-opacity-10 p-2 rounded-circle me-3">
+                  <i class="fas fa-user-tie"></i>
+                </span>
+                Responsable
+              </h5>
+              
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="responsable" class="form-label fw-semibold">
+                    <i class="fas fa-user me-2 text-primary"></i>Asignar a Repartidor
+                  </label>
+                  <select class="form-select select2-single" id="responsable" name="responsable">
+                    <option value="" selected>Sin asignar</option>
+                    {% for rep in repartidores %}
+                    <option value="{{ rep.ID_Usuario }}" 
+                            {{ 'selected' if ruta and ruta.ID_Responsable == rep.ID_Usuario }}>
+                      {{ rep.Nombre }} {{ rep.Apellido }} ({{ rep.Codigo_Empleado }})
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="vehiculo" class="form-label fw-semibold">
+                    <i class="fas fa-truck me-2 text-primary"></i>Vehículo Asignado
+                  </label>
+                  <select class="form-select select2-single" id="vehiculo" name="vehiculo">
+                    <option value="" selected>Sin asignar</option>
+                    {% for veh in vehiculos %}
+                    <option value="{{ veh.ID_Vehiculo }}" 
+                            {{ 'selected' if ruta and ruta.ID_Vehiculo == veh.ID_Vehiculo }}>
+                      {{ veh.Placa }} - {{ veh.Tipo }} ({{ veh.Capacidad }})
+                    </option>
+                    {% endfor %}
+                  </select>
                 </div>
               </div>
             </div>
             
             <!-- Estado con mejor diseño -->
             {% if ruta %}
-            <div class="mb-4">
-              <div class="form-check form-switch ps-0">
-                <div class="d-flex align-items-center">
-                  <input class="form-check-input ms-0" type="checkbox" role="switch" id="estado" name="estado" {{ 'checked' if ruta.Estado }} style="width: 3em; height: 1.5em;">
-                  <label class="form-check-label fw-semibold ms-3" for="estado">
-                    <i class="fas fa-power-off me-2 text-primary"></i>Ruta Activa
-                  </label>
-                </div>
-                <small class="form-text text-muted">Desactive para pausar temporalmente esta ruta</small>
+            <div class="mb-4 p-3 bg-light rounded">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" 
+                       id="estado" name="estado" {{ 'checked' if ruta.Estado }}>
+                <label class="form-check-label fw-semibold" for="estado">
+                  <i class="fas fa-power-off me-2 text-primary"></i>Ruta Activa
+                </label>
+                <small class="form-text d-block text-muted">
+                  Desactive para pausar temporalmente esta ruta. Las rutas inactivas no estarán disponibles para asignación.
+                </small>
               </div>
             </div>
             {% endif %}
             
-            <!-- Botones de acción mejorados -->
+            <!-- Botones de acción -->
             <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
               <a href="/rutas" class="btn btn-outline-secondary px-4 rounded-pill">
-                <i class="fas fa-arrow-left me-2"></i>Volver
+                <i class="fas fa-arrow-left me-2"></i>Cancelar
               </a>
               <div>
                 {% if ruta %}
@@ -140,7 +257,7 @@
                 </button>
                 {% endif %}
                 <button type="submit" class="btn btn-primary px-4 rounded-pill">
-                  <i class="fas fa-save me-2"></i>{{ 'Guardar Cambios' if ruta else 'Crear Ruta' }}
+                  <i class="fas fa-save me-2"></i>{{ 'Actualizar Ruta' if ruta else 'Crear Ruta' }}
                 </button>
               </div>
             </div>
@@ -157,17 +274,24 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title" id="confirmModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Confirmar Eliminación</h5>
+        <h5 class="modal-title" id="confirmModalLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Eliminación
+        </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        ¿Está seguro que desea eliminar permanentemente la ruta "{{ ruta.Nombre }}"?
-        <div class="alert alert-warning mt-3">
-          <i class="fas fa-exclamation-circle me-2"></i>Esta acción no se puede deshacer y afectará a todos los registros asociados.
+        <p>¿Está seguro que desea eliminar permanentemente la ruta <strong>"{{ ruta.Nombre }}"</strong>?</p>
+        <div class="alert alert-warning mt-3 d-flex align-items-center">
+          <i class="fas fa-exclamation-circle me-3 fs-4"></i>
+          <div>
+            <strong>Advertencia:</strong> Esta acción no se puede deshacer. Todos los registros asociados a esta ruta serán afectados.
+          </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">
+          <i class="fas fa-times me-2"></i>Cancelar
+        </button>
         <a href="{{ url_for('eliminar_ruta', id=ruta.ID_Ruta) }}" class="btn btn-danger rounded-pill">
           <i class="fas fa-trash-alt me-2"></i>Eliminar Definitivamente
         </a>
@@ -176,70 +300,119 @@
   </div>
 </div>
 {% endif %}
+
+<!-- Modal de ayuda para Markdown -->
+<div class="modal fade" id="markdownHelp" tabindex="-1" aria-labelledby="markdownHelpLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="markdownHelpLabel">
+          <i class="fab fa-markdown me-2"></i>Formato Markdown
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h6>Ejemplos de sintaxis:</h6>
+            <ul class="list-unstyled">
+              <li class="mb-2"><code>**negrita**</code> → <strong>negrita</strong></li>
+              <li class="mb-2"><code>*cursiva*</code> → <em>cursiva</em></li>
+              <li class="mb-2"><code>- Lista</code> → • Lista</li>
+              <li class="mb-2"><code>[Enlace](url)</code> → <a href="#">Enlace</a></li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <h6>Recomendaciones:</h6>
+            <ul>
+              <li>Use listas para puntos importantes</li>
+              <li>Separe párrafos con líneas vacías</li>
+              <li>Destaque información clave con negritas</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary rounded-pill" data-bs-dismiss="modal">
+          <i class="fas fa-check me-2"></i>Entendido
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
-<!-- Incluir Select2 para selección múltiple -->
+<!-- Incluir Select2 -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<!-- Incluir select2-bootstrap-5-theme -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
 
 <script>
 $(document).ready(function() {
-  // Inicializar Select2 con tema Bootstrap 5
-  $('.select2-multiple').select2({
+  // Inicializar tooltips
+  $('[data-bs-toggle="tooltip"]').tooltip();
+  
+  // Inicializar Select2
+  $('.select2-single').select2({
     theme: 'bootstrap-5',
-    placeholder: "Seleccione los días",
+    placeholder: "Seleccione una opción",
     allowClear: true,
-    width: '100%',
-    closeOnSelect: false
+    width: '100%'
   });
-
-  // Formatear días existentes si estamos en edición
-  {% if ruta and ruta.Dias_operacion %}
-    const diasSeleccionados = "{{ ruta.Dias_operacion }}".split(',');
-    $('.select2-multiple').val(diasSeleccionados).trigger('change');
-  {% endif %}
 
   // Contador de caracteres para descripción
   $('#descripcion').on('input', function() {
     const currentLength = $(this).val().length;
     $('#descripcion-counter').text(currentLength);
+  }).trigger('input');
+
+  // Generar código automático
+  $('#generarCodigo').click(function() {
+    const nombre = $('#nombre').val().substring(0, 3).toUpperCase();
+    const zona = $('#zona').val() ? $('#zona').val().substring(0, 1).toUpperCase() : 'X';
+    const randomNum = Math.floor(100 + Math.random() * 900);
+    $('#codigo').val(`${nombre}-${zona}-${randomNum}`);
   });
 
-  // Inicializar contador
-  $('#descripcion').trigger('input');
-
-  // Validación de formulario
-  (function() {
-    'use strict';
+  // Validación personalizada para días de operación
+  const form = document.getElementById('rutaForm');
+  form.addEventListener('submit', function(event) {
+    const diasSeleccionados = $('input[name="dias_operacion"]:checked').length;
+    if (diasSeleccionados === 0) {
+      $('.dias-feedback').show();
+      event.preventDefault();
+      event.stopPropagation();
+    } else {
+      $('.dias-feedback').hide();
+    }
     
-    // Fetch all the forms we want to apply custom Bootstrap validation styles to
-    const forms = document.querySelectorAll('.needs-validation');
+    if (!form.checkValidity()) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     
-    // Loop over them and prevent submission
-    Array.prototype.slice.call(forms).forEach(function(form) {
-      form.addEventListener('submit', function(event) {
-        if (!form.checkValidity()) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        
-        form.classList.add('was-validated');
-      }, false);
-    });
-  })();
+    form.classList.add('was-validated');
+  }, false);
 
-  // Cambiar ícono según zona seleccionada
-  $('#zona').change(function() {
-    const selectedOption = $(this).find('option:selected');
-    const iconClass = selectedOption.data('icon');
-    $(this).prev('label').find('i').removeClass().addClass('fas me-2 text-primary').addClass(iconClass);
+  // Validar hora fin > hora inicio
+  function validarHoras() {
+    const inicio = $('#hora_inicio').val();
+    const fin = $('#hora_fin').val();
+    
+    if (inicio && fin && inicio >= fin) {
+      $('#hora_fin')[0].setCustomValidity('La hora de fin debe ser posterior a la hora de inicio');
+    } else {
+      $('#hora_fin')[0].setCustomValidity('');
+    }
+  }
+  
+  $('#hora_inicio, #hora_fin').change(validarHoras);
+  
+  // Mostrar vista previa de Markdown (opcional)
+  $('#descripcion').on('focus', function() {
+    // Aquí podrías implementar una vista previa en tiempo real
   });
-
-  // Inicializar ícono de zona
-  $('#zona').trigger('change');
 });
 </script>
 {% endblock %}

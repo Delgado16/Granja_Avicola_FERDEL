@@ -706,15 +706,15 @@
 
     // Función para formatear números como moneda
     function formatCurrency(amount) {
-        return 'C$' + amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, 'C$&,');
+        return 'C$' + amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
     }
 
     function mostrarAlerta(tipo, titulo, mensaje) {
         const alerta = document.createElement('div');
-        alerta.className = `alert alert-C${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
+        alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
         alerta.style.zIndex = '1100';
         alerta.innerHTML = `
-            <strong>C${titulo}</strong> C${mensaje}
+            <strong>${titulo}</strong> ${mensaje}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         document.body.appendChild(alerta);
@@ -805,7 +805,7 @@
             <p class="mt-2">Cargando stock...</p>
         `;
 
-        fetch(`/stock_por_bodega/C${idBodega}`)
+        fetch(`/stock_por_bodega/${idBodega}`)
             .then(res => res.json())
             .then(data => {
                 loadingElement.style.display = 'none';
@@ -821,8 +821,8 @@
                     const stockClass = producto.stock <= 5 ? 'stock-low' : '';
                     html += `
                         <tr>
-                            <td>C${producto.descripcion}</td>
-                            <td class="C${stockClass}">C${producto.stock}</td>
+                            <td>${producto.descripcion}</td>
+                            <td class="${stockClass}">${producto.stock}</td>
                         </tr>
                     `;
                 });

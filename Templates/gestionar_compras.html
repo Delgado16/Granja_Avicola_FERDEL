@@ -22,6 +22,12 @@
         background-color: #f8f9fa;
     }
     
+    .btn-action-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
     /* Estilos para móviles - Oculta el encabezado */
     @media (max-width: 767.98px) {
         .table thead {
@@ -72,6 +78,15 @@
         .detalle-table td:before {
             content: none;
         }
+        
+        .btn-action-group {
+            flex-direction: column;
+            width: 100%;
+        }
+        
+        .btn-action-group .btn {
+            width: 100%;
+        }
     }
     
     /* Estilos para PC - Muestra el encabezado */
@@ -90,6 +105,10 @@
         
         .table td:before {
             content: none;
+        }
+        
+        .btn-action-group {
+            flex-direction: row;
         }
     }
 </style>
@@ -124,7 +143,7 @@
                                     <th>Bodega</th>
                                     <th>Tipo Pago</th>
                                     <th>Total</th>
-                                    <th>Detalle</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -140,12 +159,17 @@
                                         </span>
                                     </td>
                                     <td data-label="Total">C$ {{ "{:,.2f}".format(compra.total) }}</td>
-                                    <td data-label="Detalle">
-                                        <button class="btn btn-sm btn-info" 
-                                                data-bs-toggle="collapse" 
-                                                data-bs-target="#detalle-{{ compra.id }}">
-                                            <i class="fas fa-eye"></i> Detalles
-                                        </button>
+                                    <td data-label="Acciones">
+                                        <div class="btn-action-group">
+                                            <button class="btn btn-sm btn-info" 
+                                                    data-bs-toggle="collapse" 
+                                                    data-bs-target="#detalle-{{ compra.id }}">
+                                                <i class="fas fa-eye"></i> Detalles
+                                            </button>
+                                            <a href="{{ url_for('editar_compra', id_compra=compra.id) }}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i> Editar
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr class="collapse detalle-compra" id="detalle-{{ compra.id }}">
