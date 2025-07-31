@@ -5,303 +5,504 @@
 {% block main %}
 <style>
     :root {
-        --primary-color: #4361ee;
-        --secondary-color: #3f37c9;
-        --success-color: #4cc9f0;
-        --danger-color: #f72585;
-        --card-max-width: 1200px;
-        --card-padding: 1.5rem;
+        --card-max-width: 900px;
+        --card-padding-lg: 1rem;
+        --card-padding-md: 0.75rem;
+        --card-padding-sm: 0.5rem;
+        --navbar-height-lg: 80px;
+        --navbar-height-sm: 100px;
+        --content-top-margin: 1rem;
     }
 
-    .venta-container {
-        max-width: var(--card-max-width);
-        margin: 2rem auto;
+    /* Layout dividido */
+    .split-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        margin-top: calc(var(--navbar-height-lg) + 1rem);
         padding: 0 1rem;
     }
 
-    .card-venta {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1);
+    .form-container {
+        flex: 1;
+        min-width: 300px;
     }
 
-    .card-header-venta {
-        background-color: var(--primary-color);
-        color: white;
-        border-radius: 0.75rem 0.75rem 0 0;
-        padding: 1.25rem 2rem;
-    }
-
-    .card-title-venta {
-        font-size: 1.75rem;
-        font-weight: 600;
-        margin: 0;
-    }
-
-    .card-body-venta {
-        padding: 2rem;
-    }
-
-    .form-section {
-        margin-bottom: 2rem;
-        padding: 1.5rem;
+    .stock-container {
+        flex: 0 0 350px;
         background-color: #f8f9fa;
         border-radius: 0.5rem;
+        padding: 1.25rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        max-height: 80vh;
+        overflow-y: auto;
+        position: sticky;
+        top: calc(var(--navbar-height-lg) + 1rem);
+    }
+
+    .stock-title {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #dee2e6;
+        color: #495057;
+        font-weight: 600;
+    }
+
+    .stock-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .stock-table th {
+        background-color: #e9ecef;
+        font-weight: 600;
+        color: #495057;
+        position: sticky;
+        top: 0;
+    }
+
+    .stock-table th,
+    .stock-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .stock-table tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    .stock-low {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .stock-warning {
+        color: #fd7e14;
+        font-weight: 600;
+    }
+
+    .stock-good {
+        color: #28a745;
+    }
+
+    #stock-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100px;
+        color: #6c757d;
+    }
+
+    #stock-content {
+        display: none;
+    }
+
+    /* Ajustes generales del formulario */
+    .card {
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .card-body {
+        background-color: #fff;
+        border-radius: 0.5rem;
+    }
+
+    .card-title {
+        font-size: clamp(1.5rem, 2.5vw, 2rem);
+        margin-bottom: 1.5rem;
     }
 
     .section-title {
-        font-size: 1.25rem;
-        color: var(--secondary-color);
+        font-size: clamp(1.2rem, 1.8vw, 1.5rem);
+        margin: 1.5rem 0 1rem;
+    }
+
+    .form-label {
+        font-size: clamp(0.85rem, 1vw, 0.9rem);
+        margin-bottom: 0.3rem;
         font-weight: 500;
-        border-bottom: 2px solid #e9ecef;
-        padding-bottom: 0.75rem;
-        margin-bottom: 1.5rem;
     }
 
-    .product-table {
+    .form-control, .form-select {
+        font-size: clamp(0.85rem, 1vw, 0.9rem);
+        padding: 0.5rem 0.75rem;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1.5rem 0;
+        border-radius: 0.5rem;
+        box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+
+    #tabla-productos {
         width: 100%;
-        margin-bottom: 1.5rem;
-        border-collapse: separate;
-        border-spacing: 0;
+        margin-bottom: 1rem;
     }
 
-    .product-table th {
-        background-color: #e9ecef;
-        font-weight: 600;
+    #tabla-productos th {
         white-space: nowrap;
-        padding: 1rem;
-        border-top: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+        font-weight: 600;
+        font-size: clamp(0.8rem, 1vw, 0.85rem);
+        padding: 0.75rem;
     }
 
-    .product-table td {
-        padding: 1rem;
+    #tabla-productos td {
+        padding: 0.75rem;
         vertical-align: middle;
-        border-top: 1px solid #dee2e6;
+        font-size: clamp(0.8rem, 1vw, 0.85rem);
     }
 
-    .product-table tbody tr:first-child td {
-        border-top: none;
+    #tabla-productos .btn-sm {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
     }
 
-    .product-table .form-control {
-        min-width: 100px;
+    .btn-action {
+        margin-bottom: 1rem;
     }
 
+    /* Estilos para el resumen de totales */
     .total-summary {
         background-color: #f8f9fa;
         border-radius: 0.5rem;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #dee2e6;
     }
 
     .total-row {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 0.75rem;
-        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
     }
 
-    .grand-total {
-        border-top: 2px solid #dee2e6;
-        padding-top: 1rem;
-        margin-top: 1rem;
-        font-size: 1.25rem;
+    .total-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .total-label {
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .total-value {
         font-weight: 600;
     }
 
-    .btn-add-product {
-        margin-bottom: 1.5rem;
-        background-color: var(--success-color);
-        border-color: var(--success-color);
+    .grand-total {
+        border-top: 1px solid #dee2e6;
+        padding-top: 0.75rem;
+        margin-top: 0.75rem;
+        font-size: 1.1rem;
+        color: #212529;
     }
 
-    .btn-cancel {
-        background-color: #6c757d;
-        border-color: #6c757d;
+    .grand-total .total-label {
+        font-weight: 600;
     }
 
-    .btn-save {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
+    .grand-total .total-value {
+        font-weight: 700;
+        color: #0d6efd;
     }
 
-    /* Responsive styles */
-    @media (max-width: 992px) {
-        .card-body-venta {
-            padding: 1.5rem;
+    /* Validación */
+    .is-invalid {
+        border-color: #dc3545;
+    }
+
+    .invalid-feedback {
+        display: none;
+        width: 100%;
+        margin-top: 0.25rem;
+        font-size: 0.8rem;
+        color: #dc3545;
+    }
+
+    .is-invalid ~ .invalid-feedback {
+        display: block;
+    }
+
+    /* Estilos para pantallas grandes (desktop) */
+    @media (min-width: 992px) {
+        .stock-container {
+            flex: 0 0 380px;
         }
     }
 
-    @media (max-width: 768px) {
-        .venta-container {
-            padding: 0 0.5rem;
+    /* Estilos para pantallas medianas (tablets) */
+    @media (max-width: 991.98px) {
+        .split-container {
+            flex-direction: column;
+            gap: 1rem;
         }
-        
-        .card-body-venta {
-            padding: 1rem;
+
+        .stock-container {
+            flex: 1;
+            max-height: none;
+            position: static;
+            max-height: 300px;
+            order: 1;
         }
-        
-        .product-table th,
-        .product-table td {
+
+        .row.g-3 > [class^="col-"] {
+            margin-bottom: 0.75rem;
+        }
+
+        #tabla-productos th, #tabla-productos td {
+            padding: 0.6rem;
+        }
+    }
+
+    /* Estilos para pantallas pequeñas (móviles grandes) */
+    @media (max-width: 767.98px) {
+        .split-container {
+            margin: 0.75rem;
+            padding: 0;
+            margin-top: calc(var(--navbar-height-lg) + 0.75rem);
+        }
+
+        #tabla-productos th, #tabla-productos td {
+            min-width: 90px;
+            padding: 0.5rem;
+        }
+
+        .stock-container {
+            padding: var(--card-padding-sm);
+        }
+
+        .total-summary {
             padding: 0.75rem;
         }
     }
 
-    @media (max-width: 576px) {
-        /* Mobile table styles */
-        .product-table {
+    /* Estilos para móviles pequeños (576px y menos) */
+    @media (max-width: 575.98px) {
+        .split-container {
+            margin: 0.5rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.5rem);
+        }
+
+        /* Tabla responsiva para móviles */
+        #tabla-productos {
             display: block;
             width: 100%;
+            border: 0;
         }
-        
-        .product-table thead {
+
+        #tabla-productos thead {
             display: none;
         }
-        
-        .product-table tbody, 
-        .product-table tr, 
-        .product-table td {
+
+        #tabla-productos tbody, #tabla-productos tr, #tabla-productos td {
             display: block;
             width: 100%;
+            text-align: left;
         }
-        
-        .product-table tr {
-            margin-bottom: 1.5rem;
+
+        #tabla-productos tr {
+            margin-bottom: 1.25rem;
             border: 1px solid #dee2e6;
             border-radius: 0.5rem;
             position: relative;
-            padding-top: 3rem;
+            padding-top: 2.5rem;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        
-        .product-table td {
-            padding: 0.75rem;
-            padding-left: 50%;
+
+        #tabla-productos td {
             border: none;
+            padding: 0.5rem 0.75rem;
+            padding-left: 45%;
         }
-        
-        .product-table td::before {
+
+        #tabla-productos td::before {
             content: attr(data-label);
             position: absolute;
-            left: 1rem;
-            width: 45%;
+            left: 0.75rem;
+            width: 40%;
             font-weight: 600;
+            font-size: 0.8rem;
             color: #495057;
         }
-        
-        .product-table td:last-child {
+
+        #tabla-productos td:first-child {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+        }
+
+        #tabla-productos td:last-child {
             position: absolute;
-            top: 0.75rem;
-            right: 0.75rem;
+            top: 0.5rem;
+            right: 0.5rem;
             width: auto;
             padding: 0;
             text-align: right;
         }
-        
-        .product-table td:last-child::before {
+
+        #tabla-productos td:last-child::before {
             display: none;
         }
-        
-        .product-table select,
-        .product-table input {
+
+        #tabla-productos select, 
+        #tabla-productos input {
             width: 100%;
+            margin-left: 0;
+            max-width: 100%;
+        }
+
+        #tabla-productos .btn {
+            width: auto;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .btn-action, .btn-submit {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .stock-table th,
+        .stock-table td {
+            padding: 0.5rem;
+            font-size: 0.8rem;
+        }
+    }
+
+    /* Ajustes para pantallas muy pequeñas (400px y menos) */
+    @media (max-width: 400px) {
+        .split-container {
+            margin: 0.25rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.25rem);
+        }
+
+        #tabla-productos td {
+            padding-left: 50%;
+        }
+
+        #tabla-productos td::before {
+            width: 45%;
+        }
+
+        .stock-container {
+            padding: 0.75rem;
+        }
+    }
+
+    /* Alertas flotantes */
+    .alert.position-fixed {
+        top: calc(var(--navbar-height-lg) + 1rem);
+        z-index: 1100;
+    }
+
+    @media (max-width: 575.98px) {
+        .alert.position-fixed {
+            top: calc(var(--navbar-height-sm) + 1rem);
         }
     }
 </style>
+<div class="container-fluid card-container">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h1 class="card-title text-center">Editar Venta #{{ venta.ID_Factura }}</h1>
+            <form action="{{ url_for('editar_venta', venta_id=venta.ID_Factura) }}" method="post" onsubmit="return validarVenta()" novalidate>
+                <div class="row g-3">
+                    <!-- Fila 1 -->
+                    <div class="col-12 col-md-3">
+                        <label for="n_factura" class="form-label">N° Factura</label>
+                        <input type="text" class="form-control" id="n_factura" value="{{ n_factura }}" readonly>
+                    </div>
 
-<div class="container-fluid venta-container">
-    <div class="card card-venta">
-        <div class="card-header card-header-venta">
-            <h1 class="card-title card-title-venta">Editar Venta #{{ venta.ID_Factura }}</h1>
-        </div>
-        
-        <div class="card-body card-body-venta">
-            <form id="form-editar-venta" method="post" action="{{ url_for('editar_venta', venta_id=venta.ID_Factura) }}">
-                <!-- Información básica -->
-                <div class="form-section">
-                    <h3 class="section-title">Información de la Venta</h3>
-                    
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label for="n_factura" class="form-label">N° Factura</label>
-                            <input type="text" class="form-control" id="n_factura" value="{{ n_factura }}" readonly>
-                        </div>
-                        
-                        <div class="col-md-3">
-                            <label for="fecha" class="form-label">Fecha*</label>
-                            <input type="date" class="form-control" id="fecha" name="fecha" value="{{ venta.Fecha }}" required>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="cliente" class="form-label">Cliente*</label>
-                            <select class="form-select" id="cliente" name="cliente" required>
-                                <option value="">Seleccione un cliente</option>
-                                {% for cliente in clientes %}
-                                <option value="{{ cliente.id }}" {% if cliente.id == venta.IDCliente %}selected{% endif %}>{{ cliente.nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <label for="tipo_pago" class="form-label">Tipo de Pago*</label>
-                            <select class="form-select" id="tipo_pago" name="tipo_pago" required>
-                                <option value="0" {% if venta.Credito_Contado == 0 %}selected{% endif %}>Contado</option>
-                                <option value="1" {% if venta.Credito_Contado == 1 %}selected{% endif %}>Crédito</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <label for="id_bodega" class="form-label">Bodega*</label>
-                            <select class="form-select" id="id_bodega" name="id_bodega" required>
-                                <option value="">Seleccione una bodega</option>
-                                {% for bodega in bodegas %}
-                                <option value="{{ bodega.id }}" {% if bodega.id == venta.ID_Bodega %}selected{% endif %}>{{ bodega.nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <label for="estado" class="form-label">Estado</label>
-                            <select class="form-select" id="estado" name="estado">
-                                <option value="1" {% if venta.Estado == 1 %}selected{% endif %}>Activa</option>
-                                <option value="0" {% if venta.Estado == 0 %}selected{% endif %}>Anulada</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-12">
-                            <label for="observacion" class="form-label">Observaciones</label>
-                            <textarea class="form-control" id="observacion" name="observacion" rows="2">{{ venta.Observacion }}</textarea>
-                        </div>
+                    <div class="col-12 col-md-3">
+                        <label for="fecha" class="form-label">Fecha*</label>
+                        <input type="date" class="form-control" id="fecha" name="fecha" value="{{ venta.Fecha }}" required>
+                        <div class="invalid-feedback">Por favor ingrese la fecha</div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label for="cliente" class="form-label">Cliente*</label>
+                        <select class="form-select" id="cliente" name="cliente" required>
+                            <option value="">Seleccione un cliente</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}" {% if cliente.id == venta.IDCliente %}selected{% endif %}>{{ cliente.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">Por favor seleccione un cliente</div>
+                    </div>
+
+                    <!-- Fila 2 -->
+                    <div class="col-12 col-md-4">
+                        <label for="tipo_pago" class="form-label">Tipo de Pago*</label>
+                        <select class="form-select" id="tipo_pago" name="tipo_pago" required>
+                            <option value="0" {% if venta.Credito_Contado == 0 %}selected{% endif %}>Contado</option>
+                            <option value="1" {% if venta.Credito_Contado == 1 %}selected{% endif %}>Crédito</option>
+                        </select>
+                        <div class="invalid-feedback">Por favor seleccione el tipo de pago</div>
+                    </div>
+ 
+                    <div class="col-12 col-md-4">
+                        <label for="id_bodega" class="form-label">Bodega*</label>
+                        <select class="form-select" id="id_bodega" name="id_bodega" required>
+                            <option value="">Seleccione una bodega</option>
+                            {% for bodega in bodegas %}
+                            <option value="{{ bodega.id }}" {% if bodega.id == venta.ID_Bodega %}selected{% endif %}>{{ bodega.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">Por favor seleccione una bodega</div>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <label for="estado" class="form-label">Estado</label>
+                        <select class="form-select" id="estado" name="estado">
+                            <option value="1" {% if venta.Estado == 1 %}selected{% endif %}>Activa</option>
+                            <option value="0" {% if venta.Estado == 0 %}selected{% endif %}>Anulada</option>
+                        </select>
+                    </div>
+
+                    <!-- Observación -->
+                    <div class="col-12">
+                        <label for="observacion" class="form-label">Observación:</label>
+                        <textarea class="form-control" id="observacion" name="observacion" rows="2">{{ venta.Observacion }}</textarea>
                     </div>
                 </div>
-                
-                <!-- Productos -->
-                <div class="form-section">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="section-title">Productos</h3>
-                        <button type="button" class="btn btn-primary btn-add-product" id="agregar-producto">
-                            <i class="bi bi-plus-circle"></i> Agregar Producto
-                        </button>
-                    </div>
+
+                <!-- Sección de productos -->
+                <div class="mb-3">
+                    <h4 class="section-title">Productos</h4>
+                    <button type="button" class="btn btn-primary btn-action" onclick="agregarFila()">
+                        <i class="bi bi-plus-circle"></i> Agregar Producto
+                    </button>
                     
                     <div class="table-responsive">
-                        <table class="table product-table">
-                            <thead>
+                        <table class="table table-bordered text-center" id="tabla-productos">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Producto</th>
-                                    <th>Cantidad</th>
-                                    <th>Precio Unitario</th>
-                                    <th>IVA</th>
-                                    <th>Descuento</th>
-                                    <th>Total</th>
-                                    <th>Acciones</th>
+                                    <th data-label="Producto">Producto</th>
+                                    <th data-label="Cantidad" style="width: 6rem;">Cantidad</th>
+                                    <th data-label="Precio Unitario" style="width: 7rem;">Precio Unitario</th>
+                                    <th data-label="IVA" style="width: 6rem;">IVA</th>
+                                    <th data-label="Descuento" style="width: 8rem;">Descuento</th>
+                                    <th data-label="Total" style="width: 8rem;">Total</th>
+                                    <th style="width: 6rem;">Acción</th>
                                 </tr>
                             </thead>
-                            <tbody id="productos-container">
+                            <tbody>
                                 {% for detalle in detalles %}
-                                <tr class="producto-row">
+                                <tr>
                                     <td data-label="Producto">
-                                        <select class="form-select producto-select" name="productos[]" required>
-                                            <option value="">Seleccione</option>
+                                        <select name="productos[]" class="form-select producto-select" required>
+                                            <option value="">Seleccione un producto</option>
                                             {% for producto in productos %}
                                             <option value="{{ producto.id }}" 
                                                     data-precio="{{ producto.precio|default(0) }}" 
@@ -311,28 +512,38 @@
                                             {% endfor %}
                                         </select>
                                         <input type="hidden" name="detalles_ids[]" value="{{ detalle.ID_Detalle }}">
+                                        <div class="invalid-feedback">Seleccione un producto</div>
                                     </td>
                                     <td data-label="Cantidad">
-                                        <input type="number" class="form-control cantidad" name="cantidades[]" 
-                                               min="1" step="0.01" value="{{ detalle.Cantidad }}" required>
+                                        <input type="number" name="cantidades[]" step="any" min="1" 
+                                               class="form-control cantidad" value="{{ detalle.Cantidad }}" required
+                                               oninput="calcularSubtotal(this)">
+                                        <div class="invalid-feedback">Ingrese cantidad</div>
                                     </td>
                                     <td data-label="Precio Unitario">
-                                        <input type="number" class="form-control precio" name="precios[]" 
-                                               min="0" step="0.01" value="{{ detalle.Precio }}" required>
+                                        <input type="number" name="costos[]" step="any" min="0" 
+                                               class="form-control costo" value="{{ detalle.Costo }}" required
+                                               oninput="calcularSubtotal(this)">
+                                        <div class="invalid-feedback">Ingrese precio</div>
                                     </td>
                                     <td data-label="IVA">
-                                        <input type="number" class="form-control iva" name="ivas[]" 
-                                               min="0" step="0.01" value="{{ detalle.IVA }}" required>
+                                        <input type="number" name="ivas[]" step="any" min="0" 
+                                               class="form-control iva" value="{{ detalle.IVA }}" required
+                                               oninput="calcularSubtotal(this)">
+                                        <div class="invalid-feedback">Ingrese IVA</div>
                                     </td>
                                     <td data-label="Descuento">
-                                        <input type="number" class="form-control descuento" name="descuentos[]" 
-                                               min="0" step="0.01" value="{{ detalle.Descuento }}" required>
+                                        <input type="number" name="descuentos[]" step="any" min="0" 
+                                               class="form-control descuento" value="{{ detalle.Descuento }}" required
+                                               oninput="calcularSubtotal(this)">
+                                        <div class="invalid-feedback">Ingrese descuento</div>
                                     </td>
-                                    <td data-label="Total">
-                                        <input type="text" class="form-control total" readonly>
+                                    <td data-label="Total" class="total-cell">
+                                        <input type="text" class="form-control-plaintext total" 
+                                               value="C${{ (detalle.Cantidad * detalle.Costo + detalle.IVA - detalle.Descuento) | round(2) }}" readonly>
                                     </td>
                                     <td>
-                                        <button type="button" class="btn btn-danger btn-sm eliminar-producto">
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </td>
@@ -341,34 +552,33 @@
                             </tbody>
                         </table>
                     </div>
-                    
-                    <!-- Resumen de totales -->
-                    <div class="total-summary">
-                        <div class="total-row">
-                            <span>Subtotal:</span>
-                            <span id="subtotal">C$0.00</span>
-                        </div>
-                        <div class="total-row">
-                            <span>Descuentos:</span>
-                            <span id="total-descuentos">C$0.00</span>
-                        </div>
-                        <div class="total-row">
-                            <span>IVA:</span>
-                            <span id="total-iva">C$0.00</span>
-                        </div>
-                        <div class="total-row grand-total">
-                            <span>Total Venta:</span>
-                            <span id="total-venta">C$0.00</span>
-                        </div>
+                </div>
+
+                <!-- Resumen de totales mejorado -->
+                <div class="total-summary mb-4">
+                    <div class="total-row">
+                        <span class="total-label">Subtotal:</span>
+                        <span class="total-value" id="subtotal-total">C$0.00</span>
+                    </div>
+                    <div class="total-row">
+                        <span class="total-label">IVA:</span>
+                        <span class="total-value" id="iva-total">C$0.00</span>
+                    </div>
+                    <div class="total-row">
+                        <span class="total-label">Descuentos:</span>
+                        <span class="total-value" id="descuento-total">C$0.00</span>
+                    </div>
+                    <div class="total-row grand-total">
+                        <span class="total-label">Total Venta:</span>
+                        <span class="total-value" id="total-final">C$0.00</span>
                     </div>
                 </div>
-                
-                <!-- Botones de acción -->
+
                 <div class="d-flex justify-content-between mt-4">
-                    <a href="{{ url_for('gestionar_ventas') }}" class="btn btn-secondary btn-cancel">
+                    <a href="{{ url_for('gestionar_ventas') }}" class="btn btn-secondary">
                         <i class="bi bi-arrow-left"></i> Cancelar
                     </a>
-                    <button type="submit" class="btn btn-primary btn-save">
+                    <button type="submit" class="btn btn-primary">
                         <i class="bi bi-save"></i> Guardar Cambios
                     </button>
                 </div>
@@ -378,54 +588,120 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Plantilla para nueva fila de producto
-    const nuevaFilaProducto = `
-    <tr class="producto-row">
-        <td data-label="Producto">
-            <select class="form-select producto-select" name="productos[]" required>
-                <option value="">Seleccione</option>
-                {% for producto in productos %}
-                <option value="{{ producto.id }}" data-precio="{{ producto.precio|default(0) }}">{{ producto.descripcion }}</option>
-                {% endfor %}
-            </select>
-            <input type="hidden" name="detalles_ids[]" value="0">
-        </td>
-        <td data-label="Cantidad">
-            <input type="number" class="form-control cantidad" name="cantidades[]" min="1" step="0.01" required>
-        </td>
-        <td data-label="Precio Unitario">
-            <input type="number" class="form-control precio" name="precios[]" min="0" step="0.01" required>
-        </td>
-        <td data-label="IVA">
-            <input type="number" class="form-control iva" name="ivas[]" min="0" step="0.01" required>
-        </td>
-        <td data-label="Descuento">
-            <input type="number" class="form-control descuento" name="descuentos[]" min="0" step="0.01" required>
-        </td>
-        <td data-label="Total">
-            <input type="text" class="form-control total" readonly>
-        </td>
-        <td>
-            <button type="button" class="btn btn-danger btn-sm eliminar-producto">
-                <i class="bi bi-trash"></i>
-            </button>
-        </td>
-    </tr>`;
-    
-    // Agregar nueva fila de producto
-    document.getElementById('agregar-producto').addEventListener('click', function() {
-        const container = document.getElementById('productos-container');
-        container.insertAdjacentHTML('beforeend', nuevaFilaProducto);
+    // Función para calcular el subtotal de una fila
+    function calcularSubtotal(input) {
+        const fila = input.closest('tr');
+        const cantidad = parseFloat(fila.querySelector('.cantidad').value) || 0;
+        const costo = parseFloat(fila.querySelector('.costo').value) || 0;
+        const iva = parseFloat(fila.querySelector('.iva').value) || 0;
+        const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
         
-        // Configurar data-labels para móviles
-        const nuevaFila = container.lastElementChild;
-        const celdas = nuevaFila.querySelectorAll('td');
+        // Calcular subtotal con IVA y descuento
+        const subtotalSinDescuento = cantidad * costo;
+        const valorDescuento = subtotalSinDescuento * (descuento / 100);
+        const subtotalConDescuento = subtotalSinDescuento - valorDescuento;
+        const valorIva = subtotalConDescuento * (iva / 100);
+        const subtotalFinal = subtotalConDescuento + valorIva;
+        
+        // Mostrar subtotal en la fila
+        fila.querySelector('.subtotal').value = 'C$' + subtotalFinal.toFixed(2);
+        
+        // Actualizar totales
+        calcularTotales();
+    }
+
+    // Función para calcular los totales generales
+    function calcularTotales() {
+        let subtotalTotal = 0;
+        let ivaTotal = 0;
+        let descuentoTotal = 0;
+        
+        // Recorrer todas las filas de productos
+        document.querySelectorAll('#tabla-productos tbody tr').forEach(fila => {
+            const cantidad = parseFloat(fila.querySelector('.cantidad').value) || 0;
+            const costo = parseFloat(fila.querySelector('.costo').value) || 0;
+            const iva = parseFloat(fila.querySelector('.iva').value) || 0;
+            const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
+            
+            // Calcular valores para esta fila
+            const subtotalSinDescuento = cantidad * costo;
+            const valorDescuento = subtotalSinDescuento * (descuento / 100);
+            const subtotalConDescuento = subtotalSinDescuento - valorDescuento;
+            const valorIva = subtotalConDescuento * (iva / 100);
+            
+            // Acumular totales
+            subtotalTotal += subtotalConDescuento;
+            ivaTotal += valorIva;
+            descuentoTotal += valorDescuento;
+        });
+        
+        // Calcular total final
+        const totalFinal = subtotalTotal + ivaTotal;
+        
+        // Actualizar los elementos del resumen
+        document.getElementById('subtotal-total').textContent = formatCurrency(subtotalTotal);
+        document.getElementById('iva-total').textContent = formatCurrency(ivaTotal);
+        document.getElementById('descuento-total').textContent = formatCurrency(descuentoTotal);
+        document.getElementById('total-final').textContent = formatCurrency(totalFinal);
+    }
+
+    // Función para formatear números como moneda
+    function formatCurrency(amount) {
+        return 'C$' + amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    }
+
+    // Función para agregar nueva fila de producto
+    function agregarFila() {
+        const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
+        const nuevaFila = tabla.rows[0].cloneNode(true);
+
+        // Limpiar los valores de los inputs
+        nuevaFila.querySelectorAll("input").forEach(input => {
+            if (!input.classList.contains('total')) {
+                input.value = "";
+            } else {
+                input.value = "C$0.00";
+            }
+            input.classList.remove("is-invalid");
+        });
+        
+        // Resetear el select
+        const select = nuevaFila.querySelector("select");
+        select.selectedIndex = 0;
+        select.classList.remove("is-invalid");
+        
+        // Establecer ID de detalle como 0 (nuevo)
+        nuevaFila.querySelector('input[name="detalles_ids[]"]').value = "0";
+        
+        // Ocultar mensajes de error
+        nuevaFila.querySelectorAll(".invalid-feedback").forEach(feedback => {
+            feedback.style.display = "none";
+        });
+
+        // Asegurar que los atributos data-label estén presentes para móviles
+        const celdas = nuevaFila.querySelectorAll("td");
         const etiquetas = ["Producto", "Cantidad", "Precio Unitario", "IVA", "Descuento", "Total"];
-        
         celdas.forEach((celda, index) => {
             if (index < etiquetas.length) {
-                celda.setAttribute('data-label', etiquetas[index]);
+                celda.setAttribute("data-label", etiquetas[index]);
+            }
+        });
+
+        tabla.appendChild(nuevaFila);
+        
+        // Agregar eventos a los nuevos inputs
+        const inputs = nuevaFila.querySelectorAll('.cantidad, .costo, .iva, .descuento');
+        inputs.forEach(input => {
+            input.addEventListener('input', function() { calcularSubtotal(this); });
+        });
+        
+        // Evento para autocompletar precio al seleccionar producto
+        nuevaFila.querySelector('.producto-select').addEventListener('change', function() {
+            const precio = this.selectedOptions[0].dataset.precio;
+            if (precio) {
+                const costoInput = this.closest('tr').querySelector('.costo');
+                costoInput.value = precio;
+                calcularSubtotal(costoInput);
             }
         });
         
@@ -433,81 +709,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.innerWidth <= 576) {
             nuevaFila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-    });
-    
-    // Eliminar fila de producto
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.eliminar-producto')) {
-            const fila = e.target.closest('tr');
-            if (document.querySelectorAll('.producto-row').length > 1) {
-                fila.remove();
-                calcularTotales();
-            } else {
-                mostrarAlerta('warning', 'Advertencia', 'Debe haber al menos un producto en la venta');
-            }
-        }
-    });
-    
-    // Calcular total cuando cambian los valores
-    document.addEventListener('input', function(e) {
-        if (e.target.matches('.cantidad, .precio, .iva, .descuento')) {
-            const fila = e.target.closest('tr');
-            calcularSubtotal(fila);
+    }
+
+    // Función para eliminar fila
+    function eliminarFila(boton) {
+        const fila = boton.closest("tr");
+        const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
+        if (tabla.rows.length > 1) {
+            fila.remove();
             calcularTotales();
+        } else {
+            mostrarAlerta('warning', 'Advertencia!', 'Debe haber al menos un producto en la venta.');
         }
-    });
-    
-    // Autocompletar precio al seleccionar producto
-    document.addEventListener('change', function(e) {
-        if (e.target.matches('.producto-select')) {
-            const precio = e.target.selectedOptions[0].dataset.precio;
-            if (precio) {
-                e.target.closest('tr').querySelector('.precio').value = precio;
-                calcularSubtotal(e.target.closest('tr'));
-                calcularTotales();
-            }
-        }
-    });
-    
-    // Calcular subtotal por fila
-    function calcularSubtotal(fila) {
-        const cantidad = parseFloat(fila.querySelector('.cantidad').value) || 0;
-        const precio = parseFloat(fila.querySelector('.precio').value) || 0;
-        const iva = parseFloat(fila.querySelector('.iva').value) || 0;
-        const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
-        
-        const subtotal = cantidad * precio;
-        const total = subtotal + iva - descuento;
-        
-        fila.querySelector('.total').value = total.toFixed(2);
     }
-    
-    // Calcular totales generales
-    function calcularTotales() {
-        let subtotal = 0;
-        let totalIva = 0;
-        let totalDescuentos = 0;
-        let totalVenta = 0;
-        
-        document.querySelectorAll('.producto-row').forEach(fila => {
-            const cantidad = parseFloat(fila.querySelector('.cantidad').value) || 0;
-            const precio = parseFloat(fila.querySelector('.precio').value) || 0;
-            const iva = parseFloat(fila.querySelector('.iva').value) || 0;
-            const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
-            
-            subtotal += cantidad * precio;
-            totalIva += iva;
-            totalDescuentos += descuento;
-            totalVenta += (cantidad * precio) + iva - descuento;
-        });
-        
-        document.getElementById('subtotal').textContent = `C$${subtotal.toFixed(2)}`;
-        document.getElementById('total-iva').textContent = `C$${totalIva.toFixed(2)}`;
-        document.getElementById('total-descuentos').textContent = `C$${totalDescuentos.toFixed(2)}`;
-        document.getElementById('total-venta').textContent = `C$${totalVenta.toFixed(2)}`;
-    }
-    
-    // Mostrar alerta
+
+    // Función para mostrar alertas
     function mostrarAlerta(tipo, titulo, mensaje) {
         const alerta = document.createElement('div');
         alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
@@ -518,58 +734,103 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         document.body.appendChild(alerta);
         
+        // Eliminar automáticamente después de 4 segundos
         setTimeout(() => {
             if (alerta.parentNode) {
                 alerta.remove();
             }
         }, 4000);
     }
-    
-    // Validar formulario antes de enviar
-    document.getElementById('form-editar-venta').addEventListener('submit', function(e) {
+
+    // Función para validar el formulario de venta
+    function validarVenta() {
+        // Validar campos principales
+        const camposPrincipales = document.querySelectorAll('form [required]');
         let valido = true;
         
-        // Validar campos principales
-        const camposRequeridos = this.querySelectorAll('[required]');
-        camposRequeridos.forEach(campo => {
+        camposPrincipales.forEach(campo => {
             if (!campo.value) {
-                campo.classList.add('is-invalid');
+                campo.classList.add("is-invalid");
                 valido = false;
             } else {
-                campo.classList.remove('is-invalid');
+                campo.classList.remove("is-invalid");
             }
         });
-        
-        // Validar al menos un producto
-        if (document.querySelectorAll('.producto-row').length === 0) {
-            mostrarAlerta('danger', 'Error', 'Debe agregar al menos un producto');
-            valido = false;
+
+        // Validar productos
+        const filas = document.querySelectorAll("#tabla-productos tbody tr");
+        if (filas.length === 0) {
+            mostrarAlerta('danger', 'Error!', 'Debe agregar al menos un producto a la venta.');
+            return false;
         }
+        
+        // Validar cada fila de producto
+        filas.forEach(fila => {
+            const select = fila.querySelector("select");
+            const inputs = fila.querySelectorAll("input[required]");
+            
+            if (!select.value) {
+                valido = false;
+                select.classList.add("is-invalid");
+            } else {
+                select.classList.remove("is-invalid");
+            }
+            
+            inputs.forEach(input => {
+                if (!input.value && !input.classList.contains('total')) {
+                    valido = false;
+                    input.classList.add("is-invalid");
+                } else {
+                    input.classList.remove("is-invalid");
+                }
+            });
+        });
         
         if (!valido) {
-            e.preventDefault();
-            mostrarAlerta('danger', 'Error', 'Por favor complete todos los campos requeridos');
-            document.querySelector('.is-invalid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    });
-    
-    // Calcular totales iniciales
-    document.querySelectorAll('.producto-row').forEach(fila => {
-        calcularSubtotal(fila);
-    });
-    calcularTotales();
-    
-    // Configurar data-labels para móviles en filas existentes
-    document.querySelectorAll('.producto-row').forEach(fila => {
-        const celdas = fila.querySelectorAll('td');
-        const etiquetas = ["Producto", "Cantidad", "Precio Unitario", "IVA", "Descuento", "Total"];
-        
-        celdas.forEach((celda, index) => {
-            if (index < etiquetas.length) {
-                celda.setAttribute('data-label', etiquetas[index]);
+            // Desplazarse al primer error
+            const primerError = document.querySelector(".is-invalid");
+            if (primerError) {
+                primerError.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
+            
+            mostrarAlerta('danger', 'Error!', 'Por favor complete todos los campos requeridos.');
+        }
+        
+        return valido;
+    }
+
+    // Inicializar los data-labels para la primera fila y calcular totales iniciales
+    document.addEventListener("DOMContentLoaded", function() {
+        const filas = document.querySelectorAll("#tabla-productos tbody tr");
+        filas.forEach(fila => {
+            const celdas = fila.querySelectorAll("td");
+            const etiquetas = ["Producto", "Cantidad", "Precio Unitario", "IVA", "Descuento", "Total"];
+            
+            celdas.forEach((celda, index) => {
+                if (index < etiquetas.length) {
+                    celda.setAttribute("data-label", etiquetas[index]);
+                }
+            });
+
+            // Agregar eventos a los inputs existentes
+            const inputs = fila.querySelectorAll('.cantidad, .costo, .iva, .descuento');
+            inputs.forEach(input => {
+                input.addEventListener('input', function() { calcularSubtotal(this); });
+            });
+            
+            // Evento para autocompletar precio al seleccionar producto
+            fila.querySelector('.producto-select').addEventListener('change', function() {
+                const precio = this.selectedOptions[0].dataset.precio;
+                if (precio) {
+                    const costoInput = this.closest('tr').querySelector('.costo');
+                    costoInput.value = precio;
+                    calcularSubtotal(costoInput);
+                }
+            });
         });
+
+        // Calcular totales iniciales
+        calcularTotales();
     });
-});
 </script>
 {% endblock %}
