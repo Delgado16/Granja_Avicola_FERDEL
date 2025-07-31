@@ -1,0 +1,77 @@
+{% extends "layout.html" %}
+
+{% block title %}Facturas Emitidas{% endblock %}
+
+{% block main %}
+<div class="container" style="max-width: 1000px; margin-top: 32px;">
+    <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-body p-4">
+            <h2 class="text-center mb-4 text-primary" style="font-weight: 700;">
+                <i class="bi bi-receipt-cutoff"></i> Facturas Emitidas
+            </h2>
+
+            <!-- Filtros -->
+            <form method="get" class="row g-3 mb-4">
+                <div class="col-md-5">
+                    <input type="text" name="cliente" class="form-control" placeholder="Buscar por cliente" value="{{ cliente }}">
+                </div>
+                <div class="col-md-4">
+                    <input type="date" name="fecha" class="form-control" value="{{ fecha }}">
+                </div>
+                <div class="col-md-1 d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <a href="{{ url_for('visualizar_facturas') }}" class="btn btn-secondary">
+                        <i class="bi bi-eraser"></i> Limpiar
+                    </a>
+                </div>
+            </form>
+
+            <!-- Tabla desplazable -->
+            <div class="table-responsive rounded-4" style="max-height: 500px; overflow-y: auto;">
+                <table class="table table-hover table-bordered align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="text-center">N° Factura</th>
+                            <th class="text-center">Fecha</th>
+                            <th class="text-center">Cliente</th>
+                            <th class="text-center">Tipo de Pago</th>
+                            <th class="text-center">Observación</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for factura in facturas %}
+                        <tr>
+                            <td class="text-center">F-{{ '%05d'|format(factura.ID_Factura) }}</td>
+                            <td class="text-center">{{ factura.Fecha }}</td>
+                            <td class="text-center">{{ factura.Cliente }}</td>
+                            <td class="text-center">
+                                {% if factura.Credito_Contado == 1 %}
+                                    <span class="badge bg-warning text-dark px-3">Crédito</span>
+                                {% else %}
+                                    <span class="badge bg-success px-3">Contado</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">{{ factura.Observacion or '' }}</td>
+                            <td class="text-center">
+                                <a href="{{ url_for('generar_factura_pdf', venta_id=factura.ID_Factura) }}" class="btn btn-sm btn-secondary" target="_blank">
+                                    <i class="bi bi-file-earmark-pdf"></i> Ver PDF
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">No se encontraron facturas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

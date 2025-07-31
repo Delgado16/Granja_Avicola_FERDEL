@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block title %}Editar Tipo de Producto{% endblock %}
+{% block main %}
+<div class="container mt-4">
+    <h3 class="mb-3 text-warning text-center">Editar Tipo de Producto</h3>
+    <form method="post" class="row g-3 border rounded-3 p-3 bg-light mx-auto" style="max-width: 600px;">
+        <div class="col-md-8">
+            <input type="text" name="descripcion" class="form-control" value="{{ tipo.Descripcion }}" required>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

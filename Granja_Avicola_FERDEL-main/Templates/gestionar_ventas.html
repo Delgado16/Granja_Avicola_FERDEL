@@ -1,0 +1,252 @@
+{% extends "layout.html" %}
+{% block title %}Gestionar Ventas{% endblock %}
+{% block main %}
+
+<style>
+    :root {
+        --card-max-width: 900px;
+        --card-padding-lg: 1.5rem;
+        --card-padding-md: 1rem;
+        --card-padding-sm: 0.75rem;
+        --navbar-height-lg: 80px;
+        --navbar-height-sm: 100px;
+        --content-top-margin: 1rem;
+    }
+
+    .container.mt-4 {
+        max-width: var(--card-max-width);
+        margin: var(--content-top-margin) auto;
+        padding: var(--card-padding-lg);
+        margin-top: calc(var(--navbar-height-lg) + var(--content-top-margin));
+    }
+
+    .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: none;
+    }
+
+    .card-body {
+        padding: var(--card-padding-lg);
+    }
+
+    h2 {
+        font-size: clamp(1.5rem, 2.5vw, 2rem);
+        margin-bottom: 1.5rem;
+    }
+
+    .alert {
+        font-size: clamp(0.85rem, 1.2vw, 1rem);
+        padding: 0.75rem 1.25rem;
+    }
+
+    .table {
+        margin-bottom: 0;
+        width: 100%;
+        font-size: clamp(0.85rem, 1.2vw, 1rem);
+    }
+
+    .table thead th {
+        background-color: #343a40;
+        color: white;
+        font-weight: 500;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: clamp(0.75rem, 1vw, 0.85rem);
+        margin: 0.15rem;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 992px) {
+        .container.mt-4 {
+            padding: var(--card-padding-md);
+            margin-left: 1rem;
+            margin-right: 1rem;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        .table-responsive {
+            max-height: 500px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .container.mt-4 {
+            padding: var(--card-padding-sm);
+            margin-top: calc(var(--navbar-height-lg) + 0.75rem);
+        }
+
+        .table thead {
+            display: none;
+        }
+
+        .table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+        }
+
+        .table tbody td {
+            display: block;
+            text-align: right;
+            padding-left: 50%;
+            position: relative;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .table tbody td:last-child {
+            border-bottom: none;
+        }
+
+        .table tbody td::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 1rem;
+            width: 45%;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .table tbody td ul {
+            text-align: left;
+            padding-left: 0;
+        }
+
+        .table tbody td div {
+            text-align: center;
+        }
+
+        .btn-sm {
+            display: inline-block;
+            width: auto;
+            margin: 0.15rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .container.mt-4 {
+            padding: 0.75rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.5rem);
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        .table tbody td {
+            padding-left: 45%;
+        }
+
+        .table tbody td::before {
+            width: 40%;
+        }
+
+        .btn-sm {
+            padding: 0.2rem 0.4rem;
+            font-size: 0.7rem;
+        }
+    }
+
+    @media (max-width: 400px) {
+        .container.mt-4 {
+            padding: 0.5rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.25rem);
+        }
+
+        .table tbody td {
+            padding-left: 50%;
+        }
+
+        .table tbody td::before {
+            width: 45%;
+        }
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="text-center text-primary mb-4">Ventas Realizadas</h2>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+            {% endfor %}
+            {% endwith %}
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th data-label="Fecha">Fecha</th>
+                            <th data-label="Factura">No. Factura</th>
+                            <th data-label="Cliente">Cliente</th>
+                            <th data-label="Pago">Tipo de Pago</th>
+                            <th data-label="Productos">Productos</th>
+                            <th data-label="Acciones">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for venta in ventas %}
+                        <tr>
+                            <td data-label="Fecha">{{ venta.Fecha }}</td>
+                            <td data-label="Factura">{{ venta.NumeroFactura }}</td>
+                            <td data-label="Cliente">{{ venta.Cliente }}</td>
+                            <td data-label="Pago">{{ 'Crédito' if venta.Credito_Contado == 1 else 'Contado' }}</td>
+                            <td data-label="Productos">
+                                <ul class="mb-2 ps-3">
+                                    {% for producto in venta.Productos %}
+                                    <li>{{ producto }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                            <td data-label="Acciones">
+                                <div class="d-flex flex-wrap justify-content-center">
+                                    <a href="/ventas/{{ venta.ID_Movimiento }}"
+                                        class="btn btn-sm btn-info me-1 mb-1">Ver</a>
+                                    <a href="/editar_venta/{{ venta.ID_Factura }}"
+                                        class="btn btn-sm btn-warning mb-1 {% if venta.Credito_Contado == 1 and venta.tiene_pagos %}disabled{% endif %}"
+                                        {% if venta.Credito_Contado==1 and venta.tiene_pagos
+                                        %}title="No se puede editar ventas a crédito con pagos registrados" {% endif %}>
+                                        Editar
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // Configurar data-labels para la tabla en móviles
+        document.querySelectorAll("tbody tr").forEach(row => {
+            const celdas = row.querySelectorAll("td");
+            const etiquetas = ["Fecha", "Factura", "Cliente", "Pago", "Productos", "Acciones"];
+
+            celdas.forEach((celda, index) => {
+                if (index < etiquetas.length) {
+                    celda.setAttribute("data-label", etiquetas[index]);
+                }
+            });
+        });
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,236 @@
+{% extends "layout.html" %}
+{% block title %}Registrar Abono{% endblock %}
+
+{% block main %}
+<style>
+    :root {
+        --card-max-width: 800px;
+        --card-padding: 1.5rem;
+    }
+
+    .container-fluid.my-3 {
+        max-width: var(--card-max-width);
+        margin: 2rem auto;
+        padding: var(--card-padding);
+    }
+
+    .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.1);
+        border: none;
+    }
+
+    .card-header {
+        background-color: #0d6efd;
+        color: white;
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+        padding: 1rem 1.5rem;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+    }
+
+    .required-field::after {
+        content: " *";
+        color: #dc3545;
+    }
+
+    .btn-submit {
+        min-width: 120px;
+    }
+
+    .campos-adicionales {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #dee2e6;
+    }
+
+    @media (max-width: 768px) {
+        .container-fluid.my-3 {
+            padding: 1rem;
+        }
+        
+        .card-body {
+            padding: 1rem;
+        }
+    }
+</style>
+
+<div class="container-fluid my-3">
+    <div class="card shadow-lg">
+        <div class="card-header">
+            <h2 class="mb-0">
+                <i class="bi bi-cash-coin me-2"></i>Registrar Abono
+            </h2>
+        </div>
+        <div class="card-body">
+            <!-- Información de la factura -->
+            <div class="alert alert-info mb-4">
+                <div class="row">
+                    <div class="col-md-6 mb-2">
+                        <strong>Cliente:</strong> {{ factura.Cliente }}
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong>Factura:</strong> {{ factura.Num_Documento }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-2">
+                        <strong>Saldo Pendiente:</strong> 
+                        <span class="text-danger fw-bold">
+                            C$ {{ "{:,.2f}".format(factura.Monto_Movimiento).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                        </span>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong>Fecha:</strong> {{ fecha_actual }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulario de abono -->
+            <form method="POST" action="{{ url_for('registrar_cobro', id_venta=factura.ID_Movimiento) }}">
+                <div class="mb-3">
+                    <label for="monto" class="form-label required-field">Monto del Abono</label>
+                    <div class="input-group">
+                        <span class="input-group-text">C$</span>
+                        <input type="number" class="form-control" id="monto" name="monto" 
+                               step="0.01" min="0.01" max="{{ factura.Monto_Movimiento }}" 
+                               placeholder="Ingrese el monto a abonar" required>
+                    </div>
+                    <small class="text-muted">Máximo permitido: C$ {{ "{:,.2f}".format(factura.Monto_Movimiento).replace(",", "X").replace(".", ",").replace("X", ".") }}</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="metodo_pago" class="form-label required-field">Método de Pago</label>
+                    <select class="form-select" id="metodo_pago" name="metodo_pago" required 
+                            onchange="mostrarCamposAdicionales(this.value)">
+                        <option value="" selected disabled>Seleccione un método</option>
+                        <option value="1">Efectivo</option>
+                        <option value="2">Transferencia Bancaria</option>
+                        <option value="3">Tarjeta (Crédito/Débito)</option>
+                    </select>
+                </div>
+
+                <!-- Campos adicionales dinámicos -->
+                <div id="campos-efectivo" class="campos-adicionales" style="display: none;">
+                    <h6><i class="bi bi-cash-coin me-1"></i> Detalles de Pago en Efectivo</h6>
+                    <div class="mb-3">
+                        <label for="efectivo_recibido" class="form-label">Efectivo Recibido</label>
+                        <input type="number" class="form-control" id="efectivo_recibido" name="efectivo_recibido" step="0.01">
+                    </div>
+                </div>
+
+                <div id="campos-transferencia" class="campos-adicionales" style="display: none;">
+                    <h6><i class="bi bi-bank me-1"></i> Detalles de Transferencia</h6>
+                    <div class="mb-3">
+                        <label for="numero_transferencia" class="form-label">Número de Transferencia</label>
+                        <input type="text" class="form-control" id="numero_transferencia" name="numero_transferencia">
+                    </div>
+                    <div class="mb-3">
+                        <label for="banco" class="form-label">Banco Emisor</label>
+                        <input type="text" class="form-control" id="banco" name="banco">
+                    </div>
+                </div>
+
+                <div id="campos-tarjeta" class="campos-adicionales" style="display: none;">
+                    <h6><i class="bi bi-credit-card me-1"></i> Detalles de Tarjeta</h6>
+                    <div class="mb-3">
+                        <label for="tipo_tarjeta" class="form-label">Tipo de Tarjeta</label>
+                        <select class="form-select" id="tipo_tarjeta" name="tipo_tarjeta">
+                            <option value="credito">Crédito</option>
+                            <option value="debito">Débito</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ultimos_digitos" class="form-label">Últimos 4 dígitos</label>
+                        <input type="text" class="form-control" id="ultimos_digitos" name="ultimos_digitos" maxlength="4" pattern="\d{4}">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="comentarios" class="form-label">Comentarios (Opcional)</label>
+                    <textarea class="form-control" id="comentarios" name="comentarios" 
+                              rows="3" placeholder="Notas adicionales sobre el pago"></textarea>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('cobros') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Volver
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-submit">
+                        <i class="bi bi-check-circle me-1"></i> Registrar Abono
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function mostrarCamposAdicionales(metodo) {
+    // Ocultar todos primero
+    document.querySelectorAll('.campos-adicionales').forEach(div => {
+        div.style.display = 'none';
+    });
+    
+    // Mostrar los relevantes
+    if (metodo === '1') {
+        document.getElementById('campos-efectivo').style.display = 'block';
+    } else if (metodo === '2') {
+        document.getElementById('campos-transferencia').style.display = 'block';
+    } else if (metodo === '3') {
+        document.getElementById('campos-tarjeta').style.display = 'block';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const montoInput = document.getElementById('monto');
+    const maxMonto = parseFloat("{{ factura.Monto_Movimiento }}");
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const monto = parseFloat(montoInput.value);
+            
+            if (isNaN(monto)) {
+                e.preventDefault();
+                alert('Por favor ingrese un monto válido');
+                montoInput.focus();
+                return false;
+            }
+            
+            if (monto <= 0) {
+                e.preventDefault();
+                alert('El monto debe ser mayor a cero');
+                montoInput.focus();
+                return false;
+            }
+            
+            if (monto > maxMonto) {
+                e.preventDefault();
+                alert('El monto no puede ser mayor al saldo pendiente');
+                montoInput.focus();
+                return false;
+            }
+            
+            // Validar método de pago seleccionado
+            const metodoPago = document.getElementById('metodo_pago').value;
+            if (!metodoPago) {
+                e.preventDefault();
+                alert('Por favor seleccione un método de pago');
+                return false;
+            }
+            
+            return true;
+        });
+    }
+});
+</script>
+{% endblock %}

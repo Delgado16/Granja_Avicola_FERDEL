@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block title %}Registrar Pago{% endblock %}
+
+{% block main %}
+<div class="container" style="max-width: 700px; margin-top: 40px;">
+    <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-body p-4">
+            <h3 class="text-center text-primary mb-4" style="font-weight: 700;">
+                <i class="bi bi-credit-card"></i> Registrar Pago a Proveedor
+            </h3>
+
+            <!-- Detalle de la factura -->
+            <div class="mb-4">
+                <p><strong>Proveedor:</strong> {{ factura.Proveedor }}</p>
+                <p><strong>Documento:</strong> {{ factura.Num_Documento }}</p>
+                <p><strong>Saldo Pendiente:</strong> ${{ "%.2f"|format(factura.Monto_Movimiento) }}</p>
+            </div>
+
+            <!-- Formulario de pago -->
+            <form method="post">
+                <div class="mb-3">
+                    <label for="monto" class="form-label">Monto a abonar:</label>
+                    <input type="number" name="monto" id="monto" class="form-control" step="0.01" min="0.01" max="{{ factura.Monto_Movimiento }}" required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="metodo_pago" class="form-label">Método de Pago:</label>
+                    <select class="form-select" id="metodo_pago" name="metodo_pago" required>
+                        <option value="" disabled selected>Seleccione un método...</option>
+                        {% for metodo in metodos %}
+                            <option value="{{ metodo.ID_MetodoPago }}">{{ metodo.Nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('pagos') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left-circle"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Registrar Pago
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

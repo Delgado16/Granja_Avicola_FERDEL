@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+{% block title %}Clientes{% endblock %}
+{% block main %}
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h3 class="card-title text-center text-primary mb-4">Gestión de Clientes</h3>
+            <form method="post" class="row g-3 mb-4 p-3 bg-light rounded-3">
+                <h5 class="mb-3 text-secondary">Agregar Nuevo Cliente</h5>
+                <div class="col-md-4">
+                    <div class="form-floating">
+                        <input type="text" name="nombre" class="form-control" id="nombre" placeholder="Nombre" required>
+                        <label for="nombre">Nombre</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-floating">
+                        <input type="text" name="telefono" class="form-control" id="telefono" placeholder="Teléfono">
+                        <label for="telefono">Teléfono</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-floating">
+                        <input type="text" name="direccion" class="form-control" id="direccion" placeholder="Dirección">
+                        <label for="direccion">Dirección</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-floating">
+                        <input type="text" name="ruc_cedula" class="form-control" id="ruc_cedula" placeholder="RUC/Cédula">
+                        <label for="ruc_cedula">RUC/Cédula</label>
+                    </div>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success w-100">Agregar</button>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-dark">
+                        <tr class="text-center">
+                            <th>#</th>
+                            <th>Nombre</th>
+                            <th>Teléfono</th>
+                            <th>Dirección</th>
+                            <th>RUC/Cédula</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in clientes %}
+                        <tr>
+                            <td class="text-center">{{ c.ID_Cliente }}</td>
+                            <td>{{ c.Nombre }}</td>
+                            <td>{{ c.Telefono or '-' }}</td>
+                            <td>{{ c.Direccion or '-' }}</td>
+                            <td>{{ c.RUC_CEDULA or '-' }}</td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-2">
+                                    <a href="{{ url_for('editar_cliente', id=c.ID_Cliente) }}" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil-square"></i> Editar
+                                    </a>
+                                    <a href="{{ url_for('eliminar_cliente', id=c.ID_Cliente) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Seguro de eliminar?');">
+                                        <i class="bi bi-trash3"></i> Eliminar
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">No hay clientes registrados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

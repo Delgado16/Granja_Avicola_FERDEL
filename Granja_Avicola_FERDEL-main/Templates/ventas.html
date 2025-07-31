@@ -1,0 +1,853 @@
+{% extends "layout.html" %}
+
+{% block main %}
+<style>
+    :root {
+        --card-max-width: 900px;
+        --card-padding-lg: 1.5rem;
+        --card-padding-md: 1rem;
+        --card-padding-sm: 0.75rem;
+        --card-padding-xs: 0.5rem;
+        --navbar-height-lg: 80px;
+        --navbar-height-sm: 100px;
+    }
+
+    /* Layout dividido */
+    .split-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        margin-top: calc(var(--navbar-height-lg) + 1rem);
+        padding: 0 1rem;
+    }
+
+    .form-container {
+        flex: 1;
+        min-width: 300px;
+    }
+
+    .stock-container {
+        flex: 0 0 350px;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        max-height: 80vh;
+        overflow-y: auto;
+        position: sticky;
+        top: calc(var(--navbar-height-lg) + 1rem);
+    }
+
+    .stock-title {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #dee2e6;
+        color: #495057;
+        font-weight: 600;
+    }
+
+    .stock-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .stock-table th {
+        background-color: #e9ecef;
+        font-weight: 600;
+        color: #495057;
+        position: sticky;
+        top: 0;
+    }
+
+    .stock-table th,
+    .stock-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .stock-table tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    .stock-low {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .stock-warning {
+        color: #fd7e14;
+        font-weight: 600;
+    }
+
+    .stock-good {
+        color: #28a745;
+    }
+
+    #stock-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100px;
+        color: #6c757d;
+    }
+
+    #stock-content {
+        display: none;
+    }
+
+    /* Estilos base del formulario */
+    .card-container {
+        max-width: var(--card-max-width);
+        margin: 0 auto;
+        padding: var(--card-padding-lg);
+    }
+
+    .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: none;
+    }
+
+    .card-body {
+        padding: var(--card-padding-lg);
+    }
+
+    .card-title {
+        font-size: clamp(1.5rem, 2.5vw, 2rem);
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-size: clamp(0.85rem, 1vw, 0.9rem);
+        margin-bottom: 0.3rem;
+        font-weight: 500;
+    }
+
+    .form-control,
+    .form-select {
+        font-size: clamp(0.85rem, 1vw, 0.9rem);
+        padding: 0.5rem 0.75rem;
+    }
+
+    .form-control-sm,
+    .form-select-sm {
+        padding: 0.35rem 0.65rem;
+        font-size: clamp(0.8rem, 0.9vw, 0.85rem);
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1.5rem 0;
+        border-radius: 0.5rem;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    }
+
+    #tabla-productos {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    #tabla-productos th {
+        white-space: nowrap;
+        background-color: #f8f9fa;
+        font-weight: 600;
+        font-size: clamp(0.8rem, 1vw, 0.85rem);
+        padding: 0.75rem;
+    }
+
+    #tabla-productos td {
+        padding: 0.75rem;
+        vertical-align: middle;
+        font-size: clamp(0.8rem, 1vw, 0.85rem);
+    }
+
+    #tabla-productos .btn-sm {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    .btn-action {
+        margin-bottom: 1rem;
+    }
+
+    /* Estilos para pantallas grandes (desktop) */
+    @media (min-width: 1200px) {
+        .card-container {
+            max-width: 1000px;
+        }
+
+        .stock-container {
+            flex: 0 0 380px;
+        }
+    }
+
+    /* Estilos para tablets */
+    @media (max-width: 992px) {
+        .split-container {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .stock-container {
+            flex: 1;
+            max-height: none;
+            order: -1;
+            position: static;
+            max-height: 300px;
+        }
+
+        .card-container {
+            padding: var(--card-padding-md);
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        .row.g-3>[class^="col-"] {
+            margin-bottom: 0.75rem;
+        }
+
+        #tabla-productos th,
+        #tabla-productos td {
+            padding: 0.6rem;
+        }
+    }
+
+    /* Estilos para móviles grandes */
+    @media (max-width: 768px) {
+        .split-container {
+            margin: 0.75rem;
+            padding: 0;
+            margin-top: calc(var(--navbar-height-lg) + 0.75rem);
+        }
+
+        .card-container {
+            margin: 0;
+            padding: var(--card-padding-sm);
+        }
+
+        #tabla-productos th,
+        #tabla-productos td {
+            min-width: 90px;
+            padding: 0.5rem;
+        }
+
+        .stock-container {
+            padding: var(--card-padding-sm);
+        }
+    }
+
+    /* Estilos para móviles pequeños */
+    @media (max-width: 576px) {
+        .split-container {
+            margin: 0.5rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.5rem);
+        }
+
+        .card-container {
+            margin: 0;
+            padding: var(--card-padding-xs);
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        /* Tabla responsiva para móviles */
+        #tabla-productos {
+            display: block;
+            width: 100%;
+            border: 0;
+        }
+
+        #tabla-productos thead {
+            display: none;
+        }
+
+        #tabla-productos tbody,
+        #tabla-productos tr,
+        #tabla-productos td {
+            display: block;
+            width: 100%;
+            text-align: left;
+        }
+
+        #tabla-productos tr {
+            margin-bottom: 1.25rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            position: relative;
+            padding-top: 2.5rem;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        #tabla-productos td {
+            border: none;
+            padding: 0.5rem 0.75rem;
+            padding-left: 45%;
+        }
+
+        #tabla-productos td::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 0.75rem;
+            width: 40%;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #495057;
+        }
+
+        #tabla-productos td:first-child {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+        }
+
+        #tabla-productos td:last-child {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: auto;
+            padding: 0;
+            text-align: right;
+        }
+
+        #tabla-productos td:last-child::before {
+            display: none;
+        }
+
+        #tabla-productos select,
+        #tabla-productos input {
+            width: 100%;
+            margin-left: 0;
+            max-width: 100%;
+        }
+
+        #tabla-productos .btn {
+            width: auto;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .btn-action,
+        .btn-submit {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .stock-table th,
+        .stock-table td {
+            padding: 0.5rem;
+            font-size: 0.8rem;
+        }
+    }
+
+    /* Ajustes para pantallas muy pequeñas */
+    @media (max-width: 400px) {
+        .split-container {
+            margin: 0.25rem;
+            margin-top: calc(var(--navbar-height-sm) + 0.25rem);
+        }
+
+        .card-container {
+            margin: 0;
+        }
+
+        .card-body {
+            padding: 0.75rem;
+        }
+
+        #tabla-productos td {
+            padding-left: 50%;
+        }
+
+        #tabla-productos td::before {
+            width: 45%;
+        }
+
+        .stock-container {
+            padding: 0.75rem;
+        }
+    }
+</style>
+
+<div class="container split-container">
+    <!-- Contenedor del formulario (izquierda) -->
+    <div class="form-container">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h1 class="card-title text-center mb-4">Registrar Venta</h1>
+                <div id="error-message" class="alert alert-danger d-none" role="alert"></div>
+                <form action="/ventas" method="post" onsubmit="return validarVenta()">
+
+                    <!-- Primera fila -->
+                    <div class="row g-3">
+                        <div class="col-12 col-md-3">
+                            <label for="fecha" class="form-label">Fecha:</label>
+                            <input type="date" class="form-control form-control-sm" id="fecha" name="fecha" required>
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <label for="cliente" class="form-label">Cliente:</label>
+                            <select class="form-select form-select-sm" id="cliente" name="cliente" required>
+                                <option value="" disabled selected>Seleccione un cliente</option>
+                                {% for cliente in clientes %}
+                                <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="id_bodega" class="form-label">Bodega:</label>
+                            <select class="form-select form-select-sm" id="id_bodega" name="id_bodega" required>
+                                <option value="" disabled selected>Seleccione una bodega</option>
+                                {% for bodega in bodegas %}
+                                <option value="{{ bodega.id }}">{{ bodega.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Segunda fila -->
+                    <div class="row g-3 mt-2">
+                        <div class="col-12 col-md-4">
+                            <label for="n_factura" class="form-label">Nº Factura:</label>
+                            <input type="text" id="n_factura" name="n_factura" class="form-control form-control-sm"
+                                value="{{ n_factura }}" readonly>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="tipo_pago" class="form-label">Tipo de Pago:</label>
+                            <select id="tipo_pago" name="tipo_pago" class="form-select form-select-sm"
+                                onchange="toggleFechaVencimiento()">
+                                <option value="0">Contado</option>
+                                <option value="1">Crédito</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4" id="fecha_vencimiento_row" style="display: none;">
+                            <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento:</label>
+                            <input type="date" id="fecha_vencimiento" name="fecha_vencimiento"
+                                class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+                    <!-- Observación -->
+                    <div class="mb-3 mt-3">
+                        <label for="observacion" class="form-label">Observación:</label>
+                        <textarea class="form-control form-control-sm" id="observacion" name="observacion"
+                            rows="2"></textarea>
+                    </div>
+
+                    <!-- Tabla de productos -->
+                    <div class="mb-3">
+                        <h4 class="section-title">Agregar Productos</h4>
+                        <button type="button" class="btn btn-secondary btn-sm btn-action" onclick="agregarFila()">
+                            <i class="bi bi-plus-circle"></i> Agregar Producto
+                        </button>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm text-center" id="tabla-productos">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th data-label="Producto">Producto</th>
+                                        <th data-label="Cantidad" style="width: 6rem;">Cantidad</th>
+                                        <th data-label="Precio" style="width: 7rem;">Precio</th>
+                                        <th data-label="IVA" style="width: 6rem;">IVA</th>
+                                        <th data-label="Descuento" style="width: 8rem;">Descuento</th>
+                                        <th style="width: 6rem;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td data-label="Producto">
+                                            <select name="productos[]"
+                                                class="form-select form-select-sm producto-select" required>
+                                                <option value="" disabled selected>Seleccione un producto</option>
+                                            </select>
+                                        </td>
+                                        <td data-label="Cantidad">
+                                            <input type="number" name="cantidades[]" step="any" min="0"
+                                                class="form-control form-control-sm" required>
+                                        </td>
+                                        <td data-label="Precio">
+                                            <input type="number" name="costos[]" step="any" min="0"
+                                                class="form-control form-control-sm" required>
+                                        </td>
+                                        <td data-label="IVA">
+                                            <input type="number" name="ivas[]" step="any" min="0"
+                                                class="form-control form-control-sm" required>
+                                        </td>
+                                        <td data-label="Descuento">
+                                            <input type="number" name="descuentos[]" step="any" min="0"
+                                                class="form-control form-control-sm" required>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-danger btn-sm"
+                                                onclick="eliminarFila(this)">
+                                                <i class="bi bi-trash"></i> Eliminar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-submit w-100 py-2">
+                        <i class="bi bi-save"></i> Registrar Venta
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor del stock (derecha) -->
+    <div class="stock-container">
+        <h3 class="stock-title">Stock por Bodega</h3>
+        <div id="stock-loading" class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Seleccione una bodega para ver el stock</p>
+        </div>
+        <div id="stock-content" style="display: none;">
+            <table class="stock-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Stock</th>
+                    </tr>
+                </thead>
+                <tbody id="stock-body">
+                    <!-- Aquí se cargarán los productos dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Configuración inicial de data-labels para la tabla
+    document.addEventListener("DOMContentLoaded", function () {
+        const primeraFila = document.querySelector("#tabla-productos tbody tr");
+        if (primeraFila) {
+            const celdas = primeraFila.querySelectorAll("td");
+            const etiquetas = ["Producto", "Cantidad", "Precio", "IVA", "Descuento"];
+
+            celdas.forEach((celda, index) => {
+                if (index < etiquetas.length) {
+                    celda.setAttribute("data-label", etiquetas[index]);
+                }
+            });
+        }
+
+        // Establecer fecha actual por defecto
+        const fechaInput = document.getElementById("fecha");
+        if (fechaInput && !fechaInput.value) {
+            const today = new Date();
+            const formattedDate = today.toISOString().substr(0, 10);
+            fechaInput.value = formattedDate;
+        }
+    });
+
+    function agregarFila() {
+        const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
+        const nuevaFila = tabla.rows[0].cloneNode(true);
+
+        // Limpiar valores
+        nuevaFila.querySelectorAll("input").forEach(input => input.value = "");
+        nuevaFila.querySelector("select").selectedIndex = 0;
+
+        // Asegurar data-labels
+        const celdas = nuevaFila.querySelectorAll("td");
+        const etiquetas = ["Producto", "Cantidad", "Precio", "IVA", "Descuento"];
+        celdas.forEach((celda, index) => {
+            if (index < etiquetas.length) {
+                celda.setAttribute("data-label", etiquetas[index]);
+            }
+        });
+
+        tabla.appendChild(nuevaFila);
+
+        // Desplazarse a la nueva fila en móviles
+        if (window.innerWidth <= 576) {
+            nuevaFila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    function eliminarFila(boton) {
+        const fila = boton.closest("tr");
+        const tabla = document.getElementById("tabla-productos").getElementsByTagName('tbody')[0];
+        if (tabla.rows.length > 1) {
+            fila.remove();
+        } else {
+            mostrarAlerta('warning', 'Advertencia', 'Debe haber al menos un producto en la venta.');
+        }
+    }
+
+    function mostrarAlerta(tipo, titulo, mensaje) {
+        const alerta = document.createElement('div');
+        alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed end-0 m-3`;
+        alerta.style.zIndex = '1100';
+        alerta.innerHTML = `
+            <strong>${titulo}</strong> ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alerta);
+
+        setTimeout(() => {
+            if (alerta.parentNode) {
+                alerta.remove();
+            }
+        }, 4000);
+    }
+
+    function validarVenta() {
+        let valido = true;
+
+        // Validar campos principales
+        document.querySelectorAll('form [required]').forEach(campo => {
+            if (!campo.value) {
+                campo.classList.add("is-invalid");
+                valido = false;
+            } else {
+                campo.classList.remove("is-invalid");
+            }
+        });
+
+        // Validar productos
+        const filas = document.querySelectorAll("#tabla-productos tbody tr");
+        if (filas.length === 0) {
+            mostrarAlerta('danger', 'Error', 'Debe agregar al menos un producto a la venta.');
+            return false;
+        }
+
+        filas.forEach(fila => {
+            const select = fila.querySelector("select");
+            const inputs = fila.querySelectorAll("input[required]");
+
+            if (!select.value) {
+                select.classList.add("is-invalid");
+                valido = false;
+            } else {
+                select.classList.remove("is-invalid");
+            }
+
+            inputs.forEach(input => {
+                if (!input.value) {
+                    input.classList.add("is-invalid");
+                    valido = false;
+                } else {
+                    input.classList.remove("is-invalid");
+                }
+            });
+        });
+
+        if (!valido) {
+            const primerError = document.querySelector(".is-invalid");
+            if (primerError) {
+                primerError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            mostrarAlerta('danger', 'Error', 'Por favor complete todos los campos requeridos.');
+        }
+
+        return valido;
+    }
+
+    function toggleFechaVencimiento() {
+        const tipoPago = document.getElementById('tipo_pago').value;
+        document.getElementById('fecha_vencimiento_row').style.display = tipoPago == "1" ? "block" : "none";
+    }
+
+    // Función para actualizar el stock en el panel derecho
+    function actualizarStockVisual(idBodega) {
+        const loadingElement = document.getElementById('stock-loading');
+        const contentElement = document.getElementById('stock-content');
+        const stockBody = document.getElementById('stock-body');
+
+        loadingElement.style.display = 'block';
+        contentElement.style.display = 'none';
+        stockBody.innerHTML = '';
+
+        if (!idBodega) {
+            loadingElement.innerHTML = '<p>Seleccione una bodega para ver el stock</p>';
+            return;
+        }
+
+        loadingElement.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando stock...</p>
+        `;
+
+        fetch(`/stock_por_bodega/${idBodega}`)
+            .then(res => res.json())
+            .then(data => {
+                loadingElement.style.display = 'none';
+                contentElement.style.display = 'block';
+
+                if (data.length === 0) {
+                    stockBody.innerHTML = '<tr><td colspan="2" class="text-center">No hay productos en esta bodega</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(producto => {
+                    const stockClass = producto.stock <= 5 ? 'stock-low' : '';
+                    html += `
+                        <tr>
+                            <td>${producto.descripcion}</td>
+                            <td class="${stockClass}">${producto.stock}</td>
+                        </tr>
+                    `;
+                });
+
+                stockBody.innerHTML = html;
+            })
+            .catch(err => {
+                console.error("Error al cargar stock:", err);
+                loadingElement.innerHTML = '<p class="text-danger">Error al cargar el stock</p>';
+            });
+    }
+
+    // Cargar productos al cambiar la bodega (para el formulario)
+    document.getElementById("id_bodega").addEventListener("change", function () {
+        const idBodega = this.value;
+
+        // Actualizar el select de productos en el formulario
+        if (!idBodega) return;
+
+        fetch(`/productos_por_bodega/${idBodega}`)
+            .then(res => res.json())
+            .then(data => {
+                const opciones = ['<option value="" disabled selected>Seleccione un producto</option>'];
+                data.forEach(producto => {
+                    opciones.push(`<option value="${producto.id}" data-stock="${producto.stock}">${producto.descripcion}</option>`);
+                });
+
+                document.querySelectorAll(".producto-select").forEach(select => {
+                    select.innerHTML = opciones.join("");
+                });
+            })
+            .catch(err => {
+                console.error("Error al cargar productos:", err);
+                mostrarAlerta('danger', 'Error', 'No se pudieron cargar los productos para la bodega seleccionada.');
+            });
+
+        // Actualizar el panel de stock
+        actualizarStockVisual(idBodega);
+    });
+
+    // Actualizar el stock cuando se selecciona un producto
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.classList.contains('producto-select')) {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            const stock = selectedOption.getAttribute('data-stock');
+            const cantidadInput = e.target.closest('tr').querySelector('input[name="cantidades[]"]');
+
+            if (stock && cantidadInput) {
+                cantidadInput.setAttribute('max', stock);
+                cantidadInput.setAttribute('title', `Máximo disponible: ${stock}`);
+            }
+        }
+    });
+
+    // Función para actualizar el stock en el panel derecho
+    function actualizarStockVisual(idBodega) {
+        const loadingElement = document.getElementById('stock-loading');
+        const contentElement = document.getElementById('stock-content');
+        const stockBody = document.getElementById('stock-body');
+
+        loadingElement.style.display = 'block';
+        contentElement.style.display = 'none';
+        stockBody.innerHTML = '';
+
+        if (!idBodega) {
+            loadingElement.innerHTML = '<p>Seleccione una bodega para ver el stock</p>';
+            return;
+        }
+
+        loadingElement.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando stock...</p>
+        `;
+
+        fetch(`/stock_por_bodega/${idBodega}`)
+            .then(res => res.json())
+            .then(data => {
+                loadingElement.style.display = 'none';
+                contentElement.style.display = 'block';
+
+                if (data.length === 0) {
+                    stockBody.innerHTML = '<tr><td colspan="2" class="text-center">No hay productos en esta bodega</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(producto => {
+                    const stockClass = producto.stock <= 5 ? 'stock-low' : '';
+                    html += `
+                        <tr>
+                            <td>${producto.descripcion}</td>
+                            <td class="${stockClass}">${producto.stock}</td>
+                        </tr>
+                    `;
+                });
+
+                stockBody.innerHTML = html;
+            })
+            .catch(err => {
+                console.error("Error al cargar stock:", err);
+                loadingElement.innerHTML = '<p class="text-danger">Error al cargar el stock</p>';
+            });
+    }
+
+    // Cargar productos al cambiar la bodega (para el formulario)
+    document.getElementById("id_bodega").addEventListener("change", function () {
+        const idBodega = this.value;
+
+        // Actualizar el select de productos en el formulario
+        if (!idBodega) return;
+
+        fetch(`/productos_por_bodega/${idBodega}`)
+            .then(res => res.json())
+            .then(data => {
+                const opciones = ['<option value="" disabled selected>Seleccione un producto</option>'];
+                data.forEach(producto => {
+                    opciones.push(`<option value="${producto.id}" data-stock="${producto.stock}">${producto.descripcion}</option>`);
+                });
+
+                document.querySelectorAll(".producto-select").forEach(select => {
+                    select.innerHTML = opciones.join("");
+                });
+            })
+            .catch(err => {
+                console.error("Error al cargar productos:", err);
+                mostrarAlerta('danger', 'Error', 'No se pudieron cargar los productos para la bodega seleccionada.');
+            });
+
+        // Actualizar el panel de stock
+        actualizarStockVisual(idBodega);
+    });
+
+    // Actualizar el stock cuando se selecciona un producto
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.classList.contains('producto-select')) {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            const stock = selectedOption.getAttribute('data-stock');
+            const cantidadInput = e.target.closest('tr').querySelector('input[name="cantidades[]"]');
+
+            if (stock && cantidadInput) {
+                cantidadInput.setAttribute('max', stock);
+                cantidadInput.setAttribute('title', `Máximo disponible: ${stock}`);
+            }
+        }
+    });
+</script>
+{% endblock %}
