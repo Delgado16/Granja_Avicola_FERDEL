@@ -1028,11 +1028,14 @@ def productos_por_bodega(id_bodega):
         return jsonify([])
 
 ########################################################################
+
 @app.route("/editar_venta/<int:venta_id>", methods=["GET", "POST"])
 @login_required
 def editar_venta(venta_id):
+    
     if request.method == "POST":
         try:
+            # Obtener datos del formulario
             fecha = request.form.get("fecha")
             cliente_id = request.form.get("cliente")
             tipo_pago = request.form.get("tipo_pago")
@@ -1042,12 +1045,12 @@ def editar_venta(venta_id):
             productos = request.form.getlist("productos[]")
             cantidades = request.form.getlist("cantidades[]")
             costos = request.form.getlist("costos[]")
-            ivas = request.form.getlist("ivas[]")
-            descuentos = request.form.getlist("descuentos[]")
-            detalles_ids = request.form.getlist("detalles_ids[]")  # IDs de los detalles existentes
+            ivas_porcentajes = request.form.getlist("ivas[]")
+            descuentos_porcentajes = request.form.getlist("descuentos[]")
+            detalles_ids = request.form.getlist("detalles_ids[]")
 
-            # === VALIDACIONES ===
-            if not fecha or not cliente_id or not tipo_pago or not id_bodega:
+            # Validaciones básicas
+            if not all([fecha, cliente_id, tipo_pago, id_bodega]):
                 flash("Todos los campos obligatorios deben estar completos.", "danger")
                 return redirect(url_for("editar_venta", venta_id=venta_id))
 
@@ -1059,15 +1062,16 @@ def editar_venta(venta_id):
                 flash("Error en los datos de productos.", "danger")
                 return redirect(url_for("editar_venta", venta_id=venta_id))
 
+            # Convertir tipos
             tipo_pago = int(tipo_pago)
             id_bodega = int(id_bodega)
-            id_empresa = 1  # Ajusta según tu lógica
+            id_empresa = 1  # Ajustar según necesidad
             total_venta = 0
 
-            # === INICIO DE TRANSACCIÓN ===
-            db.execute("BEGIN")
+            # Iniciar transacción
+            db.execute("BEGIN TRANSACTION")
 
-            # Obtener información de la venta original
+            # Obtener información original
             venta_original = db.execute("""
                 SELECT * FROM Facturacion WHERE ID_Factura = ?
             """, venta_id)
@@ -1077,7 +1081,7 @@ def editar_venta(venta_id):
                 flash("La venta que intentas editar no existe.", "danger")
                 return redirect(url_for("gestionar_ventas"))
 
-            # Obtener el movimiento de inventario asociado
+            # Obtener movimiento de inventario
             movimiento_original = db.execute("""
                 SELECT * FROM Movimientos_Inventario 
                 WHERE N_Factura = ? AND ID_Empresa = ?
@@ -1085,17 +1089,16 @@ def editar_venta(venta_id):
             
             if not movimiento_original:
                 db.execute("ROLLBACK")
-                flash("No se encontró el movimiento de inventario asociado a esta venta.", "danger")
+                flash("No se encontró el movimiento de inventario asociado.", "danger")
                 return redirect(url_for("gestionar_ventas"))
 
             movimiento_id = movimiento_original[0]["ID_Movimiento"]
 
-            # 1. Revertir los cambios de la venta original
-            # a. Revertir inventario
+            # 1. Revertir cambios originales
             detalles_originales = db.execute("""
                 SELECT * FROM Detalle_Facturacion WHERE ID_Factura = ?
             """, venta_id)
-            
+
             for detalle in detalles_originales:
                 db.execute("""
                     UPDATE Productos SET Existencias = Existencias + ?
@@ -1107,18 +1110,18 @@ def editar_venta(venta_id):
                     WHERE ID_Bodega = ? AND ID_Producto = ?
                 """, detalle["Cantidad"], id_bodega, detalle["ID_Producto"])
 
-            # b. Eliminar detalles originales
+            # Eliminar registros originales
             db.execute("DELETE FROM Detalle_Facturacion WHERE ID_Factura = ?", venta_id)
             db.execute("DELETE FROM Detalle_Movimiento_Inventario WHERE ID_Movimiento = ?", movimiento_id)
             
-            # c. Eliminar cuenta por cobrar si era crédito
+            # Eliminar cuenta por cobrar si era crédito
             if venta_original[0]["Credito_Contado"] == 1:
                 db.execute("""
                     DELETE FROM Detalle_Cuentas_Por_Cobrar 
                     WHERE ID_Movimiento = ? AND Tipo_Movimiento = 2
                 """, venta_id)
 
-            # 2. Actualizar la factura principal
+            # 2. Actualizar factura principal
             db.execute("""
                 UPDATE Facturacion 
                 SET Fecha = ?, IDCliente = ?, Credito_Contado = ?, Observacion = ?
@@ -1132,51 +1135,59 @@ def editar_venta(venta_id):
                 WHERE ID_Movimiento = ?
             """, fecha, tipo_pago, observacion, id_bodega, movimiento_id)
 
-            # 4. Insertar los nuevos productos
+            # 4. Insertar nuevos productos
             for i in range(len(productos)):
                 id_producto = int(productos[i])
                 cantidad = float(cantidades[i])
                 costo = float(costos[i])
-                iva = float(ivas[i])
-                descuento = float(descuentos[i])
+                iva_porcentaje = float(ivas_porcentajes[i])
+                descuento_porcentaje = float(descuentos_porcentajes[i])
 
-                # Validación: mínimo 50 cajillas
-                if cantidad < 0:
-                    nombre_prod = db.execute("SELECT Descripcion FROM Productos WHERE ID_Producto = ?", id_producto)[0]["Descripcion"]
+                # Validaciones
+                if not (0 <= descuento_porcentaje <= 100) or not (0 <= iva_porcentaje <= 100):
                     db.execute("ROLLBACK")
-                    flash(f"No se permite vender menos de 50 cajillas del producto '{nombre_prod}'.", "danger")
+                    flash("Los porcentajes deben estar entre 0 y 100.", "danger")
                     return redirect(url_for("editar_venta", venta_id=venta_id))
                 
-                # Validación: existencia en bodega
+                # Verificar existencias
                 existencia = db.execute("""
                     SELECT Existencias FROM Inventario_Bodega
                     WHERE ID_Bodega = ? AND ID_Producto = ?
                 """, id_bodega, id_producto)
+                
                 if not existencia or existencia[0]["Existencias"] < cantidad:
-                    nombre_prod = db.execute("SELECT Descripcion FROM Productos WHERE ID_Producto = ?", id_producto)[0]["Descripcion"]
+                    producto_info = db.execute("SELECT Descripcion FROM Productos WHERE ID_Producto = ?", id_producto)
+                    nombre_prod = producto_info[0]["Descripcion"] if producto_info else "producto desconocido"
                     db.execute("ROLLBACK")
-                    flash(f"No hay suficiente stock del producto '{nombre_prod}' en la bodega seleccionada.", "danger")
+                    flash(f"No hay suficiente stock de '{nombre_prod}' en la bodega.", "danger")
                     return redirect(url_for("editar_venta", venta_id=venta_id))
 
-                total = (cantidad * costo) - descuento + iva
+                # Cálculos
+                subtotal = cantidad * costo
+                descuento_valor = subtotal * (descuento_porcentaje / 100)
+                iva_valor = subtotal * (iva_porcentaje / 100)
+                total = subtotal - descuento_valor + iva_valor
                 total_venta += total
 
-                # Detalle de facturación
+                # Insertar detalle
                 db.execute("""
-                    INSERT INTO Detalle_Facturacion (ID_Factura, ID_Producto, Cantidad, Costo, Descuento, IVA, Total)
+                    INSERT INTO Detalle_Facturacion 
+                    (ID_Factura, ID_Producto, Cantidad, Costo, Descuento, IVA, Total)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, venta_id, id_producto, cantidad, costo, descuento, iva, total)
+                """, venta_id, id_producto, cantidad, costo, descuento_valor, iva_valor, total)
 
-                # Movimiento de inventario
+                # Insertar movimiento
                 db.execute("""
                     INSERT INTO Detalle_Movimiento_Inventario (
                         ID_Movimiento, ID_TipoMovimiento, ID_Producto,
                         Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, movimiento_id, movimiento_original[0]["ID_TipoMovimiento"], id_producto,
-                     cantidad, costo, iva, descuento, total, -cantidad)
+                """, 
+                    movimiento_id, movimiento_original[0]["ID_TipoMovimiento"], id_producto,
+                    cantidad, costo, iva_valor, descuento_valor, total, -cantidad
+                )
 
-                # Actualizar inventario
+                # Actualizar inventarios
                 db.execute("""
                     UPDATE Productos SET Existencias = Existencias - ?
                     WHERE ID_Producto = ?
@@ -1187,65 +1198,80 @@ def editar_venta(venta_id):
                     WHERE ID_Bodega = ? AND ID_Producto = ?
                 """, cantidad, id_bodega, id_producto)
 
-            # Si es crédito, registrar cuenta por cobrar
+            # Registrar cuenta por cobrar si es crédito
             if tipo_pago == 1:
-                fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).date()
+                fecha_vencimiento = (datetime.strptime(fecha, '%Y-%m-%d') + timedelta(days=30)).strftime("%Y-%m-%d")
                 db.execute("""
                     INSERT INTO Detalle_Cuentas_Por_Cobrar (
                         ID_Movimiento, Fecha, ID_Cliente, Num_Documento, Observacion,
                         Fecha_Vencimiento, Tipo_Movimiento, Monto_Movimiento,
-                        IVA, Retencion, ID_Empresa
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
-                """, venta_id, fecha, cliente_id, f"F-{venta_id:05d}", observacion,
-                     fecha_vencimiento.strftime("%Y-%m-%d"), 2, total_venta, id_empresa)
+                        IVA, Retencion, ID_Empresa, Saldo_Pendiente
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
+                """, 
+                    venta_id, fecha, cliente_id, f"F-{venta_id:05d}", observacion,
+                    fecha_vencimiento, 2, total_venta, id_empresa, total_venta
+                )
 
             db.execute("COMMIT")
             flash("Venta actualizada correctamente.", "success")
             return redirect(url_for("gestionar_ventas"))
 
         except Exception as e:
-            print(traceback.format_exc())
             db.execute("ROLLBACK")
-            flash(f"Error al actualizar la venta: {e}", "danger")
+            flash(f"Error al actualizar la venta: {str(e)}", "danger")
             return redirect(url_for("editar_venta", venta_id=venta_id))
 
-    # === GET ===
-    # Obtener datos de la venta existente
-    venta = db.execute("""
-        SELECT f.*, c.Nombre AS cliente_nombre 
-        FROM Facturacion f
-        JOIN Clientes c ON f.IDCliente = c.ID_Cliente
-        WHERE f.ID_Factura = ?
-    """, venta_id)
-    
-    if not venta:
-        flash("La venta que intentas editar no existe.", "danger")
+    # === MÉTODO GET ===
+    try:
+        # Obtener datos de la venta
+        venta = db.execute("""
+            SELECT f.*, c.Nombre AS cliente_nombre 
+            FROM Facturacion f
+            JOIN Clientes c ON f.IDCliente = c.ID_Cliente
+            WHERE f.ID_Factura = ?
+        """, venta_id)
+        
+        if not venta:
+            flash("La venta que intentas editar no existe.", "danger")
+            return redirect(url_for("gestionar_ventas"))
+
+        # Obtener detalles
+        detalles = db.execute("""
+            SELECT df.*, p.Descripcion AS producto_nombre,
+                   CASE WHEN (df.Cantidad * df.Costo) > 0 
+                        THEN (df.IVA * 100) / (df.Cantidad * df.Costo) 
+                        ELSE 0 END AS iva_porcentaje,
+                   CASE WHEN (df.Cantidad * df.Costo) > 0 
+                        THEN (df.Descuento * 100) / (df.Cantidad * df.Costo) 
+                        ELSE 0 END AS descuento_porcentaje,
+                   p.Precio_Venta AS precio_sugerido
+            FROM Detalle_Facturacion df
+            JOIN Productos p ON df.ID_Producto = p.ID_Producto
+            WHERE df.ID_Factura = ?
+        """, venta_id)
+
+        # Obtener datos para selects
+        clientes = db.execute("SELECT ID_Cliente AS id, Nombre AS nombre FROM Clientes")
+        productos = db.execute("""
+            SELECT ID_Producto AS id, Descripcion AS descripcion, Precio_Venta AS precio 
+            FROM Productos WHERE Estado = 1
+        """)
+        bodegas = db.execute("SELECT ID_Bodega AS id, Nombre AS nombre FROM Bodegas")
+
+        n_factura = f"F-{venta_id:05d}"
+
+        return render_template("editar_venta.html", 
+                            venta=venta[0] if venta else None, 
+                            detalles=detalles,
+                            clientes=clientes, 
+                            productos=productos, 
+                            bodegas=bodegas, 
+                            n_factura=n_factura)
+
+    except Exception as e:
+        flash(f"Error al cargar la venta: {str(e)}", "danger")
         return redirect(url_for("gestionar_ventas"))
-
-    venta = venta[0]
-
-    # Obtener detalles de la venta
-    detalles = db.execute("""
-        SELECT df.*, p.Descripcion AS producto_nombre
-        FROM Detalle_Facturacion df
-        JOIN Productos p ON df.ID_Producto = p.ID_Producto
-        WHERE df.ID_Factura = ?
-    """, venta_id)
-
-    # Obtener datos para los selects
-    clientes = db.execute("SELECT ID_Cliente AS id, Nombre AS nombre FROM Clientes")
-    productos = db.execute("SELECT ID_Producto AS id, Descripcion AS descripcion FROM Productos")
-    bodegas = db.execute("SELECT ID_Bodega AS id, Nombre AS nombre FROM Bodegas")
-
-    n_factura = f"F-{venta_id:05d}"
-
-    return render_template("editar_venta.html", 
-                         venta=venta, 
-                         detalles=detalles,
-                         clientes=clientes, 
-                         productos=productos, 
-                         bodegas=bodegas, 
-                         n_factura=n_factura)
+    
 #fin de ruta de ventas
 #####################################################################################################
 # ruta de cobros

@@ -491,8 +491,8 @@
                                     <th data-label="Producto">Producto</th>
                                     <th data-label="Cantidad" style="width: 6rem;">Cantidad</th>
                                     <th data-label="Precio Unitario" style="width: 7rem;">Precio Unitario</th>
-                                    <th data-label="IVA" style="width: 6rem;">IVA</th>
-                                    <th data-label="Descuento" style="width: 8rem;">Descuento</th>
+                                    <th data-label="IVA %" style="width: 6rem;">IVA %</th>
+                                    <th data-label="Descuento %" style="width: 8rem;">Descuento %</th>
                                     <th data-label="Total" style="width: 8rem;">Total</th>
                                     <th style="width: 6rem;">Acción</th>
                                 </tr>
@@ -511,14 +511,14 @@
                                             </option>
                                             {% endfor %}
                                         </select>
-                                        <input type="hidden" name="detalles_ids[]" value="{{ detalle.ID_Detalle }}">
+                                        <input type="hidden" name="detalles_ids[]" value="{{ detalle.ID_Detalle if detalle.ID_Detalle else 0 }}">
                                         <div class="invalid-feedback">Seleccione un producto</div>
                                     </td>
                                     <td data-label="Cantidad">
                                         <input type="number" name="cantidades[]" step="any" min="1" 
                                                class="form-control cantidad" value="{{ detalle.Cantidad }}" required
                                                oninput="calcularSubtotal(this)">
-                                        <div class="invalid-feedback">Ingrese cantidad</div>
+                                        <div class="invalid-feedback">Ingrese cantidad (mínimo 50)</div>
                                     </td>
                                     <td data-label="Precio Unitario">
                                         <input type="number" name="costos[]" step="any" min="0" 
@@ -526,21 +526,24 @@
                                                oninput="calcularSubtotal(this)">
                                         <div class="invalid-feedback">Ingrese precio</div>
                                     </td>
-                                    <td data-label="IVA">
-                                        <input type="number" name="ivas[]" step="any" min="0" 
-                                               class="form-control iva" value="{{ detalle.IVA }}" required
+                                    <td data-label="IVA %">
+                                        <input type="number" name="ivas[]" step="0.01" min="0" max="100"
+                                               class="form-control iva" value="{{ detalle.iva_porcentaje|default(15)|round(2) }}" required
                                                oninput="calcularSubtotal(this)">
-                                        <div class="invalid-feedback">Ingrese IVA</div>
+                                        <div class="invalid-feedback">Ingrese IVA (0-100%)</div>
                                     </td>
-                                    <td data-label="Descuento">
-                                        <input type="number" name="descuentos[]" step="any" min="0" 
-                                               class="form-control descuento" value="{{ detalle.Descuento }}" required
+                                    <td data-label="Descuento %">
+                                        <input type="number" name="descuentos[]" step="0.01" min="0" max="100"
+                                               class="form-control descuento" value="{{ detalle.descuento_porcentaje|default(0)|round(2) }}" required
                                                oninput="calcularSubtotal(this)">
-                                        <div class="invalid-feedback">Ingrese descuento</div>
+                                        <div class="invalid-feedback">Ingrese descuento (0-100%)</div>
                                     </td>
                                     <td data-label="Total" class="total-cell">
+                                        {% set subtotal = detalle.Cantidad * detalle.Costo %}
+                                        {% set total_con_iva = subtotal * (1 + detalle.iva_porcentaje/100) %}
+                                        {% set total_final = total_con_iva * (1 - detalle.descuento_porcentaje/100) %}
                                         <input type="text" class="form-control-plaintext total" 
-                                               value="C${{ (detalle.Cantidad * detalle.Costo + detalle.IVA - detalle.Descuento) | round(2) }}" readonly>
+                                               value="C${{ '%0.2f'|format(total_final) }}" readonly>
                                     </td>
                                     <td>
                                         <button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)">
@@ -593,18 +596,32 @@
         const fila = input.closest('tr');
         const cantidad = parseFloat(fila.querySelector('.cantidad').value) || 0;
         const costo = parseFloat(fila.querySelector('.costo').value) || 0;
-        const iva = parseFloat(fila.querySelector('.iva').value) || 0;
-        const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
+        const ivaPorcentaje = parseFloat(fila.querySelector('.iva').value) || 0;
+        const descuentoPorcentaje = parseFloat(fila.querySelector('.descuento').value) || 0;
         
-        // Calcular subtotal con IVA y descuento
-        const subtotalSinDescuento = cantidad * costo;
-        const valorDescuento = subtotalSinDescuento * (descuento / 100);
-        const subtotalConDescuento = subtotalSinDescuento - valorDescuento;
-        const valorIva = subtotalConDescuento * (iva / 100);
-        const subtotalFinal = subtotalConDescuento + valorIva;
+        // Validar porcentajes
+        if (ivaPorcentaje < 0 || ivaPorcentaje > 100) {
+            fila.querySelector('.iva').classList.add('is-invalid');
+            return;
+        } else {
+            fila.querySelector('.iva').classList.remove('is-invalid');
+        }
         
-        // Mostrar subtotal en la fila
-        fila.querySelector('.subtotal').value = 'C$' + subtotalFinal.toFixed(2);
+        if (descuentoPorcentaje < 0 || descuentoPorcentaje > 100) {
+            fila.querySelector('.descuento').classList.add('is-invalid');
+            return;
+        } else {
+            fila.querySelector('.descuento').classList.remove('is-invalid');
+        }
+        
+        // Calcular valores absolutos
+        const subtotal = cantidad * costo;
+        const descuentoValor = subtotal * (descuentoPorcentaje / 100);
+        const ivaValor = subtotal * (ivaPorcentaje / 100);
+        const total = subtotal - descuentoValor + ivaValor;
+        
+        // Mostrar total en la fila
+        fila.querySelector('.total').value = 'C$' + total.toFixed(2);
         
         // Actualizar totales
         calcularTotales();
@@ -620,23 +637,22 @@
         document.querySelectorAll('#tabla-productos tbody tr').forEach(fila => {
             const cantidad = parseFloat(fila.querySelector('.cantidad').value) || 0;
             const costo = parseFloat(fila.querySelector('.costo').value) || 0;
-            const iva = parseFloat(fila.querySelector('.iva').value) || 0;
-            const descuento = parseFloat(fila.querySelector('.descuento').value) || 0;
+            const ivaPorcentaje = parseFloat(fila.querySelector('.iva').value) || 0;
+            const descuentoPorcentaje = parseFloat(fila.querySelector('.descuento').value) || 0;
             
             // Calcular valores para esta fila
-            const subtotalSinDescuento = cantidad * costo;
-            const valorDescuento = subtotalSinDescuento * (descuento / 100);
-            const subtotalConDescuento = subtotalSinDescuento - valorDescuento;
-            const valorIva = subtotalConDescuento * (iva / 100);
+            const subtotal = cantidad * costo;
+            const descuentoValor = subtotal * (descuentoPorcentaje / 100);
+            const ivaValor = subtotal * (ivaPorcentaje / 100);
             
             // Acumular totales
-            subtotalTotal += subtotalConDescuento;
-            ivaTotal += valorIva;
-            descuentoTotal += valorDescuento;
+            subtotalTotal += subtotal;
+            ivaTotal += ivaValor;
+            descuentoTotal += descuentoValor;
         });
         
         // Calcular total final
-        const totalFinal = subtotalTotal + ivaTotal;
+        const totalFinal = subtotalTotal - descuentoTotal + ivaTotal;
         
         // Actualizar los elementos del resumen
         document.getElementById('subtotal-total').textContent = formatCurrency(subtotalTotal);
@@ -680,7 +696,7 @@
 
         // Asegurar que los atributos data-label estén presentes para móviles
         const celdas = nuevaFila.querySelectorAll("td");
-        const etiquetas = ["Producto", "Cantidad", "Precio Unitario", "IVA", "Descuento", "Total"];
+        const etiquetas = ["Producto", "Cantidad", "Precio Unitario", "IVA %", "Descuento %", "Total"];
         celdas.forEach((celda, index) => {
             if (index < etiquetas.length) {
                 celda.setAttribute("data-label", etiquetas[index]);
@@ -768,6 +784,7 @@
         filas.forEach(fila => {
             const select = fila.querySelector("select");
             const inputs = fila.querySelectorAll("input[required]");
+            const cantidad = parseFloat(fila.querySelector('.cantidad').value) || 0;
             
             if (!select.value) {
                 valido = false;
@@ -784,6 +801,9 @@
                     input.classList.remove("is-invalid");
                 }
             });
+            
+            // Validar cantidad mínima (50 unidades)
+
         });
         
         if (!valido) {
@@ -793,7 +813,7 @@
                 primerError.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
             
-            mostrarAlerta('danger', 'Error!', 'Por favor complete todos los campos requeridos.');
+            mostrarAlerta('danger', 'Error!', 'Por favor complete todos los campos requeridos correctamente.');
         }
         
         return valido;
@@ -804,7 +824,7 @@
         const filas = document.querySelectorAll("#tabla-productos tbody tr");
         filas.forEach(fila => {
             const celdas = fila.querySelectorAll("td");
-            const etiquetas = ["Producto", "Cantidad", "Precio Unitario", "IVA", "Descuento", "Total"];
+            const etiquetas = ["Producto", "Cantidad", "Precio Unitario", "IVA %", "Descuento %", "Total"];
             
             celdas.forEach((celda, index) => {
                 if (index < etiquetas.length) {
