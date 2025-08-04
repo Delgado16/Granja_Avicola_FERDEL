@@ -1,377 +1,262 @@
 {% extends "layout.html" %}
 {% block title %}Gestionar Ventas{% endblock %}
+
 {% block main %}
-
 <style>
-    :root {
-        --card-max-width: 900px;
-        --card-padding-lg: 1.5rem;
-        --card-padding-md: 1rem;
-        --card-padding-sm: 0.75rem;
-        --navbar-height-lg: 80px;
-        --navbar-height-sm: 100px;
-        --content-top-margin: 1rem;
-    }
-
-    .container.mt-4 {
-        max-width: var(--card-max-width);
-        margin: var(--content-top-margin) auto;
-        padding: var(--card-padding-lg);
-        margin-top: calc(var(--navbar-height-lg) + var(--content-top-margin));
-    }
-
     .card {
         border-radius: 0.5rem;
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        border: none;
     }
-
-    .card-body {
-        padding: var(--card-padding-lg);
+    
+    .badge-contado {
+        background-color: #28a745;
     }
-
-    h2 {
-        font-size: clamp(1.5rem, 2.5vw, 2rem);
-        margin-bottom: 1.5rem;
+    
+    .badge-credito {
+        background-color: #ffc107;
+        color: #212529;
     }
-
-    .alert {
-        font-size: clamp(0.85rem, 1.2vw, 1rem);
-        padding: 0.75rem 1.25rem;
+    
+    .detalle-venta {
+        transition: all 0.3s ease;
+        background-color: #f8f9fa;
     }
-
-    .table {
-        margin-bottom: 0;
-        width: 100%;
-        font-size: clamp(0.85rem, 1.2vw, 1rem);
+    
+    .btn-action-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
     }
-
-    .table thead th {
-        background-color: #343a40;
-        color: white;
-        font-weight: 500;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-
-    .btn-sm {
-        padding: 0.25rem 0.5rem;
-        font-size: clamp(0.75rem, 1vw, 0.85rem);
-        margin: 0.15rem;
-        white-space: nowrap;
-    }
-
-    /* Estilos para el modal de detalles */
-    .modal-content {
-        border-radius: 0.75rem;
-        border: none;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    }
-
-    .modal-header {
-        border-radius: 0.75rem 0.75rem 0 0 !important;
-    }
-
-    .modal-body {
-        padding: 1.5rem;
-    }
-
-    .modal-footer {
-        border-top: 1px solid #dee2e6;
-        padding: 1rem 1.5rem;
-    }
-
-    #modalProductos td, #modalProductos th {
-        padding: 0.75rem;
-        vertical-align: middle;
-    }
-
-    #modalProductos tr:last-child td {
-        border-bottom: none;
-    }
-
-    @media (max-width: 992px) {
-        .container.mt-4 {
-            padding: var(--card-padding-md);
-            margin-left: 1rem;
-            margin-right: 1rem;
-        }
-
-        .card-body {
-            padding: 1.25rem;
-        }
-
-        .table-responsive {
-            max-height: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .container.mt-4 {
-            padding: var(--card-padding-sm);
-            margin-top: calc(var(--navbar-height-lg) + 0.75rem);
-        }
-
+    
+    /* Estilos para móviles - Oculta el encabezado */
+    @media (max-width: 767.98px) {
         .table thead {
             display: none;
         }
-
-        .table tbody tr {
+        
+        .table tr {
             display: block;
             margin-bottom: 1rem;
             border: 1px solid #dee2e6;
-            border-radius: 0.5rem;
+            border-radius: 0.25rem;
         }
-
-        .table tbody td {
-            display: block;
-            text-align: right;
-            padding-left: 50%;
-            position: relative;
+        
+        .table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
             border-bottom: 1px solid #dee2e6;
         }
-
-        .table tbody td:last-child {
+        
+        .table td:before {
+            content: attr(data-label);
+            font-weight: bold;
+            margin-right: 1rem;
+            flex: 1;
+        }
+        
+        .table td:last-child {
+            border-bottom: 0;
+        }
+        
+        .btn-responsive {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        
+        .detalle-table tr {
+            border: none;
+            margin-bottom: 0;
+        }
+        
+        .detalle-table td {
+            padding: 0.3rem 0.75rem;
             border-bottom: none;
         }
-
-        .table tbody td::before {
-            content: attr(data-label);
-            position: absolute;
-            left: 1rem;
-            width: 45%;
-            text-align: left;
-            font-weight: bold;
+        
+        .detalle-table td:before {
+            content: none;
         }
-
-        .table tbody td ul {
-            text-align: left;
-            padding-left: 0;
+        
+        .btn-action-group {
+            flex-direction: column;
+            width: 100%;
         }
-
-        .table tbody td div {
-            text-align: center;
+        
+        .btn-action-group .btn {
+            width: 100%;
         }
-
-        .btn-sm {
-            display: inline-block;
-            width: auto;
-            margin: 0.15rem;
+        
+        .productos-list {
+            padding-left: 1rem;
+        }
+        
+        .productos-list li {
+            word-break: break-word;
         }
     }
-
-    @media (max-width: 576px) {
-        .container.mt-4 {
-            padding: 0.75rem;
-            margin-top: calc(var(--navbar-height-sm) + 0.5rem);
+    
+    /* Estilos para PC - Muestra el encabezado */
+    @media (min-width: 768px) {
+        .table thead {
+            display: table-header-group;
         }
-
-        .card-body {
-            padding: 1rem;
+        
+        .table tr {
+            display: table-row;
         }
-
-        .table tbody td {
-            padding-left: 45%;
+        
+        .table td {
+            display: table-cell;
         }
-
-        .table tbody td::before {
-            width: 40%;
+        
+        .table td:before {
+            content: none;
         }
-
-        .btn-sm {
-            padding: 0.2rem 0.4rem;
-            font-size: 0.7rem;
-        }
-    }
-
-    @media (max-width: 400px) {
-        .container.mt-4 {
-            padding: 0.5rem;
-            margin-top: calc(var(--navbar-height-sm) + 0.25rem);
-        }
-
-        .table tbody td {
-            padding-left: 50%;
-        }
-
-        .table tbody td::before {
-            width: 45%;
+        
+        .btn-action-group {
+            flex-direction: row;
         }
     }
 </style>
 
-<div class="container mt-4">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h2 class="text-center text-primary mb-4">Ventas Realizadas</h2>
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Ventas Realizadas</h4>
+                </div>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-            </div>
-            {% endfor %}
-            {% endwith %}
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show mb-3">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
 
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped align-middle">
-                    <thead class="table-dark">
-                        <tr>
-                            <th data-label="Fecha">Fecha</th>
-                            <th data-label="Factura">No. Factura</th>
-                            <th data-label="Cliente">Cliente</th>
-                            <th data-label="Pago">Tipo de Pago</th>
-                            <th data-label="Productos">Productos</th>
-                            <th data-label="Total">Total</th>
-                            <th data-label="Acciones">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for venta in ventas %}
-                        <tr>
-                            <td data-label="Fecha">{{ venta.Fecha }}</td>
-                            <td data-label="Factura">{{ venta.NumeroFactura }}</td>
-                            <td data-label="Cliente">{{ venta.Cliente }}</td>
-                            <td data-label="Pago">{{ 'Crédito' if venta.Credito_Contado == 1 else 'Contado' }}</td>
-                            <td data-label="Productos">
-                                <ul class="mb-2 ps-3">
-                                    {% for producto in venta.Productos %}
-                                    <li>{{ producto }}</li>
-                                    {% endfor %}
-                                </ul>
-                            </td>
-                            <td data-label="Total" class="font-weight-bold">{{ venta.TotalFormateado }}</td>
-                            <td data-label="Acciones">
-                                <div class="d-flex flex-wrap justify-content-center">
-                                    <button type="button" class="btn btn-sm btn-info me-1 mb-1 ver-detalle-btn" 
-                                        data-venta-id="{{ venta.ID_Factura }}"
-                                        data-venta-data='{{ venta | tojson | safe }}'>
-                                        Ver
-                                    </button>
-                                    <a href="/editar_venta/{{ venta.ID_Factura }}"
-                                        class="btn btn-sm btn-warning mb-1 {% if venta.Credito_Contado == 1 and venta.tiene_pagos %}disabled{% endif %}"
-                                        {% if venta.Credito_Contado==1 and venta.tiene_pagos
-                                        %}title="No se puede editar ventas a crédito con pagos registrados" {% endif %}>
-                                        Editar
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal para detalles de venta -->
-<div class="modal fade" id="detalleVentaModal" tabindex="-1" aria-labelledby="detalleVentaModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="detalleVentaModalLabel">Detalles de Venta</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <p><strong>Número de Factura:</strong> <span id="modalNumeroFactura"></span></p>
-                        <p><strong>Fecha:</strong> <span id="modalFecha"></span></p>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Factura</th>
+                                    <th>Cliente</th>
+                                    <th>Tipo Pago</th>
+                                    <th>Total</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for venta in ventas %} 
+                                <tr>
+                                    <td data-label="Fecha">{{ venta.Fecha }}</td>
+                                    <td data-label="Factura">{{ venta.NumeroFactura }}</td>
+                                    <td data-label="Cliente">{{ venta.Cliente }}</td>
+                                    <td data-label="Tipo Pago">
+                                        <span class="badge {% if venta.Credito_Contado == 0 %}badge-contado{% else %}badge-credito{% endif %}">
+                                            {% if venta.Credito_Contado == 0 %}Contado{% else %}Crédito{% endif %}
+                                        </span>
+                                    </td>
+                                    <td data-label="Total">{{ venta.TotalFormateado }}</td>
+                                    <td data-label="Acciones">
+                                        <div class="btn-action-group">
+                                            <button class="btn btn-sm btn-info" 
+                                                    data-bs-toggle="collapse" 
+                                                    data-bs-target="#detalle-{{ venta.ID_Factura }}">
+                                                <i class="fas fa-eye"></i> Detalles
+                                            </button>
+                                            <a href="/editar_venta/{{ venta.ID_Factura }}" 
+                                               class="btn btn-sm btn-warning {% if venta.Credito_Contado == 1 and venta.tiene_pagos %}disabled{% endif %}"
+                                               {% if venta.Credito_Contado == 1 and venta.tiene_pagos %}title="No se puede editar ventas a crédito con pagos registrados"{% endif %}>
+                                                <i class="fas fa-edit"></i> Editar
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="collapse detalle-venta" id="detalle-{{ venta.ID_Factura }}">
+                                    <td colspan="7">
+                                        <div class="p-3">
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <p><strong>Observaciones:</strong> {{ venta.Observacion or 'Ninguna' }}</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <h5>Productos Vendidos</h5>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm detalle-table">
+                                                    <thead class="d-none d-md-table-header-group">
+                                                        <tr class="table-light">
+                                                            <th>Producto</th>
+                                                            <th class="text-end">Cantidad</th>
+                                                            <th class="text-end">Subtotal</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for producto in venta.Productos %}
+                                                        {% set producto_info = producto.split(' x ') %}
+                                                        {% set cantidad = producto_info[0] %}
+                                                        {% set resto = producto_info[1].split(' (C$ ') %}
+                                                        {% set nombre = resto[0] %}
+                                                        {% set subtotal = resto[1].replace(')', '') %}
+                                                        <tr>
+                                                            <td data-label="Producto">{{ nombre }}</td>
+                                                            <td data-label="Cantidad" class="text-end">{{ cantidad }}</td>
+                                                            <td data-label="Subtotal" class="text-end">C$ {{ subtotal }}</td>
+                                                        </tr>
+                                                        {% else %}
+                                                        <tr>
+                                                            <td colspan="3" class="text-center">No hay productos registrados</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                    <tfoot>
+                                                        <tr class="table-active">
+                                                            <th colspan="2" class="text-end">Total:</th>
+                                                            <th class="text-end">{{ venta.TotalFormateado }}</th>
+                                                        </tr>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">No se encontraron ventas registradas</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="col-md-6">
-                        <p><strong>Cliente:</strong> <span id="modalCliente"></span></p>
-                        <p><strong>Tipo de Pago:</strong> <span id="modalTipoPago"></span></p>
-                    </div>
                 </div>
-                
-                <div class="mb-3">
-                    <p><strong>Observaciones:</strong> <span id="modalObservacion"></span></p>
-                </div>
-                
-                <h5 class="mt-4 mb-3">Productos</h5>
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Producto</th>
-                                <th>Cantidad</th>
-                                <th>Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody id="modalProductos">
-                            <!-- Los productos se llenarán con JavaScript -->
-                        </tbody>
-                        <tfoot>
-                            <tr class="table-active">
-                                <th colspan="2" class="text-end">Total:</th>
-                                <th id="modalTotal"></th>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", () => {
-        // Configurar data-labels para la tabla en móviles
-        document.querySelectorAll("tbody tr").forEach(row => {
-            const celdas = row.querySelectorAll("td");
-            const etiquetas = ["Fecha", "Factura", "Cliente", "Pago", "Productos", "Total", "Acciones"];
-
-            celdas.forEach((celda, index) => {
-                if (index < etiquetas.length) {
-                    celda.setAttribute("data-label", etiquetas[index]);
-                }
-            });
-        });
-
-        // Manejo del modal de detalles de venta
-        const modal = new bootstrap.Modal(document.getElementById('detalleVentaModal'));
-        
-        document.querySelectorAll('.ver-detalle-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const ventaData = JSON.parse(this.getAttribute('data-venta-data'));
-                
-                // Llenar los datos del modal
-                document.getElementById('modalNumeroFactura').textContent = ventaData.NumeroFactura;
-                document.getElementById('modalFecha').textContent = ventaData.Fecha;
-                document.getElementById('modalCliente').textContent = ventaData.Cliente;
-                document.getElementById('modalTipoPago').textContent = ventaData.Credito_Contado == 1 ? 'Crédito' : 'Contado';
-                document.getElementById('modalObservacion').textContent = ventaData.Observacion || 'Ninguna';
-                document.getElementById('modalTotal').textContent = ventaData.TotalFormateado;
-                
-                // Llenar la tabla de productos
-                const productosTbody = document.getElementById('modalProductos');
-                productosTbody.innerHTML = '';
-                
-                ventaData.Productos.forEach(producto => {
-                    // Extraer cantidad, descripción y subtotal del formato existente
-                    const match = producto.match(/(\d+) x (.+) \(C\$ ([\d,]+\.\d{2})\)/);
-                    if (match) {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${match[2]}</td>
-                            <td>${match[1]}</td>
-                            <td>C$ ${match[3]}</td>
-                        `;
-                        productosTbody.appendChild(row);
-                    }
-                });
-                
-                // Mostrar el modal
-                modal.show();
-            });
+document.addEventListener('DOMContentLoaded', function() {
+    const detallesButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
+    detallesButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            if (icon.classList.contains('fa-eye')) {
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+                this.innerHTML = '<i class="fas fa-eye-slash"></i> Ocultar';
+            } else {
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+                this.innerHTML = '<i class="fas fa-eye"></i> Detalles';
+            }
         });
     });
+});
 </script>
-
 {% endblock %}

@@ -1,0 +1,158 @@
+{% extends "layout.html" %}
+
+{% block title %}Detalle de {{ cliente.Nombre }}{% endblock %}
+
+{% block main %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">
+                    <i class="bi bi-person-badge"></i> {{ cliente.Nombre }}
+                </h3>
+                <a href="{{ url_for('clientes') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-secondary text-white">
+                            Información del Cliente
+                        </div>
+                        <div class="card-body">
+                            <p><strong><i class="bi bi-telephone"></i> Teléfono:</strong> 
+                                {{ cliente.Telefono or 'No registrado' }}</p>
+                            <p><strong><i class="bi bi-geo-alt"></i> Dirección:</strong> 
+                                {{ cliente.Direccion or 'No registrada' }}</p>
+                            <p><strong><i class="bi bi-credit-card"></i> RUC/Cédula:</strong> 
+                                {{ cliente.RUC_CEDULA or 'No registrado' }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-info text-white">
+                            Resumen Comercial
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6 mb-3">
+                                    <div class="p-3 border rounded bg-light">
+                                        <h3 class="text-primary">{{ historial_compras|length }}</h3>
+                                        <p class="mb-0">Compras Recientes</p>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <div class="p-3 border rounded bg-light">
+                                        <h3 class="{{ 'text-danger' if facturas_pendientes|length > 0 else 'text-success' }}">
+                                            {{ facturas_pendientes|length }}
+                                        </h3>
+                                        <p class="mb-0">Facturas Pendientes</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="nav nav-tabs" id="clienteTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="pendientes-tab" data-bs-toggle="tab" 
+                            data-bs-target="#pendientes" type="button" role="tab">
+                        <i class="bi bi-exclamation-triangle"></i> Facturas Pendientes
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="historial-tab" data-bs-toggle="tab" 
+                            data-bs-target="#historial" type="button" role="tab">
+                        <i class="bi bi-clock-history"></i> Historial de Compras
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content p-3 border border-top-0 rounded-bottom">
+                <!-- Pestaña Facturas Pendientes -->
+                <div class="tab-pane fade show active" id="pendientes" role="tabpanel">
+                    {% if facturas_pendientes %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Factura</th>
+                                    <th>Fecha</th>
+                                    <th>Vencimiento</th>
+                                    <th class="text-end">Saldo</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for factura in facturas_pendientes %}
+                                <tr>
+                                    <td>{{ factura.Num_Documento }}</td>
+                                    <td>{{ factura.Fecha }}</td>
+                                    <td>{{ factura.Fecha_Vencimiento }}</td>
+                                    <td class="text-end">${{ "{:,.2f}".format(factura.Saldo_Pendiente) }}</td>
+                                    <td>
+                                        <a href="{{ url_for('ver_factura', id_factura=factura.Num_Documento) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-check-circle"></i> No hay facturas pendientes
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Pestaña Historial de Compras -->
+                <div class="tab-pane fade" id="historial" role="tabpanel">
+                    {% if historial_compras %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Factura</th>
+                                    <th>Fecha</th>
+                                    <th class="text-end">Total</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for compra in historial_compras %}
+                                <tr>
+                                    <td>#{{ compra.ID_Factura }}</td>
+                                    <td>{{ compra.Fecha }}</td>
+                                    <td class="text-end">${{ "{:,.2f}".format(compra.Total) }}</td>
+                                    <td>
+                                        <a href="{{ url_for('ver_factura', id_factura=compra.ID_Factura) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-receipt"></i> Detalle
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> No hay historial de compras
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

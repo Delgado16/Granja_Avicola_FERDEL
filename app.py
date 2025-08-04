@@ -9,8 +9,9 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import traceback
 import json
+import logging
 
-
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 
@@ -2813,26 +2814,76 @@ def mantenimientos_vehiculo(id):
 @app.route("/clientes", methods=["GET", "POST"])
 @login_required
 def clientes():
-    if request.method == "POST":
-        nombre = request.form.get("nombre", "").strip()
-        telefono = request.form.get("telefono", "").strip()
-        direccion = request.form.get("direccion", "").strip()
-        ruc_cedula = request.form.get("ruc_cedula", "").strip()
+    try:
+        # Manejo del POST (agregar nuevo cliente)
+        if request.method == "POST":
+            nombre = request.form.get("nombre", "").strip()
+            telefono = request.form.get("telefono", "").strip()
+            direccion = request.form.get("direccion", "").strip()
+            ruc_cedula = request.form.get("ruc_cedula", "").strip()
 
-        if not nombre:
-            flash("El nombre del cliente es obligatorio.", "danger")
+            if not nombre:
+                flash("El nombre del cliente es obligatorio.", "danger")
+                return redirect(url_for("clientes"))
+
+            db.execute("""
+                INSERT INTO Clientes (Nombre, Telefono, Direccion, RUC_CEDULA)
+                VALUES (?, ?, ?, ?)
+            """, nombre, telefono, direccion, ruc_cedula)
+            
+            flash("Cliente agregado correctamente.", "success")
             return redirect(url_for("clientes"))
 
-        db.execute("""
-            INSERT INTO Clientes (Nombre, Telefono, Direccion, RUC_CEDULA)
-            VALUES (?, ?, ?, ?)
-        """, nombre, telefono, direccion, ruc_cedula)
-        flash("Cliente agregado correctamente.", "success")
-        return redirect(url_for("clientes"))
+        # Manejo del GET (mostrar lista de clientes)
+        clientes = db.execute("SELECT * FROM Clientes ORDER BY Nombre")
+        logging.debug(f"Clientes obtenidos: {clientes}")  # Para depuración
+        
+        return render_template("clientes.html", clientes=clientes)
 
-    # Mostrar lista de clientes
-    clientes = db.execute("SELECT * FROM Clientes ORDER BY Nombre")
-    return render_template("clientes.html", clientes=clientes)
+    except Exception as e:
+        logging.error(f"Error en ruta /clientes: {str(e)}", exc_info=True)
+        flash("Ocurrió un error al procesar la solicitud. Por favor intenta nuevamente.", "danger")
+        return redirect(url_for("clientes"))
+    
+#######################################################################################
+@app.route("/cliente/<int:id_cliente>")
+@login_required
+def detalle_cliente(id_cliente):
+    try:
+        # Obtener información básica del cliente
+        cliente = db.execute("SELECT * FROM Clientes WHERE ID_Cliente = ?", id_cliente)
+        if not cliente:
+            flash("Cliente no encontrado.", "danger")
+            return redirect(url_for("clientes"))
+        
+        cliente = cliente[0]  # CS50 devuelve una lista de diccionarios
+        
+        # Obtener facturas pendientes
+        facturas_pendientes = db.execute("""
+            SELECT * FROM Detalle_Cuentas_Por_Cobrar
+            WHERE ID_Cliente = ? AND Saldo_Pendiente > 0
+            ORDER BY Fecha_Vencimiento
+        """, id_cliente)
+        
+        # Obtener historial de compras (últimas 5)
+        historial_compras = db.execute("""
+            SELECT f.ID_Factura, f.Fecha, SUM(df.Total) as Total
+            FROM Facturacion f
+            JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
+            WHERE f.IDCliente = ?
+            GROUP BY f.ID_Factura
+            ORDER BY f.Fecha DESC
+            LIMIT 5
+        """, id_cliente)
+        
+        return render_template("detalle_cliente.html",
+                            cliente=cliente,
+                            facturas_pendientes=facturas_pendientes,
+                            historial_compras=historial_compras)
+        
+    except Exception as e:
+        flash("Error al cargar el detalle del cliente.", "danger")
+        return redirect(url_for("clientes"))
 #######################################################################################
 # Editar Cliente
 @app.route("/clientes/<int:id>/editar", methods=["GET", "POST"])
