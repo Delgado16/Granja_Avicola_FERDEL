@@ -2825,65 +2825,126 @@ def clientes():
             if not nombre:
                 flash("El nombre del cliente es obligatorio.", "danger")
                 return redirect(url_for("clientes"))
-
-            db.execute("""
-                INSERT INTO Clientes (Nombre, Telefono, Direccion, RUC_CEDULA)
-                VALUES (?, ?, ?, ?)
-            """, nombre, telefono, direccion, ruc_cedula)
             
-            flash("Cliente agregado correctamente.", "success")
-            return redirect(url_for("clientes"))
+            # Verificar si el RUC/Cédula ya existe (solo si se proporcionó)
+            if ruc_cedula:
+                existe = db.execute("SELECT 1 FROM Clientes WHERE RUC_CEDULA = ?", ruc_cedula)
+                if existe:
+                    flash("Ya existe un cliente con este RUC/Cédula", "danger")
+                    return redirect(url_for("clientes"))
 
-        # Manejo del GET (mostrar lista de clientes)
-        clientes = db.execute("SELECT * FROM Clientes ORDER BY Nombre")
-        logging.debug(f"Clientes obtenidos: {clientes}")  # Para depuración
+            # Usar transacción para operación crítica
+            try:
+                db.execute("BEGIN TRANSACTION")
+                db.execute("""
+                    INSERT INTO Clientes (Nombre, Telefono, Direccion, RUC_CEDULA)
+                    VALUES (?, ?, ?, ?)
+                """, nombre, telefono, direccion, ruc_cedula)
+                db.execute("COMMIT")
+                flash("Cliente agregado correctamente.", "success")
+            except Exception as e:
+                db.execute("ROLLBACK")
+                logging.error(f"Error al insertar cliente: {str(e)}")
+                flash("Error al guardar el cliente", "danger")
+            
+            return redirect(url_for("clientes"))
         
-        return render_template("clientes.html", clientes=clientes)
+        # Manejo del GET (listar clientes)
+        page = request.args.get("page", 1, type=int)
+        per_page = 20
+        offset = (page - 1) * per_page
+        
+        search_query = request.args.get("q", "").strip()
+        
+        # Consulta optimizada con COUNT OVER() para evitar consulta adicional
+        query = """
+            SELECT *, COUNT(*) OVER() AS total_count 
+            FROM Clientes
+        """
+        params = []
+        
+        if search_query:
+            query += " WHERE Nombre LIKE ? OR RUC_CEDULA LIKE ? OR Telefono LIKE ?"
+            search_param = f"%{search_query}%"
+            params.extend([search_param, search_param, search_param])
+        
+        query += " ORDER BY Nombre LIMIT ? OFFSET ?"
+        params.extend([per_page, offset])
+        
+        clientes = db.execute(query, *params)
+        total = clientes[0]['total_count'] if clientes else 0
+        
+        return render_template("clientes.html", 
+                            clientes=clientes, 
+                            page=page,
+                            per_page=per_page,
+                            total=total,
+                            search=search_query)
 
     except Exception as e:
         logging.error(f"Error en ruta /clientes: {str(e)}", exc_info=True)
         flash("Ocurrió un error al procesar la solicitud. Por favor intenta nuevamente.", "danger")
         return redirect(url_for("clientes"))
-    
+        
 #######################################################################################
 @app.route("/cliente/<int:id_cliente>")
 @login_required
 def detalle_cliente(id_cliente):
     try:
-        # Obtener información básica del cliente
+        # 1. Validar que el cliente exista
         cliente = db.execute("SELECT * FROM Clientes WHERE ID_Cliente = ?", id_cliente)
+        
         if not cliente:
-            flash("Cliente no encontrado.", "danger")
+            flash("Cliente no encontrado", "danger")
             return redirect(url_for("clientes"))
         
-        cliente = cliente[0]  # CS50 devuelve una lista de diccionarios
+        # 2. Obtener información extendida del cliente
+        cliente_info = db.execute("""
+            SELECT 
+                c.*,
+                (SELECT COUNT(*) FROM Facturacion WHERE IDCliente = c.ID_Cliente) as total_facturas,
+                (SELECT COALESCE(SUM(Saldo_Pendiente), 0) FROM Detalle_Cuentas_Por_Cobrar 
+                 WHERE ID_Cliente = c.ID_Cliente) as total_pendiente,
+                (SELECT MAX(Fecha) FROM Facturacion 
+                 WHERE IDCliente = c.ID_Cliente) as ultima_compra
+            FROM Clientes c
+            WHERE c.ID_Cliente = ?
+        """, id_cliente)
         
-        # Obtener facturas pendientes
+        if not cliente_info:
+            flash("Error al cargar información del cliente", "danger")
+            return redirect(url_for("clientes"))
+            
+        # 3. Obtener facturas pendientes
         facturas_pendientes = db.execute("""
-            SELECT * FROM Detalle_Cuentas_Por_Cobrar
-            WHERE ID_Cliente = ? AND Saldo_Pendiente > 0
-            ORDER BY Fecha_Vencimiento
+            SELECT 
+                d.ID_Movimiento,
+                d.Fecha,
+                d.Fecha_Vencimiento,
+                d.Monto_Movimiento,
+                d.Saldo_Pendiente,
+                f.ID_Factura as Num_Documento,
+                f.Fecha as FechaFactura,
+                CASE 
+                    WHEN d.Fecha_Vencimiento < date('now') THEN 'Vencida'
+                    ELSE 'Pendiente'
+                END as Estado
+            FROM Detalle_Cuentas_Por_Cobrar d
+            JOIN Facturacion f ON d.Num_Documento = CAST(f.ID_Factura AS TEXT)
+            WHERE d.ID_Cliente = ? AND d.Saldo_Pendiente > 0
+            ORDER BY d.Fecha_Vencimiento ASC
         """, id_cliente)
         
-        # Obtener historial de compras (últimas 5)
-        historial_compras = db.execute("""
-            SELECT f.ID_Factura, f.Fecha, SUM(df.Total) as Total
-            FROM Facturacion f
-            JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
-            WHERE f.IDCliente = ?
-            GROUP BY f.ID_Factura
-            ORDER BY f.Fecha DESC
-            LIMIT 5
-        """, id_cliente)
-        
-        return render_template("detalle_cliente.html",
-                            cliente=cliente,
-                            facturas_pendientes=facturas_pendientes,
-                            historial_compras=historial_compras)
-        
+        return render_template("detalle_cliente.html", 
+                             cliente=cliente_info[0],
+                             facturas_pendientes=facturas_pendientes,
+                             now=datetime.now().strftime('%Y-%m-%d'))
+                             
     except Exception as e:
-        flash("Error al cargar el detalle del cliente.", "danger")
+        logging.error(f"Error en detalle_cliente {id_cliente}: {str(e)}", exc_info=True)
+        flash("Error técnico al cargar el detalle del cliente", "danger")
         return redirect(url_for("clientes"))
+
 #######################################################################################
 # Editar Cliente
 @app.route("/clientes/<int:id>/editar", methods=["GET", "POST"])
@@ -2919,6 +2980,7 @@ def eliminar_cliente(id):
     db.execute("DELETE FROM Clientes WHERE ID_Cliente = ?", id)
     flash("Cliente eliminado correctamente.", "success")
     return redirect(url_for("clientes"))
+#######################################################################################
 # Añadir Proveedor
 @app.route("/proveedores", methods=["GET", "POST"])
 @login_required
