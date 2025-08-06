@@ -2887,63 +2887,285 @@ def clientes():
         return redirect(url_for("clientes"))
         
 #######################################################################################
+@app.template_filter('format_date')
+def format_date(value, format='%d/%m/%Y', default='N/A'):
+    if value is None:
+        return default
+    if isinstance(value, str):
+        try:
+            value = datetime.strptime(value, '%Y-%m-%d')
+        except ValueError:
+            return default
+    return value.strftime(format)
+
 @app.route("/cliente/<int:id_cliente>")
 @login_required
 def detalle_cliente(id_cliente):
     try:
+        # Función para parsear fechas en listas de diccionarios
+        def parsear_fechas(lista, campos):
+            for fila in lista:
+                for campo in campos:
+                    if campo in fila and isinstance(fila[campo], str):
+                        try:
+                            fila[campo] = datetime.strptime(fila[campo], '%Y-%m-%d')
+                        except ValueError:
+                            fila[campo] = None
+
         # 1. Validar que el cliente exista
-        cliente = db.execute("SELECT * FROM Clientes WHERE ID_Cliente = ?", id_cliente)
-        
+        cliente = db.execute("SELECT * FROM Clientes WHERE ID_Cliente = ? LIMIT 1", id_cliente)
         if not cliente:
             flash("Cliente no encontrado", "danger")
             return redirect(url_for("clientes"))
-        
-        # 2. Obtener información extendida del cliente
+        cliente = cliente[0]
+
+        # 2. Obtener información básica del cliente
         cliente_info = db.execute("""
             SELECT 
                 c.*,
-                (SELECT COUNT(*) FROM Facturacion WHERE IDCliente = c.ID_Cliente) as total_facturas,
+                (SELECT COUNT(*) FROM Facturacion WHERE IDCliente = c.ID_Cliente) + 
+                (SELECT COUNT(*) FROM Factura_Alterna WHERE IDCliente = c.ID_Cliente) as total_facturas,
                 (SELECT COALESCE(SUM(Saldo_Pendiente), 0) FROM Detalle_Cuentas_Por_Cobrar 
                  WHERE ID_Cliente = c.ID_Cliente) as total_pendiente,
-                (SELECT MAX(Fecha) FROM Facturacion 
-                 WHERE IDCliente = c.ID_Cliente) as ultima_compra
+                (SELECT MAX(Fecha) FROM (
+                    SELECT Fecha FROM Facturacion WHERE IDCliente = c.ID_Cliente
+                    UNION ALL
+                    SELECT Fecha FROM Factura_Alterna WHERE IDCliente = c.ID_Cliente
+                )) as ultima_compra,
+                (SELECT COUNT(*) FROM Detalle_Cuentas_Por_Cobrar 
+                 WHERE ID_Cliente = c.ID_Cliente AND Saldo_Pendiente > 0) as facturas_pendientes,
+                (SELECT MIN(Fecha) FROM Facturacion WHERE IDCliente = c.ID_Cliente) as fecha_primer_compra
             FROM Clientes c
             WHERE c.ID_Cliente = ?
+            LIMIT 1
         """, id_cliente)
-        
-        if not cliente_info:
-            flash("Error al cargar información del cliente", "danger")
-            return redirect(url_for("clientes"))
-            
-        # 3. Obtener facturas pendientes
-        facturas_pendientes = db.execute("""
+
+        cliente_info = cliente_info[0] if cliente_info else cliente
+
+        # Convertir fechas a datetime
+        def parse_date(date_str):
+            if not date_str:
+                return None
+            if isinstance(date_str, str):
+                try:
+                    return datetime.strptime(date_str, '%Y-%m-%d')
+                except ValueError:
+                    return None
+            return date_str
+
+        cliente_info['ultima_compra'] = parse_date(cliente_info.get('ultima_compra'))
+        cliente_info['fecha_primer_compra'] = parse_date(cliente_info.get('fecha_primer_compra'))
+
+        # 3. Obtener cuentas por cobrar
+        cuentas_por_cobrar = db.execute("""
+            WITH documentos AS (
+                SELECT ID_Factura as id, Fecha, 'Factura' as tipo FROM Facturacion WHERE IDCliente = ?
+                UNION ALL
+                SELECT ID_Factura as id, Fecha, 'Factura Alterna' as tipo FROM Factura_Alterna WHERE IDCliente = ?
+            )
             SELECT 
                 d.ID_Movimiento,
                 d.Fecha,
+                d.Num_Documento,
+                d.Observacion,
                 d.Fecha_Vencimiento,
-                d.Monto_Movimiento,
-                d.Saldo_Pendiente,
-                f.ID_Factura as Num_Documento,
-                f.Fecha as FechaFactura,
+                ROUND(d.Monto_Movimiento, 2) as Monto_Movimiento,
+                ROUND(d.Saldo_Pendiente, 2) as Saldo_Pendiente,
+                d.IVA,
+                d.Retencion,
                 CASE 
+                    WHEN d.Saldo_Pendiente <= 0 THEN 'Pagada'
+                    WHEN d.Fecha_Vencimiento IS NULL THEN 'Pendiente (sin fecha)'
                     WHEN d.Fecha_Vencimiento < date('now') THEN 'Vencida'
                     ELSE 'Pendiente'
-                END as Estado
+                END as Estado,
+                doc.tipo as Tipo_Documento,
+                doc.Fecha as Fecha_Documento,
+                (SELECT GROUP_CONCAT(strftime('%d/%m/%Y', p.Fecha) || ' - $' || ROUND(p.Monto, 2), ' | ') 
+                 FROM Pagos_CuentasCobrar p 
+                 WHERE p.ID_Movimiento = d.ID_Movimiento) as Pagos_Realizados
             FROM Detalle_Cuentas_Por_Cobrar d
-            JOIN Facturacion f ON d.Num_Documento = CAST(f.ID_Factura AS TEXT)
-            WHERE d.ID_Cliente = ? AND d.Saldo_Pendiente > 0
-            ORDER BY d.Fecha_Vencimiento ASC
+            JOIN documentos doc ON doc.id = CAST(d.Num_Documento AS INTEGER)
+            WHERE d.ID_Cliente = ?
+            ORDER BY 
+                CASE 
+                    WHEN d.Saldo_Pendiente <= 0 THEN 2
+                    WHEN d.Fecha_Vencimiento IS NULL THEN 0
+                    ELSE 1
+                END,
+                d.Fecha_Vencimiento ASC
+        """, id_cliente, id_cliente, id_cliente)
+        parsear_fechas(cuentas_por_cobrar, ['Fecha', 'Fecha_Vencimiento', 'Fecha_Documento'])
+
+        # 4. Historial de compras
+        historial_compras = db.execute("""
+            WITH compras AS (
+                SELECT 
+                    f.ID_Factura as id,
+                    f.Fecha,
+                    ROUND(SUM(df.Total), 2) as Total,
+                    f.Credito_Contado as Tipo,
+                    'Factura' as Documento,
+                    COUNT(df.ID_Producto) as Productos,
+                    GROUP_CONCAT(p.Descripcion, ' | ') as Productos_Descripcion
+                FROM Facturacion f
+                JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
+                JOIN Productos p ON df.ID_Producto = p.ID_Producto
+                WHERE f.IDCliente = ?
+                GROUP BY f.ID_Factura
+
+                UNION ALL
+
+                SELECT 
+                    fa.ID_Factura as id,
+                    fa.Fecha,
+                    ROUND(SUM(dfa.Total), 2) as Total,
+                    fa.Credito_Contado as Tipo,
+                    'Factura Alterna' as Documento,
+                    COUNT(dfa.ID_Producto) as Productos,
+                    GROUP_CONCAT(p.Descripcion, ' | ') as Productos_Descripcion
+                FROM Factura_Alterna fa
+                JOIN Detalle_Factura_Alterna dfa ON fa.ID_Factura = dfa.ID_Factura
+                JOIN Productos p ON dfa.ID_Producto = p.ID_Producto
+                WHERE fa.IDCliente = ?
+                GROUP BY fa.ID_Factura
+            )
+            SELECT * FROM compras
+            ORDER BY Fecha DESC
+            LIMIT 10
+        """, id_cliente, id_cliente)
+        parsear_fechas(historial_compras, ['Fecha'])
+
+        # 5. Estadísticas
+        estadisticas = db.execute("""
+            WITH todas_compras AS (
+                SELECT f.Fecha, ROUND(SUM(df.Total), 2) as Total FROM Facturacion f
+                JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
+                WHERE f.IDCliente = ?
+                GROUP BY f.ID_Factura
+                
+                UNION ALL
+                
+                SELECT fa.Fecha, ROUND(SUM(dfa.Total), 2) as Total FROM Factura_Alterna fa
+                JOIN Detalle_Factura_Alterna dfa ON fa.ID_Factura = dfa.ID_Factura
+                WHERE fa.IDCliente = ?
+                GROUP BY fa.ID_Factura
+            ),
+            meses_con_compras AS (
+                SELECT strftime('%Y-%m', Fecha) as mes 
+                FROM todas_compras 
+                GROUP BY strftime('%Y-%m', Fecha)
+            )
+            SELECT 
+                COUNT(*) as total_compras,
+                ROUND(SUM(Total), 2) as monto_total,
+                ROUND(AVG(Total), 2) as promedio_compra,
+                MIN(Fecha) as primera_compra,
+                MAX(Fecha) as ultima_compra,
+                (SELECT COUNT(*) FROM meses_con_compras) as meses_con_compras,
+                ROUND((SELECT SUM(Total) FROM todas_compras 
+                 WHERE strftime('%Y', Fecha) = strftime('%Y', date('now'))), 2) as monto_anual,
+                ROUND((SELECT SUM(Total) FROM todas_compras 
+                 WHERE strftime('%Y-%m', Fecha) = strftime('%Y-%m', date('now'))), 2) as monto_mensual,
+                ROUND((SELECT SUM(Total) FROM todas_compras 
+                 WHERE strftime('%Y-%m', Fecha) = strftime('%Y-%m', date('now', '-1 month'))), 2) as monto_mes_anterior
+            FROM todas_compras
+        """, id_cliente, id_cliente)
+
+        # 6. Productos más comprados
+        productos_frecuentes = db.execute("""
+            SELECT 
+                p.ID_Producto,
+                p.Descripcion,
+                p.COD_Producto,
+                COUNT(*) as veces_comprado,
+                ROUND(SUM(df.Cantidad), 2) as cantidad_total,
+                ROUND(SUM(df.Total), 2) as monto_total,
+                ROUND(SUM(df.Total)/SUM(df.Cantidad), 2) as precio_promedio,
+                p.Unidad_Medida,
+                um.Abreviatura as unidad_abreviatura
+            FROM (
+                SELECT df.ID_Producto, df.Cantidad, df.Total, df.Costo 
+                FROM Facturacion f
+                JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
+                WHERE f.IDCliente = ?
+                
+                UNION ALL
+                
+                SELECT dfa.ID_Producto, dfa.Cantidad, dfa.Total, dfa.Costo 
+                FROM Factura_Alterna fa
+                JOIN Detalle_Factura_Alterna dfa ON fa.ID_Factura = dfa.ID_Factura
+                WHERE fa.IDCliente = ?
+            ) df
+            JOIN Productos p ON df.ID_Producto = p.ID_Producto
+            LEFT JOIN Unidades_Medida um ON p.Unidad_Medida = um.ID_Unidad
+            GROUP BY p.ID_Producto
+            ORDER BY cantidad_total DESC
+            LIMIT 5
+        """, id_cliente, id_cliente)
+
+        # 7. Historial de pagos
+        historial_pagos = db.execute("""
+            SELECT 
+                p.ID_Pago,
+                p.Fecha,
+                ROUND(p.Monto, 2) as Monto,
+                mp.Nombre as metodo_pago,
+                p.Comentarios,
+                d.Num_Documento as documento_relacionado,
+                d.Fecha as fecha_documento,
+                ROUND(d.Monto_Movimiento, 2) as monto_documento,
+                CASE 
+                    WHEN EXISTS (SELECT 1 FROM Facturacion f WHERE f.ID_Factura = CAST(d.Num_Documento AS INTEGER)) 
+                        THEN 'Factura'
+                    WHEN EXISTS (SELECT 1 FROM Factura_Alterna fa WHERE fa.ID_Factura = CAST(d.Num_Documento AS INTEGER)) 
+                        THEN 'Factura Alterna'
+                    ELSE 'Otro'
+                END as tipo_documento
+            FROM Pagos_CuentasCobrar p
+            JOIN Metodos_Pago mp ON p.ID_MetodoPago = mp.ID_MetodoPago
+            JOIN Detalle_Cuentas_Por_Cobrar d ON p.ID_Movimiento = d.ID_Movimiento
+            WHERE d.ID_Cliente = ?
+            ORDER BY p.Fecha DESC
+            LIMIT 10
         """, id_cliente)
-        
+        parsear_fechas(historial_pagos, ['Fecha', 'fecha_documento'])
+
         return render_template("detalle_cliente.html", 
-                             cliente=cliente_info[0],
-                             facturas_pendientes=facturas_pendientes,
-                             now=datetime.now().strftime('%Y-%m-%d'))
-                             
+                               cliente=cliente_info,
+                               cuentas_por_cobrar=cuentas_por_cobrar,
+                               historial_compras=historial_compras,
+                               productos_frecuentes=productos_frecuentes,
+                               historial_pagos=historial_pagos,
+                               estadisticas=estadisticas,
+                               now=datetime.now().strftime('%Y-%m-%d'))
+
     except Exception as e:
         logging.error(f"Error en detalle_cliente {id_cliente}: {str(e)}", exc_info=True)
         flash("Error técnico al cargar el detalle del cliente", "danger")
         return redirect(url_for("clientes"))
+
+@app.route("/historial_pagos_cliente/<int:id_cliente>")
+@login_required
+def historial_pagos_cliente(id_cliente):
+    try:
+        # Obtener todas las facturas del cliente con saldo pendiente
+        facturas = db.execute("""
+            SELECT ID_Movimiento 
+            FROM Detalle_Cuentas_Por_Cobrar 
+            WHERE ID_Cliente = ? AND Saldo_Pendiente > 0
+        """, id_cliente)
+        
+        if not facturas:
+            flash("El cliente no tiene facturas pendientes", "info")
+            return redirect(url_for("detalle_cliente", id_cliente=id_cliente))
+            
+        # Redirigir a la primera factura pendiente
+        return redirect(url_for("historial_pagos", id_movimiento=facturas[0]["ID_Movimiento"]))
+        
+    except Exception as e:
+        flash(f"Error al cargar historial de pagos: {str(e)}", "danger")
+        return redirect(url_for("detalle_cliente", id_cliente=id_cliente))
 
 #######################################################################################
 # Editar Cliente

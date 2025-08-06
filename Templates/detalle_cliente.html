@@ -1,100 +1,382 @@
 {% extends "layout.html" %}
 
-{% block title %}Detalle de {{ cliente.Nombre }}{% endblock %}
-
-{% block head %}
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
-<style>
-    .card-header { font-weight: 500; }
-    .badge { font-size: 0.85em; }
-    .table-responsive { max-height: 400px; }
-    .nav-tabs .nav-link { font-weight: 500; }
-    .producto-card { transition: transform 0.2s; }
-    .producto-card:hover { transform: translateY(-3px); }
-    .text-truncate-2 {
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-</style>
-{% endblock %}
-
 {% block main %}
-<div class="container mt-4">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        {% endfor %}
-    {% endwith %}
-
-    <div class="card shadow">
-        <div class="card-header bg-primary text-white">
-            <h3 class="card-title mb-0">
-                <i class="bi bi-person-badge"></i> {{ cliente.Nombre }}
-                <span class="badge bg-light text-dark float-end">
-                    {{ cliente.RUC_CEDULA or 'Sin identificación' }}
-                </span>
-            </h3>
-        </div>
-
-        <div class="card-body">
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <h5><i class="bi bi-info-circle"></i> Información Básica</h5>
-                    <p><strong>Teléfono:</strong> {{ cliente.Telefono or 'No registrado' }}</p>
-                    <p><strong>Dirección:</strong> {{ cliente.Direccion or 'No registrada' }}</p>
+<div class="container-fluid">
+    <!-- Encabezado con datos básicos del cliente -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title">
+                        <i class="fas fa-user"></i> {{ cliente.Nombre_Comercial if cliente.Nombre_Comercial else cliente.Nombre }}
+                        <span class="badge badge-light float-right">ID: {{ cliente.ID_Cliente }}</span>
+                    </h3>
                 </div>
-                <div class="col-md-6">
-                    <h5><i class="bi bi-graph-up"></i> Resumen Comercial</h5>
-                    <p><strong>Total facturas:</strong> {{ cliente.total_facturas }}</p>
-                    <p><strong>Saldo pendiente:</strong> ${{ "{:,.2f}".format(cliente.total_pendiente) }}</p>
-                    <p><strong>Última compra:</strong> {{ cliente.ultima_compra or 'Nunca' }}</p>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>RUC/CI:</strong> {{ cliente.RUC_CI }}</p>
+                            <p><strong>Teléfono:</strong> {{ cliente.Telefono }}</p>
+                            <p><strong>Dirección:</strong> {{ cliente.Direccion }}</p>
+                            <p><strong>Email:</strong> {{ cliente.Email if cliente.Email else 'No registrado' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Total pendiente:</strong> <span class="badge badge-danger">${{ "{:,.2f}".format(cliente.total_pendiente|float) }}</span></p>
+                            <p><strong>Facturas pendientes:</strong> {{ cliente.facturas_pendientes }}</p>
+                            <p><strong>Total facturas:</strong> {{ cliente.total_facturas }}</p>
+                            <p><strong>Última compra:</strong> 
+                                {% if cliente.ultima_compra %}
+                                    {{ cliente.ultima_compra.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                    Sin registros
+                                {% endif %}
+                            </p>
+                            <p><strong>Primera compra:</strong> 
+                                {% if cliente.fecha_primer_compra %}
+                                    {{ cliente.fecha_primer_compra.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                    Sin registros
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('editar_cliente', id=cliente.ID_Cliente) }}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-edit"></i> Editar
+                    </a>
+                    <a href="{{ url_for('ventas') }}?cliente_id={{ cliente.ID_Cliente }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-file-invoice-dollar"></i> Nueva Factura
+                    </a>
+                    <a href="{{ url_for('cobros') }}?cliente_id={{ cliente.ID_Cliente }}" class="btn btn-info btn-sm">
+                        <i class="fas fa-money-bill-wave"></i> Registrar Pago
+                    </a>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <h5><i class="bi bi-exclamation-triangle"></i> Facturas Pendientes</h5>
-            {% if facturas_pendientes %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Factura</th>
-                            <th>Fecha</th>
-                            <th>Vencimiento</th>
-                            <th class="text-end">Monto</th>
-                            <th class="text-end">Saldo</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for factura in facturas_pendientes %}
-                        <tr class="{{ 'table-danger' if factura.Estado == 'Vencida' }}">
-                            <td>#{{ factura.Num_Documento }}</td>
-                            <td>{{ factura.Fecha }}</td>
-                            <td>{{ factura.Fecha_Vencimiento }}</td>
-                            <td class="text-end">${{ "{:,.2f}".format(factura.Monto_Movimiento) }}</td>
-                            <td class="text-end">${{ "{:,.2f}".format(factura.Saldo_Pendiente) }}</td>
-                            <td>
-                                <span class="badge bg-{{ 'danger' if factura.Estado == 'Vencida' else 'warning' }}">
-                                    {{ factura.Estado }}
-                                </span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <!-- Resumen financiero -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="card-title"><i class="fas fa-chart-line"></i> Estadísticas de Compras</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h5>${{ "{:,.2f}".format(estadisticas[0].monto_total|float) }}</h5>
+                            <p class="text-muted">Total comprado</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h5>{{ estadisticas[0].total_compras }}</h5>
+                            <p class="text-muted">Compras realizadas</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h5>${{ "{:,.2f}".format(estadisticas[0].promedio_compra|float) }}</h5>
+                            <p class="text-muted">Promedio por compra</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h5>{{ estadisticas[0].meses_con_compras }}</h5>
+                            <p class="text-muted">Meses con compras</p>
+                        </div>
+                    </div>
+                    <div class="row text-center mt-3">
+                        <div class="col-md-4">
+                            <h5>${{ "{:,.2f}".format(estadisticas[0].monto_anual|float) }}</h5>
+                            <p class="text-muted">Este año</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>${{ "{:,.2f}".format(estadisticas[0].monto_mensual|float) }}</h5>
+                            <p class="text-muted">Este mes</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>${{ "{:,.2f}".format(estadisticas[0].monto_mes_anterior|float) }}</h5>
+                            <p class="text-muted">Mes anterior</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            {% else %}
-            <div class="alert alert-success">
-                No hay facturas pendientes para este cliente
+        </div>
+    </div>
+
+    <!-- Cuentas por cobrar -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="card-title"><i class="fas fa-file-invoice-dollar"></i> Cuentas por Cobrar</h4>
+                    <div class="card-tools">
+                        <span class="badge badge-light">Total pendiente: ${{ "{:,.2f}".format(cliente.total_pendiente|float) }}</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Documento</th>
+                                    <th>Fecha</th>
+                                    <th>Vencimiento</th>
+                                    <th>Monto</th>
+                                    <th>Saldo</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cuenta in cuentas_por_cobrar %}
+                                <tr class="{% if cuenta.Estado == 'Vencida' %}table-danger{% elif cuenta.Estado == 'Pendiente' %}table-warning{% endif %}">
+                                    <td>
+                                        {{ cuenta.Tipo_Documento }} #{{ cuenta.Num_Documento }}
+                                        {% if cuenta.Observacion %}
+                                        <br><small class="text-muted">{{ cuenta.Observacion }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ cuenta.Fecha.strftime('%d/%m/%Y') if cuenta.Fecha else 'N/A' }}</td>
+                                    <td>
+                                        {% if cuenta.Fecha_Vencimiento %}
+                                            {{ cuenta.Fecha_Vencimiento.strftime('%d/%m/%Y') }}
+                                            {% if cuenta.Estado == 'Vencida' and cuenta.Fecha_Vencimiento %}
+                                                <br><span class="badge badge-danger">Vencida hace {{ (now.date() - cuenta.Fecha_Vencimiento.date()).days }} días</span>
+                                            {% endif %}
+                                        {% else %}
+                                            Sin fecha
+                                        {% endif %}
+                                    </td>
+                                    <td>${{ "{:,.2f}".format(cuenta.Monto_Movimiento|float) }}</td>
+                                    <td>${{ "{:,.2f}".format(cuenta.Saldo_Pendiente|float) }}</td>
+                                    <td>
+                                        {% if cuenta.Estado == 'Pagada' %}
+                                            <span class="badge badge-success">{{ cuenta.Estado }}</span>
+                                        {% elif cuenta.Estado == 'Vencida' %}
+                                            <span class="badge badge-danger">{{ cuenta.Estado }}</span>
+                                        {% else %}
+                                            <span class="badge badge-warning">{{ cuenta.Estado }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if cuenta.Tipo_Documento == 'Factura' %}
+                                            <a href="{{ url_for('ver_factura', venta_id=cuenta.Num_Documento) }}" class="btn btn-sm btn-info" title="Ver documento">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ url_for('factura_alterna') }}?factura_id={{ cuenta.Num_Documento }}" class="btn btn-sm btn-info" title="Ver documento">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        {% endif %}
+                                        {% if cuenta.Saldo_Pendiente > 0 %}
+                                        <a href="{{ url_for('registrar_cobro', id_movimiento=cuenta.ID_Movimiento) }}" class="btn btn-sm btn-success" title="Registrar pago">
+                                            <i class="fas fa-money-bill-wave"></i>
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if cuenta.Pagos_Realizados %}
+                                <tr>
+                                    <td colspan="7" class="small bg-light">
+                                        <strong>Pagos realizados:</strong> {{ cuenta.Pagos_Realizados }}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">No hay cuentas por cobrar pendientes</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            {% endif %}
+        </div>
+    </div>
+
+    <!-- Historial de compras recientes -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="card-title"><i class="fas fa-shopping-cart"></i> Últimas Compras</h4>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Documento</th>
+                                    <th>Tipo</th>
+                                    <th>Total</th>
+                                    <th>Productos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for compra in historial_compras %}
+                                <tr>
+                                    <td>{{ compra.Fecha.strftime('%d/%m/%Y') if compra.Fecha else 'N/A' }}</td>
+                                    <td>
+                                        {% if compra.Documento == 'Factura' %}
+                                            <a href="{{ url_for('ver_factura', venta_id=compra.id) }}">
+                                                {{ compra.Documento }} #{{ compra.id }}
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ url_for('factura_alterna') }}?factura_id={{ compra.id }}">
+                                                {{ compra.Documento }} #{{ compra.id }}
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if compra.Tipo == 'Credito' %}
+                                            <span class="badge badge-warning">Crédito</span>
+                                        {% else %}
+                                            <span class="badge badge-success">Contado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>${{ "{:,.2f}".format(compra.Total|float) }}</td>
+                                    <td>
+                                        {{ compra.Productos }}
+                                        {% if compra.Productos_Descripcion %}
+                                        <button class="btn btn-sm btn-link" data-toggle="popover" title="Productos" 
+                                                data-content="{{ compra.Productos_Descripcion }}">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No hay historial de compras</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer text-right">
+                    <a href="{{ url_for('visualizar_facturas') }}?cliente={{ cliente.Nombre }}" class="btn btn-sm btn-primary">
+                        Ver historial completo
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Productos más comprados -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="card-title"><i class="fas fa-star"></i> Productos Frecuentes</h4>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Veces</th>
+                                    <th>Cantidad</th>
+                                    <th>Total</th>
+                                    <th>Promedio</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for producto in productos_frecuentes %}
+                                <tr>
+                                    <td>
+                                        {{ producto.Descripcion }}
+                                        <br>
+                                        <small class="text-muted">COD: {{ producto.COD_Producto }}</small>
+                                    </td>
+                                    <td>{{ producto.veces_comprado }}</td>
+                                    <td>
+                                        {{ "{:,.2f}".format(producto.cantidad_total|float) }} 
+                                        {{ producto.unidad_abreviatura if producto.unidad_abreviatura else 'un' }}
+                                    </td>
+                                    <td>${{ "{:,.2f}".format(producto.monto_total|float) }}</td>
+                                    <td>${{ "{:,.2f}".format(producto.precio_promedio|float) }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No hay productos frecuentes</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial de pagos -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="card-title"><i class="fas fa-money-check-alt"></i> Últimos Pagos</h4>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Monto</th>
+                                    <th>Método</th>
+                                    <th>Documento</th>
+                                    <th>Comentarios</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pago in historial_pagos %}
+                                <tr>
+                                    <td>{{ pago.Fecha.strftime('%d/%m/%Y') if pago.Fecha else 'N/A' }}</td>
+                                    <td>${{ "{:,.2f}".format(pago.Monto|float) }}</td>
+                                    <td>{{ pago.metodo_pago }}</td>
+                                    <td>
+                                        {% if pago.tipo_documento == 'Factura' %}
+                                            <a href="{{ url_for('ver_factura', venta_id=pago.documento_relacionado) }}">
+                                                {{ pago.tipo_documento }} #{{ pago.documento_relacionado }}
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ url_for('factura_alterna') }}?factura_id={{ pago.documento_relacionado }}">
+                                                {{ pago.tipo_documento }} #{{ pago.documento_relacionado }}
+                                            </a>
+                                        {% endif %}
+                                        <br>
+                                        <small class="text-muted">Monto doc: ${{ "{:,.2f}".format(pago.monto_documento|float) }}</small>
+                                    </td>
+                                    <td>{{ pago.Comentarios if pago.Comentarios else 'N/A' }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No hay historial de pagos</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer text-right">
+                    <a href="{{ url_for('historial_pagos_cliente', id_cliente=cliente.ID_Cliente) }}" class="btn btn-sm btn-primary">
+                        Ver historial completo
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Activar popovers
+    $('[data-toggle="popover"]').popover({
+        trigger: 'hover',
+        placement: 'right'
+    });
+});
+</script>
 {% endblock %}
