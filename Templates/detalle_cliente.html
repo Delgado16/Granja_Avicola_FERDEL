@@ -16,28 +16,16 @@
                     <div class="row">
                         <div class="col-md-6">
                             <p><strong>RUC/CI:</strong> {{ cliente.RUC_CI }}</p>
-                            <p><strong>Teléfono:</strong> {{ cliente.Telefono }}</p>
-                            <p><strong>Dirección:</strong> {{ cliente.Direccion }}</p>
+                            <p><strong>Teléfono:</strong> {{ cliente.Telefono if cliente.Telefono else 'No registrado' }}</p>
+                            <p><strong>Dirección:</strong> {{ cliente.Direccion if cliente.Direccion else 'No registrada' }}</p>
                             <p><strong>Email:</strong> {{ cliente.Email if cliente.Email else 'No registrado' }}</p>
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Total pendiente:</strong> <span class="badge badge-danger">${{ "{:,.2f}".format(cliente.total_pendiente|float) }}</span></p>
+                            <p><strong>Total pendiente:</strong> <span class="badge badge-danger">{{ cliente.total_pendiente }}</span></p>
                             <p><strong>Facturas pendientes:</strong> {{ cliente.facturas_pendientes }}</p>
                             <p><strong>Total facturas:</strong> {{ cliente.total_facturas }}</p>
-                            <p><strong>Última compra:</strong> 
-                                {% if cliente.ultima_compra %}
-                                    {{ cliente.ultima_compra.strftime('%d/%m/%Y') }}
-                                {% else %}
-                                    Sin registros
-                                {% endif %}
-                            </p>
-                            <p><strong>Primera compra:</strong> 
-                                {% if cliente.fecha_primer_compra %}
-                                    {{ cliente.fecha_primer_compra.strftime('%d/%m/%Y') }}
-                                {% else %}
-                                    Sin registros
-                                {% endif %}
-                            </p>
+                            <p><strong>Última compra:</strong> {{ format_date(cliente.ultima_compra) if cliente.ultima_compra else 'Sin registros' }}</p>
+                            <p><strong>Primera compra:</strong> {{ format_date(cliente.fecha_primer_compra) if cliente.fecha_primer_compra else 'Sin registros' }}</p>
                         </div>
                     </div>
                 </div>
@@ -45,7 +33,8 @@
                     <a href="{{ url_for('editar_cliente', id=cliente.ID_Cliente) }}" class="btn btn-warning btn-sm">
                         <i class="fas fa-edit"></i> Editar
                     </a>
-                    <a href="{{ url_for('ventas') }}?cliente_id={{ cliente.ID_Cliente }}" class="btn btn-success btn-sm">
+                    <a href="{{ url_for('ventas') }}?cliente_id={{ cliente.ID_Cliente }}&cliente_nombre={{ (cliente.Nombre_Comercial if cliente.Nombre_Comercial else cliente.Nombre)|urlencode }}" 
+                       class="btn btn-success btn-sm">
                         <i class="fas fa-file-invoice-dollar"></i> Nueva Factura
                     </a>
                     <a href="{{ url_for('cobros') }}?cliente_id={{ cliente.ID_Cliente }}" class="btn btn-info btn-sm">
@@ -66,33 +55,33 @@
                 <div class="card-body">
                     <div class="row text-center">
                         <div class="col-md-3">
-                            <h5>${{ "{:,.2f}".format(estadisticas[0].monto_total|float) }}</h5>
+                            <h5>{{ estadisticas.monto_total }}</h5>
                             <p class="text-muted">Total comprado</p>
                         </div>
                         <div class="col-md-3">
-                            <h5>{{ estadisticas[0].total_compras }}</h5>
+                            <h5>{{ estadisticas.total_compras }}</h5>
                             <p class="text-muted">Compras realizadas</p>
                         </div>
                         <div class="col-md-3">
-                            <h5>${{ "{:,.2f}".format(estadisticas[0].promedio_compra|float) }}</h5>
+                            <h5>{{ estadisticas.promedio_compra }}</h5>
                             <p class="text-muted">Promedio por compra</p>
                         </div>
                         <div class="col-md-3">
-                            <h5>{{ estadisticas[0].meses_con_compras }}</h5>
+                            <h5>{{ estadisticas.meses_con_compras }}</h5>
                             <p class="text-muted">Meses con compras</p>
                         </div>
                     </div>
                     <div class="row text-center mt-3">
                         <div class="col-md-4">
-                            <h5>${{ "{:,.2f}".format(estadisticas[0].monto_anual|float) }}</h5>
+                            <h5>{{ estadisticas.monto_anual }}</h5>
                             <p class="text-muted">Este año</p>
                         </div>
                         <div class="col-md-4">
-                            <h5>${{ "{:,.2f}".format(estadisticas[0].monto_mensual|float) }}</h5>
+                            <h5>{{ estadisticas.monto_mensual }}</h5>
                             <p class="text-muted">Este mes</p>
                         </div>
                         <div class="col-md-4">
-                            <h5>${{ "{:,.2f}".format(estadisticas[0].monto_mes_anterior|float) }}</h5>
+                            <h5>{{ estadisticas.monto_mes_anterior }}</h5>
                             <p class="text-muted">Mes anterior</p>
                         </div>
                     </div>
@@ -108,7 +97,7 @@
                 <div class="card-header bg-danger text-white">
                     <h4 class="card-title"><i class="fas fa-file-invoice-dollar"></i> Cuentas por Cobrar</h4>
                     <div class="card-tools">
-                        <span class="badge badge-light">Total pendiente: ${{ "{:,.2f}".format(cliente.total_pendiente|float) }}</span>
+                        <span class="badge badge-light">Total pendiente: {{ cliente.total_pendiente }}</span>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -134,19 +123,23 @@
                                         <br><small class="text-muted">{{ cuenta.Observacion }}</small>
                                         {% endif %}
                                     </td>
-                                    <td>{{ cuenta.Fecha.strftime('%d/%m/%Y') if cuenta.Fecha else 'N/A' }}</td>
+                                    <td>{{ cuenta.Fecha }}</td>
                                     <td>
-                                        {% if cuenta.Fecha_Vencimiento %}
-                                            {{ cuenta.Fecha_Vencimiento.strftime('%d/%m/%Y') }}
-                                            {% if cuenta.Estado == 'Vencida' and cuenta.Fecha_Vencimiento %}
-                                                <br><span class="badge badge-danger">Vencida hace {{ (now.date() - cuenta.Fecha_Vencimiento.date()).days }} días</span>
+                                        {% if cuenta.Fecha_Vencimiento and cuenta.Fecha_Vencimiento != 'N/A' %}
+                                            {% set fecha_vencimiento = cuenta.Fecha_Vencimiento|to_date  %}
+                                            {% if fecha_vencimiento and now > fecha_vencimiento %}
+                                                    <br><span class="badge badge-danger">
+                                                        Vencida hace {{ (now - fecha_vencimiento).days }} días
+                                                    </span>
+                                                {% else%}
+                                                    {{cuenta.Fecha_Vencimiento}} (Pendiente)
                                             {% endif %}
                                         {% else %}
                                             Sin fecha
                                         {% endif %}
                                     </td>
-                                    <td>${{ "{:,.2f}".format(cuenta.Monto_Movimiento|float) }}</td>
-                                    <td>${{ "{:,.2f}".format(cuenta.Saldo_Pendiente|float) }}</td>
+                                    <td>{{ cuenta.Monto_Movimiento }}</td>
+                                    <td>{{ cuenta.Saldo_Pendiente }}</td>
                                     <td>
                                         {% if cuenta.Estado == 'Pagada' %}
                                             <span class="badge badge-success">{{ cuenta.Estado }}</span>
@@ -166,14 +159,14 @@
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         {% endif %}
-                                        {% if cuenta.Saldo_Pendiente > 0 %}
+                                        {% if cuenta.Saldo_Pendiente != '$0.00' %}
                                         <a href="{{ url_for('registrar_cobro', id_movimiento=cuenta.ID_Movimiento) }}" class="btn btn-sm btn-success" title="Registrar pago">
                                             <i class="fas fa-money-bill-wave"></i>
                                         </a>
                                         {% endif %}
                                     </td>
                                 </tr>
-                                {% if cuenta.Pagos_Realizados %}
+                                {% if cuenta.Pagos_Realizados and cuenta.Pagos_Realizados != 'Sin pagos' %}
                                 <tr>
                                     <td colspan="7" class="small bg-light">
                                         <strong>Pagos realizados:</strong> {{ cuenta.Pagos_Realizados }}
@@ -215,7 +208,7 @@
                             <tbody>
                                 {% for compra in historial_compras %}
                                 <tr>
-                                    <td>{{ compra.Fecha.strftime('%d/%m/%Y') if compra.Fecha else 'N/A' }}</td>
+                                    <td>{{ compra.Fecha }}</td>
                                     <td>
                                         {% if compra.Documento == 'Factura' %}
                                             <a href="{{ url_for('ver_factura', venta_id=compra.id) }}">
@@ -234,7 +227,7 @@
                                             <span class="badge badge-success">Contado</span>
                                         {% endif %}
                                     </td>
-                                    <td>${{ "{:,.2f}".format(compra.Total|float) }}</td>
+                                    <td>{{ compra.Total }}</td>
                                     <td>
                                         {{ compra.Productos }}
                                         {% if compra.Productos_Descripcion %}
@@ -255,7 +248,7 @@
                     </div>
                 </div>
                 <div class="card-footer text-right">
-                    <a href="{{ url_for('visualizar_facturas') }}?cliente={{ cliente.Nombre }}" class="btn btn-sm btn-primary">
+                    <a href="{{ url_for('visualizar_facturas') }}?cliente={{ cliente.Nombre|urlencode }}" class="btn btn-sm btn-primary">
                         Ver historial completo
                     </a>
                 </div>
@@ -290,11 +283,11 @@
                                     </td>
                                     <td>{{ producto.veces_comprado }}</td>
                                     <td>
-                                        {{ "{:,.2f}".format(producto.cantidad_total|float) }} 
+                                        {{ producto.cantidad_total }} 
                                         {{ producto.unidad_abreviatura if producto.unidad_abreviatura else 'un' }}
                                     </td>
-                                    <td>${{ "{:,.2f}".format(producto.monto_total|float) }}</td>
-                                    <td>${{ "{:,.2f}".format(producto.precio_promedio|float) }}</td>
+                                    <td>{{ producto.monto_total }}</td>
+                                    <td>{{ producto.precio_promedio }}</td>
                                 </tr>
                                 {% else %}
                                 <tr>
@@ -331,8 +324,8 @@
                             <tbody>
                                 {% for pago in historial_pagos %}
                                 <tr>
-                                    <td>{{ pago.Fecha.strftime('%d/%m/%Y') if pago.Fecha else 'N/A' }}</td>
-                                    <td>${{ "{:,.2f}".format(pago.Monto|float) }}</td>
+                                    <td>{{ pago.Fecha }}</td>
+                                    <td>{{ pago.Monto }}</td>
                                     <td>{{ pago.metodo_pago }}</td>
                                     <td>
                                         {% if pago.tipo_documento == 'Factura' %}
@@ -345,7 +338,7 @@
                                             </a>
                                         {% endif %}
                                         <br>
-                                        <small class="text-muted">Monto doc: ${{ "{:,.2f}".format(pago.monto_documento|float) }}</small>
+                                        <small class="text-muted">Monto doc: {{ pago.monto_documento }}</small>
                                     </td>
                                     <td>{{ pago.Comentarios if pago.Comentarios else 'N/A' }}</td>
                                 </tr>
