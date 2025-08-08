@@ -1441,9 +1441,16 @@ def registrar_cobro(id_movimiento):
 
             # Captura de detalles específicos del método de pago (similar a cuentas por pagar)
             datos_especificos = {}
+            errores = []
             
             # Efectivo
             if metodo == 1:
+                efectivo_recibido = float(request.form.get("efectivo_recibido", 0))
+                if efectivo_recibido < 0:
+                    errores.append("El efectivo recibido debe ser mayor a cero")
+                if efectivo_recibido < monto:
+                    errores.append("El efectivo recibido no puede ser menor que el monto del cobro")
+
                 datos_especificos = {
                     'tipo': 'efectivo',
                     'efectivo_recibido': float(request.form.get("efectivo_recibido", 0)),
@@ -1452,6 +1459,14 @@ def registrar_cobro(id_movimiento):
             
             # Transferencia Bancaria
             elif metodo == 2:
+                numero_transferencia = request.form.get("Numero_transferencia", "").strip()
+                banco = request.form.get("banco", "").strip()
+
+                if not numero_transferencia:
+                    errores.append("El numero de transferencia es obligatorio")
+                if not banco:
+                    errores.append("Debes especificar al banco de origen")
+
                 datos_especificos = {
                     'tipo': 'transferencia',
                     'numero_transferencia': request.form.get("numero_transferencia"),
@@ -1461,15 +1476,20 @@ def registrar_cobro(id_movimiento):
             
             # Tarjeta
             elif metodo == 3:
+                tipo_tarjeta = request.form.get("tipo_tarjeta", "").strip()
+                ultimos_digitos = request.form.get("ultimos_digitos", "").strip()
+
+                if not tipo_tarjeta:
+                    errores.append("Debe especificar el tipo de tarjeta")
+                if not ultimos_digitos or not ultimos_digitos.isdigit() or len(ultimos_digitos) != 4:
+                    errores.append("Los ultimos 4 digitos de la tarjeta son obligatorios")
+                
                 datos_especificos = {
                     'tipo': 'tarjeta',
                     'tipo_tarjeta': request.form.get("tipo_tarjeta"),
                     'ultimos_digitos': request.form.get("ultimos_digitos"),
                     'autorizacion': request.form.get("autorizacion", "")
                 }
-
-            # Serialización de detalles específicos
-            detalles_metodo = json.dumps(datos_especificos, ensure_ascii=False)
 
             # Verificación de saldo disponible
             factura = db.execute("""
@@ -1492,6 +1512,14 @@ def registrar_cobro(id_movimiento):
             if monto > saldo_actual:
                 flash(f"❌ El monto excede el saldo pendiente (${saldo_actual:.2f})", "danger")
                 return redirect(url_for("registrar_cobro", id_movimiento=id_movimiento))
+            
+            if errores:
+                for error in errores:
+                    flash(f"❌ {error}", "danger")
+                return redirect(url_for("registrar_cobro", id_movimiento=id_movimiento))
+            
+            # Convertir detalles a JSON
+            detalles_metodo = json.dumps(datos_especificos, ensure_ascii=False)
 
             # Registro del cobro
             db.execute("BEGIN TRANSACTION")
@@ -2888,55 +2916,43 @@ def clientes():
         
 #######################################################################################
 @app.template_filter('to_date')
-def format_date(date_str, format='%d/%m/%Y'):
-    if not date_str or date_str == 'N/A':
-        return None
+def format_date(value, format='%d/%m/%Y', default='N/A'):
+    """Filtro para formatear fechas en templates"""
+    if not value or value == 'N/A':
+        return default
     try:
-        return datetime.strptime(date_str, format)
+        if isinstance(value, str):
+            # Intenta parsear ambos formatos (BD y visualización)
+            if '-' in value:  # Formato de BD (YYYY-MM-DD)
+                parsed = datetime.strptime(value, '%Y-%m-%d')
+            else:
+                parsed = datetime.strptime(value, format)
+            return parsed.strftime(format)
+        elif isinstance(value, datetime):
+            return value.strftime(format)
+        return default
     except ValueError:
-        return None
+        return default
 
 @app.route("/cliente/<int:id_cliente>")
 @login_required
 def detalle_cliente(id_cliente):
     try:
         # ==============================================
-        # Funciones de ayuda y filtros
+        # Funciones de ayuda
         # ==============================================
-        
-        def format_date(value, format='%d/%m/%Y', default='N/A'):
-            """Formatea fechas para visualización"""
-            if value is None:
-                return default
-            if isinstance(value, str):
-                try:
-                    value = datetime.strptime(value, '%Y-%m-%d')
-                except ValueError:
-                    return default
-            return value.strftime(format)
-
-        def format_currency(amount, default='$0.00'):
-            """Formatea montos monetarios"""
+        def format_currency(amount, default='C$0.00'):
+            """Formatea montos monetarios consistentemente"""
             if amount is None:
                 return default
             try:
-                return f"${float(amount):,.2f}"
+                return f"C${float(amount):,.2f}"
             except (ValueError, TypeError):
                 return default
-
-        def parse_db_date(date_str):
-            """Convierte strings de fecha de la BD a objetos datetime"""
-            if not date_str:
-                return None
-            try:
-                return datetime.strptime(date_str, '%Y-%m-%d')
-            except (ValueError, TypeError):
-                return None
 
         # ==============================================
         # 1. Datos básicos del cliente
         # ==============================================
-        
         cliente_info = db.execute("""
             SELECT 
                 c.*,
@@ -2963,70 +2979,117 @@ def detalle_cliente(id_cliente):
             
         cliente_info = cliente_info[0]
         
-        # Formatear campos importantes
+        # Formatear campos
         cliente_info['total_pendiente'] = format_currency(cliente_info['total_pendiente'])
-        cliente_info['ultima_compra'] = parse_db_date(cliente_info['ultima_compra'])
-        cliente_info['fecha_primer_compra'] = parse_db_date(cliente_info['fecha_primer_compra'])
+        cliente_info['ultima_compra'] = format_date(cliente_info['ultima_compra'])
+        cliente_info['fecha_primer_compra'] = format_date(cliente_info['fecha_primer_compra'])
 
         # ==============================================
-        # 2. Cuentas por cobrar (facturas pendientes)
+        # 2. Cuentas por cobrar (Consulta optimizada)
         # ==============================================
-        
         cuentas_por_cobrar = db.execute("""
             WITH documentos AS (
-                SELECT ID_Factura AS id, Fecha, 'Factura' AS tipo FROM Facturacion WHERE IDCliente = ?
+                SELECT 
+                    f.ID_Factura AS id, 
+                    f.Fecha, 
+                    'Factura' AS tipo,
+                    f.IDCliente
+                FROM Facturacion f  
+                WHERE f.IDCliente = ?
+                
                 UNION ALL
-                SELECT ID_Factura AS id, Fecha, 'Factura Alterna' AS tipo FROM Factura_Alterna WHERE IDCliente = ?
+                
+                SELECT 
+                    fa.ID_Factura AS id, 
+                    fa.Fecha, 
+                    'Factura Alterna' AS tipo,
+                    fa.IDCliente
+                FROM Factura_Alterna fa
+                WHERE fa.IDCliente = ?
             ),
             pagos_agrupados AS (
                 SELECT 
-                    ID_Movimiento,
-                    GROUP_CONCAT(strftime('%d/%m/%Y', Fecha) || ' - $' || ROUND(Monto, 2), ' | ') AS pagos
-                FROM Pagos_CuentasCobrar
-                GROUP BY ID_Movimiento
+                    p.ID_Movimiento,
+                    GROUP_CONCAT(strftime('%d/%m/%Y', p.Fecha) || ' - ' || printf('C$%.2f', p.Monto), ' | ') AS pagos,
+                    SUM(p.Monto) AS total_pagado
+                FROM Pagos_CuentasCobrar p
+                GROUP BY p.ID_Movimiento
             )
             SELECT 
                 d.ID_Movimiento,
-                d.Fecha,
                 d.Num_Documento,
-                d.Observacion,
-                d.Fecha_Vencimiento,
-                ROUND(d.Monto_Movimiento, 2) AS Monto_Movimiento,
-                ROUND(d.Saldo_Pendiente, 2) AS Saldo_Pendiente,
-                CASE 
-                    WHEN d.Saldo_Pendiente <= 0 THEN 'Pagada'
-                    WHEN d.Fecha_Vencimiento IS NULL THEN 'Pendiente (sin fecha)'
+                COALESCE(doc.tipo, 'Otro documento') || '#' || d.Num_Documento AS Documento,
+                strftime('%d/%m/%Y', COALESCE(doc.Fecha, d.Fecha)) AS Fecha,
+                strftime('%d/%m/%Y', d.Fecha_Vencimiento) AS Vencimiento,
+                ROUND(d.Monto_Movimiento, 2) AS Monto_Original,
+                ROUND(COALESCE(p.total_pagado, 0), 2) AS Total_Abonado,
+                ROUND(d.Monto_Movimiento - COALESCE(p.total_pagado, 0), 2) AS Saldo_Pendiente,
+                CASE
+                    WHEN (d.Monto_Movimiento - COALESCE(p.total_pagado, 0)) <= 0 THEN 'Pagada'
                     WHEN d.Fecha_Vencimiento < date('now') THEN 'Vencida'
-                    ELSE 'Pendiente'
+                    ELSE 'Vigente'
                 END AS Estado,
-                COALESCE(doc.tipo, 'Desconocido') AS Tipo_Documento,
-                doc.Fecha AS Fecha_Documento,
-                COALESCE(p.pagos, 'Sin pagos') AS Pagos_Realizados
+                COALESCE(p.pagos, 'Sin pagos') AS Pagos_Realizados,
+                c.Nombre AS Nombre_Cliente
             FROM Detalle_Cuentas_Por_Cobrar d
-            LEFT JOIN documentos doc ON doc.id = d.Num_Documento
+            JOIN Clientes c ON d.ID_Cliente = c.ID_Cliente
+            LEFT JOIN documentos doc ON doc.id = d.Num_Documento AND doc.IDCliente = d.ID_Cliente
             LEFT JOIN pagos_agrupados p ON p.ID_Movimiento = d.ID_Movimiento
             WHERE d.ID_Cliente = ?
             ORDER BY 
                 CASE 
-                    WHEN d.Saldo_Pendiente <= 0 THEN 2
-                    WHEN d.Fecha_Vencimiento IS NULL THEN 0
-                    ELSE 1
+                    WHEN (d.Monto_Movimiento - COALESCE(p.total_pagado, 0)) <= 0 THEN 2 
+                    WHEN d.Fecha_Vencimiento < date('now') THEN 0 
+                    ELSE 1 
                 END,
                 d.Fecha_Vencimiento ASC
         """, id_cliente, id_cliente, id_cliente)
 
-        # Formatear fechas y montos
+        # Formatear y calcular días para vencimiento
         for cuenta in cuentas_por_cobrar:
-            cuenta['Fecha'] = format_date(cuenta.get('Fecha'))
-            cuenta['Fecha_Vencimiento'] = format_date(cuenta.get('Fecha_Vencimiento'))
-            cuenta['Fecha_Documento'] = format_date(cuenta.get('Fecha_Documento'))
-            cuenta['Monto_Movimiento'] = format_currency(cuenta.get('Monto_Movimiento'))
-            cuenta['Saldo_Pendiente'] = format_currency(cuenta.get('Saldo_Pendiente'))
+            cuenta['Monto_Original'] = format_currency(cuenta['Monto_Original'])
+            cuenta['Total_Abonado'] = format_currency(cuenta['Total_Abonado'])
+            cuenta['Saldo_Pendiente'] = format_currency(cuenta['Saldo_Pendiente'])
+            
+            try:
+                if cuenta['Estado'] == 'Vencida':
+                    cuenta['dias_vencimiento'] = "Vencida"
+                elif cuenta.get('Vencimiento'):
+                    fecha_venc = datetime.strptime(cuenta['Vencimiento'], '%d/%m/%Y')
+                    dias = (fecha_venc - datetime.now()).days
+                    cuenta['dias_vencimiento'] = f"Vence en {dias} días" if dias > 0 else "Vencida"
+                else:
+                    cuenta['dias_vencimiento'] = "Sin fecha"
+            except:
+                cuenta['dias_vencimiento'] = "Error en fecha"
 
         # ==============================================
-        # 3. Historial de compras (últimas 10)
+        # 3. Crear Trigger para actualización automática
         # ==============================================
-        
+        try:
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS actualizar_saldo_despues_pago
+                AFTER INSERT ON Pagos_CuentasCobrar
+                FOR EACH ROW
+                BEGIN
+                    -- Bloqueo para evitar condiciones de carrera
+                    BEGIN IMMEDIATE;
+                    UPDATE Detalle_Cuentas_Por_Cobrar
+                    SET Saldo_Pendiente = (
+                        SELECT d.Monto_Movimiento - COALESCE(SUM(p.Monto), 0)
+                        FROM Pagos_CuentasCobrar p
+                        WHERE p.ID_Movimiento = NEW.ID_Movimiento
+                    )
+                    WHERE ID_Movimiento = NEW.ID_Movimiento;
+                    COMMIT;
+                END;
+            """)
+        except Exception as e:
+            logging.warning(f"Trigger no pudo crearse: {str(e)}")
+
+        # ==============================================
+        # 4. Historial de compras (últimas 10)
+        # ==============================================
         historial_compras = db.execute("""
             WITH compras AS (
                 SELECT 
@@ -3034,12 +3097,9 @@ def detalle_cliente(id_cliente):
                     f.Fecha,
                     ROUND(SUM(df.Total), 2) AS Total,
                     f.Credito_Contado AS Tipo,
-                    'Factura' AS Documento,
-                    COUNT(df.ID_Producto) AS Productos,
-                    GROUP_CONCAT(p.Descripcion, ' | ') AS Productos_Descripcion
+                    'Factura' AS Documento
                 FROM Facturacion f
                 JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
-                JOIN Productos p ON df.ID_Producto = p.ID_Producto
                 WHERE f.IDCliente = ?
                 GROUP BY f.ID_Factura
 
@@ -3050,12 +3110,9 @@ def detalle_cliente(id_cliente):
                     fa.Fecha,
                     ROUND(SUM(dfa.Total), 2) AS Total,
                     fa.Credito_Contado AS Tipo,
-                    'Factura Alterna' AS Documento,
-                    COUNT(dfa.ID_Producto) AS Productos,
-                    GROUP_CONCAT(p.Descripcion, ' | ') AS Productos_Descripcion
+                    'Factura Alterna' AS Documento
                 FROM Factura_Alterna fa
                 JOIN Detalle_Factura_Alterna dfa ON fa.ID_Factura = dfa.ID_Factura
-                JOIN Productos p ON dfa.ID_Producto = p.ID_Producto
                 WHERE fa.IDCliente = ?
                 GROUP BY fa.ID_Factura
             )
@@ -3069,9 +3126,8 @@ def detalle_cliente(id_cliente):
             compra['Total'] = format_currency(compra.get('Total'))
 
         # ==============================================
-        # 4. Productos más comprados
+        # 5. Productos más comprados (Top 5)
         # ==============================================
-        
         productos_frecuentes = db.execute("""
             SELECT 
                 p.ID_Producto,
@@ -3084,14 +3140,14 @@ def detalle_cliente(id_cliente):
                 p.Unidad_Medida,
                 um.Abreviatura AS unidad_abreviatura
             FROM (
-                SELECT df.ID_Producto, df.Cantidad, df.Total, df.Costo 
+                SELECT df.ID_Producto, df.Cantidad, df.Total 
                 FROM Facturacion f
                 JOIN Detalle_Facturacion df ON f.ID_Factura = df.ID_Factura
                 WHERE f.IDCliente = ?
                 
                 UNION ALL
                 
-                SELECT dfa.ID_Producto, dfa.Cantidad, dfa.Total, dfa.Costo 
+                SELECT dfa.ID_Producto, dfa.Cantidad, dfa.Total
                 FROM Factura_Alterna fa
                 JOIN Detalle_Factura_Alterna dfa ON fa.ID_Factura = dfa.ID_Factura
                 WHERE fa.IDCliente = ?
@@ -3108,9 +3164,8 @@ def detalle_cliente(id_cliente):
             producto['precio_promedio'] = format_currency(producto.get('precio_promedio'))
 
         # ==============================================
-        # 5. Historial de pagos (últimos 10)
+        # 6. Historial de pagos (últimos 10)
         # ==============================================
-        
         historial_pagos = db.execute("""
             SELECT 
                 p.ID_Pago,
@@ -3122,9 +3177,9 @@ def detalle_cliente(id_cliente):
                 d.Fecha AS fecha_documento,
                 ROUND(d.Monto_Movimiento, 2) AS monto_documento,
                 CASE 
-                    WHEN EXISTS (SELECT 1 FROM Facturacion f WHERE f.ID_Factura = CAST(d.Num_Documento AS INTEGER)) 
+                    WHEN EXISTS (SELECT 1 FROM Facturacion f WHERE f.ID_Factura = d.Num_Documento) 
                         THEN 'Factura'
-                    WHEN EXISTS (SELECT 1 FROM Factura_Alterna fa WHERE fa.ID_Factura = CAST(d.Num_Documento AS INTEGER)) 
+                    WHEN EXISTS (SELECT 1 FROM Factura_Alterna fa WHERE fa.ID_Factura = d.Num_Documento) 
                         THEN 'Factura Alterna'
                     ELSE 'Otro'
                 END AS tipo_documento
@@ -3143,9 +3198,8 @@ def detalle_cliente(id_cliente):
             pago['monto_documento'] = format_currency(pago.get('monto_documento'))
 
         # ==============================================
-        # 6. Estadísticas financieras
+        # 7. Estadísticas financieras
         # ==============================================
-        
         estadisticas = db.execute("""
             WITH todas_compras AS (
                 SELECT f.Fecha, ROUND(SUM(df.Total), 2) AS Total FROM Facturacion f
@@ -3159,11 +3213,6 @@ def detalle_cliente(id_cliente):
                 JOIN Detalle_Factura_Alterna dfa ON fa.ID_Factura = dfa.ID_Factura
                 WHERE fa.IDCliente = ?
                 GROUP BY fa.ID_Factura
-            ),
-            meses_con_compras AS (
-                SELECT strftime('%Y-%m', Fecha) AS mes 
-                FROM todas_compras 
-                GROUP BY strftime('%Y-%m', Fecha)
             )
             SELECT 
                 COUNT(*) AS total_compras,
@@ -3171,30 +3220,23 @@ def detalle_cliente(id_cliente):
                 ROUND(AVG(Total), 2) AS promedio_compra,
                 MIN(Fecha) AS primera_compra,
                 MAX(Fecha) AS ultima_compra,
-                (SELECT COUNT(*) FROM meses_con_compras) AS meses_con_compras,
                 ROUND((SELECT SUM(Total) FROM todas_compras 
                  WHERE strftime('%Y', Fecha) = strftime('%Y', date('now'))), 2) AS monto_anual,
                 ROUND((SELECT SUM(Total) FROM todas_compras 
-                 WHERE strftime('%Y-%m', Fecha) = strftime('%Y-%m', date('now'))), 2) AS monto_mensual,
-                ROUND((SELECT SUM(Total) FROM todas_compras 
-                 WHERE strftime('%Y-%m', Fecha) = strftime('%Y-%m', date('now', '-1 month'))), 2) AS monto_mes_anterior
+                 WHERE strftime('%Y-%m', Fecha) = strftime('%Y-%m', date('now'))), 2) AS monto_mensual
             FROM todas_compras
         """, id_cliente, id_cliente)
 
         if estadisticas:
             estadisticas = estadisticas[0]
-            estadisticas['monto_total'] = format_currency(estadisticas.get('monto_total'))
-            estadisticas['promedio_compra'] = format_currency(estadisticas.get('promedio_compra'))
-            estadisticas['monto_anual'] = format_currency(estadisticas.get('monto_anual'))
-            estadisticas['monto_mensual'] = format_currency(estadisticas.get('monto_mensual'))
-            estadisticas['monto_mes_anterior'] = format_currency(estadisticas.get('monto_mes_anterior'))
-            estadisticas['primera_compra'] = format_date(estadisticas.get('primera_compra'))
-            estadisticas['ultima_compra'] = format_date(estadisticas.get('ultima_compra'))
+            for key in ['monto_total', 'promedio_compra', 'monto_anual', 'monto_mensual']:
+                estadisticas[key] = format_currency(estadisticas.get(key))
+            for key in ['primera_compra', 'ultima_compra']:
+                estadisticas[key] = format_date(estadisticas.get(key))
 
         # ==============================================
-        # Renderizar template con todos los datos
+        # Renderizar template
         # ==============================================
-        
         return render_template(
             "detalle_cliente.html",
             cliente=cliente_info,
@@ -3217,18 +3259,17 @@ def detalle_cliente(id_cliente):
 @login_required
 def historial_pagos_cliente(id_cliente):
     try:
-        # Obtener todas las facturas del cliente con saldo pendiente
         facturas = db.execute("""
             SELECT ID_Movimiento 
             FROM Detalle_Cuentas_Por_Cobrar 
             WHERE ID_Cliente = ? AND Saldo_Pendiente > 0
+            LIMIT 1
         """, id_cliente)
         
         if not facturas:
             flash("El cliente no tiene facturas pendientes", "info")
             return redirect(url_for("detalle_cliente", id_cliente=id_cliente))
             
-        # Redirigir a la primera factura pendiente
         return redirect(url_for("historial_pagos", id_movimiento=facturas[0]["ID_Movimiento"]))
         
     except Exception as e:
