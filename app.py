@@ -3021,11 +3021,11 @@ def detalle_cliente(id_cliente):
                 COALESCE(doc.tipo, 'Otro documento') || '#' || d.Num_Documento AS Documento,
                 strftime('%d/%m/%Y', COALESCE(doc.Fecha, d.Fecha)) AS Fecha,
                 strftime('%d/%m/%Y', d.Fecha_Vencimiento) AS Vencimiento,
-                ROUND(d.Monto_Movimiento, 2) AS Monto_Original,
+                ROUND(d.Saldo_Pendiente, 2) AS Monto_Original,
                 ROUND(COALESCE(p.total_pagado, 0), 2) AS Total_Abonado,
-                ROUND(d.Monto_Movimiento - COALESCE(p.total_pagado, 0), 2) AS Saldo_Pendiente,
+                ROUND(d.Saldo_Pendiente - COALESCE(p.total_pagado, 0), 2) AS Saldo_Pendiente,
                 CASE
-                    WHEN (d.Monto_Movimiento - COALESCE(p.total_pagado, 0)) <= 0 THEN 'Pagada'
+                    WHEN (d.Saldo_Pendiente - COALESCE(p.total_pagado, 0)) <= 0 THEN 'Pagada'
                     WHEN d.Fecha_Vencimiento < date('now') THEN 'Vencida'
                     ELSE 'Vigente'
                 END AS Estado,
