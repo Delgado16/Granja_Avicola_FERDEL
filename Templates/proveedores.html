@@ -1,77 +1,74 @@
+<!-- templates/proveedores.html -->
 {% extends "layout.html" %}
-{% block title %}Proveedores{% endblock %}
+
 {% block main %}
-
-<div class="container my-5">
-    <div class="card shadow-sm">
+<div class="container">
+    <h2>Gestión de Proveedores</h2>
+    
+    <!-- Formulario de agregar proveedor -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Agregar Nuevo Proveedor</h5>
+        </div>
         <div class="card-body">
-            <h3 class="card-title text-center text-primary mb-4">Gestión de Proveedores</h3>
-
-            <form method="post" class="row g-3 mb-4 p-3 bg-light rounded-3">
-                <h5 class="mb-3 text-secondary">Agregar Nuevo Proveedor</h5>
-                <div class="col-md-4">
-                    <div class="form-floating">
-                        <input type="text" name="nombre" class="form-control" id="nombre" placeholder="Nombre" required>
-                        <label for="nombre">Nombre</label>
+            <form method="POST" action="{{ url_for('proveedores') }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="nombre" class="form-label">Nombre*</label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" required>
                     </div>
-                </div>
-                <div class="col-md-2">
-                    <div class="form-floating">
-                        <input type="text" name="telefono" class="form-control" id="telefono" placeholder="Teléfono">
-                        <label for="telefono">Teléfono</label>
+                    <div class="col-md-6">
+                        <label for="ruc_cedula" class="form-label">RUC/Cédula</label>
+                        <input type="text" class="form-control" id="ruc_cedula" name="ruc_cedula">
                     </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="form-floating">
-                        <input type="text" name="direccion" class="form-control" id="direccion" placeholder="Dirección">
-                        <label for="direccion">Dirección</label>
+                    <div class="col-md-6">
+                        <label for="telefono" class="form-label">Teléfono</label>
+                        <input type="tel" class="form-control" id="telefono" name="telefono">
                     </div>
-                </div>
-                <div class="col-md-2">
-                    <div class="form-floating">
-                        <input type="text" name="ruc_cedula" class="form-control" id="ruc_cedula" placeholder="RUC/Cédula">
-                        <label for="ruc_cedula">RUC/Cédula</label>
+                    <div class="col-md-6">
+                        <label for="direccion" class="form-label">Dirección</label>
+                        <input type="text" class="form-control" id="direccion" name="direccion">
                     </div>
-                </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success w-100">Agregar</button>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Guardar Proveedor</button>
+                    </div>
                 </div>
             </form>
+        </div>
+    </div>
 
+    <!-- Lista de proveedores -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Listado de Proveedores</h5>
+        </div>
+        <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
-                    <thead class="table-dark text-center">
+                <table class="table table-striped">
+                    <thead>
                         <tr>
-                            <th>#</th>
+                            <th>ID</th>
                             <th>Nombre</th>
-                            <th>Teléfono</th>
-                            <th>Dirección</th>
                             <th>RUC/Cédula</th>
-                            <th>Acción</th>
+                            <th>Teléfono</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for p in proveedores %}
+                        {% for proveedor in proveedores %}
                         <tr>
-                            <td class="text-center">{{ p.ID_Proveedor }}</td>
-                            <td>{{ p.Nombre }}</td>
-                            <td>{{ p.Telefono or '-' }}</td>
-                            <td>{{ p.Direccion or '-' }}</td>
-                            <td>{{ p.RUC_CEDULA or '-' }}</td>
-                            <td class="text-center">
-                                <div class="d-flex justify-content-center gap-2">
-                                    <a href="{{ url_for('editar_proveedor', id=p.ID_Proveedor) }}" class="btn btn-sm btn-warning">
-                                        <i class="bi bi-pencil-square"></i> Editar
-                                    </a>
-                                    <a href="{{ url_for('eliminar_proveedor', id=p.ID_Proveedor) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Seguro de eliminar?');">
-                                        <i class="bi  bi-eye-fill"></i> Detalles
-                                    </a>
-                                </div>
+                            <td>{{ proveedor.ID_Proveedor }}</td>
+                            <td>
+                                <a href="{{ url_for('detalle_proveedor', id_proveedor=proveedor.ID_Proveedor) }}">
+                                    {{ proveedor.Nombre }}
+                                </a>
                             </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted">No hay proveedores registrados.</td>
+                            <td>{{ proveedor.RUC_CEDULA or '' }}</td>
+                            <td>{{ proveedor.Telefono or '' }}</td>
+                            <td>
+                                <a href="{{ url_for('editar_proveedor', id_proveedor=proveedor.ID_Proveedor) }}" 
+                                   class="btn btn-sm btn-outline-primary">Editar</a>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -80,5 +77,4 @@
         </div>
     </div>
 </div>
-
 {% endblock %}

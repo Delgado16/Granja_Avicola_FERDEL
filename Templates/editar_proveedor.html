@@ -1,29 +1,44 @@
+<!-- templates/editar_proveedor.html -->
 {% extends "layout.html" %}
-{% block title %}Editar Proveedor{% endblock %}
+
 {% block main %}
-<div class="container mt-4">
-    <h3 class="mb-3 text-warning text-center">Editar Proveedor</h3>
-    <form method="post" class="row g-3 border rounded-3 p-3 bg-light mx-auto" style="max-width: 700px;">
-        <div class="col-md-6">
-            <label class="form-label">Nombre:</label>
-            <input type="text" name="nombre" class="form-control" value="{{ proveedor.Nombre }}" required>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Editar Proveedor</h2>
+        <a href="{{ url_for('proveedores') }}" class="btn btn-outline-secondary">Volver</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('editar_proveedor', id_proveedor=proveedor.ID_Proveedor) }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="nombre" class="form-label">Nombre*</label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" 
+                               value="{{ proveedor.Nombre }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="ruc_cedula" class="form-label">RUC/Cédula</label>
+                        <input type="text" class="form-control" id="ruc_cedula" name="ruc_cedula"
+                               value="{{ proveedor.RUC_CEDULA or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="telefono" class="form-label">Teléfono</label>
+                        <input type="tel" class="form-control" id="telefono" name="telefono"
+                               value="{{ proveedor.Telefono or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="direccion" class="form-label">Dirección</label>
+                        <input type="text" class="form-control" id="direccion" name="direccion"
+                               value="{{ proveedor.Direccion or '' }}">
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Actualizar Proveedor</button>
+                        <a href="{{ url_for('proveedores') }}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </div>
+            </form>
         </div>
-        <div class="col-md-6">
-            <label class="form-label">Teléfono:</label>
-            <input type="text" name="telefono" class="form-control" value="{{ proveedor.Telefono or '' }}">
-        </div>
-        <div class="col-md-8">
-            <label class="form-label">Dirección:</label>
-            <input type="text" name="direccion" class="form-control" value="{{ proveedor.Direccion or '' }}">
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">RUC/Cédula:</label>
-            <input type="text" name="ruc_cedula" class="form-control" value="{{ proveedor.RUC_CEDULA or '' }}">
-        </div>
-        <div class="col-12 text-center">
-            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-            <a href="{{ url_for('proveedores') }}" class="btn btn-secondary ms-2">Cancelar</a>
-        </div>
-    </form>
+    </div>
 </div>
 {% endblock %}

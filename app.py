@@ -3333,19 +3333,147 @@ def proveedores():
         flash("Proveedor agregado correctamente.", "success")
         return redirect(url_for("proveedores"))
 
-    # Mostrar lista de proveedores
     proveedores = db.execute("SELECT * FROM Proveedores ORDER BY ID_Proveedor")
     return render_template("proveedores.html", proveedores=proveedores)
 #######################################################################################
-# Editar Proveedor
-@app.route("/proveedores/<int:id>/editar", methods=["GET", "POST"])
+@app.route("/proveedores/<int:id_proveedor>")
 @login_required
-def editar_proveedor(id):
-    proveedor = db.execute("SELECT * FROM Proveedores WHERE ID_Proveedor = ?", id)
-    if not proveedor:
+def detalle_proveedor(id_proveedor):
+    try:
+        # 1. Obtener información básica del proveedor (modificado para CS50 SQL)
+        proveedor = db.execute("SELECT * FROM Proveedores WHERE ID_Proveedor = ?", id_proveedor)
+        if not proveedor:  # Ahora proveedor es una lista
+            flash("Proveedor no encontrado", "danger")
+            return redirect(url_for("proveedores"))
+        proveedor = proveedor[0]  # Tomamos el primer elemento
+
+        # 2. Obtener cuentas por pagar (modificado)
+        cuentas_pendientes = db.execute("""
+            SELECT 
+                cp.ID_Cuenta,
+                cp.Fecha,
+                cp.Num_Documento,
+                cp.Observacion AS Descripcion,
+                cp.Fecha_Vencimiento,
+                cm.Descripcion AS Tipo_Movimiento,
+                cp.Monto_Movimiento AS Total,
+                cp.IVA,
+                cp.Retencion,
+                cp.Saldo_Pendiente,
+                CASE 
+                    WHEN cp.Fecha_Vencimiento < date('now') AND cp.Saldo_Pendiente > 0 THEN 'Vencido'
+                    WHEN cp.Saldo_Pendiente > 0 THEN 'Pendiente'
+                    ELSE 'Pagado'
+                END AS Estado
+            FROM Cuentas_Por_Pagar cp
+            JOIN Catalogo_Movimientos cm ON cp.Tipo_Movimiento = cm.ID_TipoMovimiento
+            WHERE cp.ID_Proveedor = ?
+            ORDER BY cp.Fecha DESC
+        """, id_proveedor)  # Sin fetchall()
+
+        # 3. Obtener historial de compras (modificado)
+        historial_compras = db.execute("""
+            SELECT 
+                mi.ID_Movimiento,
+                mi.Fecha,
+                mi.N_Factura AS Factura,
+                cm.Descripcion AS Tipo,
+                SUM(dmi.Costo_Total) AS Total,
+                mi.Observacion,
+                e.Descripcion AS Empresa,
+                b.Nombre AS Bodega
+            FROM Movimientos_Inventario mi
+            JOIN Catalogo_Movimientos cm ON mi.ID_TipoMovimiento = cm.ID_TipoMovimiento
+            JOIN Detalle_Movimiento_Inventario dmi ON mi.ID_Movimiento = dmi.ID_Movimiento
+            JOIN Empresa e ON mi.ID_Empresa = e.ID_Empresa
+            LEFT JOIN Bodegas b ON mi.ID_Bodega = b.ID_Bodega
+            WHERE mi.ID_Proveedor = ?
+            GROUP BY mi.ID_Movimiento
+            ORDER BY mi.Fecha DESC
+        """, id_proveedor)  # Sin fetchall()
+
+        # 4. Obtener productos más comprados (modificado)
+        productos_top = db.execute("""
+            SELECT 
+                p.ID_Producto,
+                p.COD_Producto AS Codigo,
+                p.Descripcion,
+                um.Descripcion AS Unidad,
+                COUNT(dmi.ID_Producto) AS Veces_Comprado,
+                SUM(dmi.Cantidad) AS Cantidad_Total,
+                SUM(dmi.Costo_Total) AS Monto_Total,
+                ROUND(SUM(dmi.Costo_Total) / SUM(dmi.Cantidad), 2) AS Precio_Promedio
+            FROM Detalle_Movimiento_Inventario dmi
+            JOIN Productos p ON dmi.ID_Producto = p.ID_Producto
+            JOIN Unidades_Medida um ON p.Unidad_Medida = um.ID_Unidad
+            JOIN Movimientos_Inventario mi ON dmi.ID_Movimiento = mi.ID_Movimiento
+            WHERE mi.ID_Proveedor = ?
+            GROUP BY dmi.ID_Producto
+            ORDER BY Monto_Total DESC
+            LIMIT 10
+        """, id_proveedor)  # Sin fetchall()
+
+        # 5. Obtener historial de pagos realizados (modificado)
+        historial_pagos = db.execute("""
+            SELECT 
+                p.ID_Pago,
+                p.Fecha,
+                p.Monto,
+                mp.Nombre AS Metodo_Pago,
+                p.Detalles_Metodo AS Detalles,
+                p.Comentarios,
+                cp.Num_Documento AS Documento,
+                cp.Fecha AS Fecha_Documento,
+                cp.Monto_Movimiento AS Total_Documento
+            FROM Pagos_CuentasPagar p
+            JOIN Metodos_Pago mp ON p.ID_MetodoPago = mp.ID_MetodoPago
+            JOIN Cuentas_Por_Pagar cp ON p.ID_Cuenta = cp.ID_Cuenta
+            WHERE cp.ID_Proveedor = ?
+            ORDER BY p.Fecha DESC
+        """, id_proveedor)  # Sin fetchall()
+
+        # 6. Calcular resumen financiero (modificado)
+        resumen = db.execute("""
+            SELECT 
+                SUM(CASE WHEN Saldo_Pendiente > 0 THEN Saldo_Pendiente ELSE 0 END) AS Total_Pendiente,
+                SUM(CASE WHEN Saldo_Pendiente > 0 AND Fecha_Vencimiento < date('now') 
+                    THEN Saldo_Pendiente ELSE 0 END) AS Total_Vencido,
+                SUM(Monto_Movimiento) AS Total_Compras,
+                (SELECT SUM(Monto) FROM Pagos_CuentasPagar p 
+                 JOIN Cuentas_Por_Pagar cp ON p.ID_Cuenta = cp.ID_Cuenta 
+                 WHERE cp.ID_Proveedor = ?) AS Total_Pagado
+            FROM Cuentas_Por_Pagar
+            WHERE ID_Proveedor = ?
+        """, id_proveedor, id_proveedor)[0]  # [0] para obtener el primer resultado
+
+        return render_template(
+            "detalle_proveedor.html",
+            proveedor=proveedor,
+            cuentas_pendientes=cuentas_pendientes,
+            historial_compras=historial_compras,
+            productos_top=productos_top,
+            historial_pagos=historial_pagos,
+            resumen=resumen
+        )
+        
+    except Exception as e:
+        flash(f"Error al cargar el proveedor: {str(e)}", "danger")
+        return redirect(url_for("proveedores"))
+    
+#######################################################################################
+# Editar Proveedor
+@app.route("/proveedores/<int:id_proveedor>/editar", methods=["GET", "POST"])
+@login_required
+def editar_proveedor(id_proveedor):
+    # Obtener el proveedor (db.execute devuelve una lista de diccionarios)
+    proveedores = db.execute("SELECT * FROM Proveedores WHERE ID_Proveedor = ?", id_proveedor)
+    
+    # Verificar si se encontró el proveedor
+    if len(proveedores) != 1:
         flash("Proveedor no encontrado.", "danger")
         return redirect(url_for("proveedores"))
-    proveedor = proveedor[0]
+    
+    proveedor = proveedores[0]  # Tomamos el primer (y único) resultado
 
     if request.method == "POST":
         nombre = request.form.get("nombre", "").strip()
@@ -3353,14 +3481,17 @@ def editar_proveedor(id):
         direccion = request.form.get("direccion", "").strip()
         ruc_cedula = request.form.get("ruc_cedula", "").strip()
 
+        # Actualizar el proveedor en la base de datos
         db.execute("""
             UPDATE Proveedores
             SET Nombre = ?, Telefono = ?, Direccion = ?, RUC_CEDULA = ?
             WHERE ID_Proveedor = ?
-        """, nombre, telefono, direccion, ruc_cedula, id)
+        """, nombre, telefono, direccion, ruc_cedula, id_proveedor)
+        
         flash("Proveedor actualizado correctamente.", "success")
-        return redirect(url_for("proveedores"))
+        return redirect(url_for("detalle_proveedor", id_proveedor=id_proveedor))
 
+    # Pasar el diccionario del proveedor a la plantilla
     return render_template("editar_proveedor.html", proveedor=proveedor)
 #######################################################################################
 # Eliminar Proveedor

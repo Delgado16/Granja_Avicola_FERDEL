@@ -1,0 +1,222 @@
+<!-- templates/detalle_proveedor.html -->
+{% extends "layout.html" %}
+
+{% block main %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Detalle del Proveedor</h2>
+        <a href="{{ url_for('proveedores') }}" class="btn btn-outline-secondary">Volver</a>
+    </div>
+
+    <!-- Información básica -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Información General</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Nombre:</strong> {{ proveedor.Nombre }}</p>
+                    <p><strong>RUC/Cédula:</strong> {{ proveedor.RUC_CEDULA or 'N/A' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Teléfono:</strong> {{ proveedor.Telefono or 'N/A' }}</p>
+                    <p><strong>Dirección:</strong> {{ proveedor.Direccion or 'N/A' }}</p>
+                </div>
+                <div class="col-12">
+                    <a href="{{ url_for('editar_proveedor', id_proveedor=proveedor.ID_Proveedor) }}" 
+                       class="btn btn-outline-primary">Editar Información</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen financiero -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Resumen Financiero</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">Total Compras</h6>
+                            <p class="card-text h4">C${{ "%.2f"|format(resumen.Total_Compras or 0) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">Total Pagado</h6>
+                            <p class="card-text h4">C${{ "%.2f"|format(resumen.Total_Pagado or 0) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">Pendiente</h6>
+                            <p class="card-text h4">C${{ "%.2f"|format(resumen.Total_Pendiente or 0) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">Vencido</h6>
+                            <p class="card-text h4 text-danger">C${{ "%.2f"|format(resumen.Total_Vencido or 0) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestañas para las diferentes secciones -->
+    <ul class="nav nav-tabs mb-4" id="proveedorTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="cuentas-tab" data-bs-toggle="tab" data-bs-target="#cuentas" type="button" role="tab">Cuentas por Pagar</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="compras-tab" data-bs-toggle="tab" data-bs-target="#compras" type="button" role="tab">Historial de Compras</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="productos-tab" data-bs-toggle="tab" data-bs-target="#productos" type="button" role="tab">Productos Más Comprados</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pagos-tab" data-bs-toggle="tab" data-bs-target="#pagos" type="button" role="tab">Historial de Pagos</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="proveedorTabsContent">
+        <!-- Tab Cuentas por Pagar -->
+        <div class="tab-pane fade show active" id="cuentas" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Documento</th>
+                            <th>Fecha</th>
+                            <th>Vencimiento</th>
+                            <th>Descripción</th>
+                            <th>Total</th>
+                            <th>Saldo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cuenta in cuentas_pendientes %}
+                        <tr class="{{ 'table-danger' if cuenta.Estado == 'Vencido' else 'table-warning' if cuenta.Estado == 'Pendiente' }}">
+                            <td>{{ cuenta.Num_Documento }}</td>
+                            <td>{{ cuenta.Fecha }}</td>
+                            <td>{{ cuenta.Fecha_Vencimiento }}</td>
+                            <td>{{ cuenta.Descripcion }}</td>
+                            <td>C${{ "%.2f"|format(cuenta.Total) }}</td>
+                            <td>C${{ "%.2f"|format(cuenta.Saldo_Pendiente) }}</td>
+                            <td>{{ cuenta.Estado }}</td>
+                            <td>
+                                <a href="{{ url_for('registrar_pago', id_cuenta=cuenta.ID_Cuenta) }}" 
+                                class="btn btn-sm btn-outline-primary">Pagar</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab Historial de Compras -->
+        <div class="tab-pane fade" id="compras" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Factura</th>
+                            <th>Tipo</th>
+                            <th>Total</th>
+                            <th>Bodega</th>
+                            <th>Observación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for compra in historial_compras %}
+                        <tr>
+                            <td>{{ compra.Fecha }}</td>
+                            <td>{{ compra.Factura }}</td>
+                            <td>{{ compra.Tipo }}</td>
+                            <td>C${{ "%.2f"|format(compra.Total) }}</td>
+                            <td>{{ compra.Bodega or 'N/A' }}</td>
+                            <td>{{ compra.Observacion or '' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab Productos más comprados -->
+        <div class="tab-pane fade" id="productos" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th>Unidad</th>
+                            <th>Veces Comprado</th>
+                            <th>Cantidad Total</th>
+                            <th>Monto Total</th>
+                            <th>Precio Promedio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for producto in productos_top %}
+                        <tr>
+                            <td>{{ producto.Codigo }}</td>
+                            <td>{{ producto.Descripcion }}</td>
+                            <td>{{ producto.Unidad }}</td>
+                            <td>{{ producto.Veces_Comprado }}</td>
+                            <td>{{ producto.Cantidad_Total }}</td>
+                            <td>C${{ "%.2f"|format(producto.Monto_Total) }}</td>
+                            <td>C${{ "%.2f"|format(producto.Precio_Promedio) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab Historial de Pagos -->
+        <div class="tab-pane fade" id="pagos" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Documento</th>
+                            <th>Comentarios</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pago in historial_pagos %}
+                        <tr>
+                            <td>{{ pago.Fecha }}</td>
+                            <td>C${{ "%.2f"|format(pago.Monto) }}</td>
+                            <td>{{ pago.Metodo_Pago }}</td>
+                            <td>{{ pago.Documento }}</td>
+                            <td>{{ pago.Comentarios or '' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
