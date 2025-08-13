@@ -57,17 +57,26 @@
                     <tbody>
                         {% for proveedor in proveedores %}
                         <tr>
-                            <td>{{ proveedor.ID_Proveedor }}</td>
                             <td>
-                                <a href="{{ url_for('detalle_proveedor', id_proveedor=proveedor.ID_Proveedor) }}">
-                                    {{ proveedor.Nombre }}
-                                </a>
+                                <strong>{{ proveedor.ID_Proveedor }}</strong>
                             </td>
+                            <td>{{ proveedor.Nombre }}</td>
                             <td>{{ proveedor.RUC_CEDULA or '' }}</td>
-                            <td>{{ proveedor.Telefono or '' }}</td>
+                            <td>
+                                {% if proveedor.Telefono %}
+                                <a href="tel:{{ proveedor.Telefono }}" class="text-decoration-none">
+                                    <i class="bi bi-telephone"></i> {{ proveedor.Telefono or '' }}
+                                </a>
+                                {% endif %}
+                            </td>
                             <td>
                                 <a href="{{ url_for('editar_proveedor', id_proveedor=proveedor.ID_Proveedor) }}" 
                                    class="btn btn-sm btn-outline-primary">Editar</a>
+
+                                <a href="{{ url_for('detalle_proveedor', id_proveedor=proveedor.ID_Proveedor) }}"
+                                class = "btn btn-sm btn-outline-primary" title="Ver Detalle">
+                                <i class="bi bi-eye-fill"></i>
+                            </a>
                             </td>
                         </tr>
                         {% endfor %}

@@ -633,6 +633,10 @@
             });
         }
 
+        document.querySelectorAll(".producto-select").forEach(select => {
+            select.innerHTML = '<option value="" disabled selected>Seleccione una bodega primero</option>';
+        });
+
         // Establecer fecha actual por defecto
         const fechaInput = document.getElementById("fecha");
         if (fechaInput && !fechaInput.value) {

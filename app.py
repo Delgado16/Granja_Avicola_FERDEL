@@ -958,14 +958,18 @@ def ventas():
     # === GET ===
     try:
         clientes = db.execute("SELECT ID_Cliente AS id, Nombre AS nombre FROM Clientes")
-        productos = db.execute("SELECT ID_Producto AS id, Descripcion AS descripcion FROM Productos")
         bodegas = db.execute("SELECT ID_Bodega AS id, Nombre AS nombre FROM Bodegas")
+
+        productos = []
 
         last_seq = db.execute("SELECT seq FROM sqlite_sequence WHERE name = ?", "Facturacion")
         next_id = last_seq[0]["seq"] + 1 if last_seq else 1
         n_factura = f"F-{next_id:05d}"
 
-        return render_template("ventas.html", clientes=clientes, productos=productos, bodegas=bodegas, n_factura=n_factura)
+        return render_template("ventas.html", clientes=clientes, 
+                                            productos=productos, 
+                                            bodegas=bodegas, 
+                                            n_factura=n_factura)
     except Exception as e:
         flash(f"Error al cargar datos: {str(e)}", "danger")
         return redirect(url_for("ventas"))
@@ -2151,14 +2155,14 @@ def factura_alterna():
                 updates_inventario.append((cantidad, id_bodega, id_producto))
 
             # Ejecutar inserciones batch
-            db.executemany(
+            db.execute(
                 """INSERT INTO Detalle_Factura_Alterna 
                    (ID_Factura, ID_Producto, Cantidad, Costo, Total)
                    VALUES (?, ?, ?, ?, ?)""",
                 detalles_factura
             )
 
-            db.executemany(
+            db.execute(
                 """INSERT INTO Detalle_Movimiento_Inventario (
                     ID_Movimiento, ID_TipoMovimiento, ID_Producto,
                     Cantidad, Costo, IVA, Descuento, Costo_Total, Saldo
@@ -2167,12 +2171,12 @@ def factura_alterna():
             )
 
             # Actualizar existencias (batch)
-            db.executemany(
+            db.execute(
                 "UPDATE Productos SET Existencias = Existencias - ? WHERE ID_Producto = ?",
                 updates_productos
             )
 
-            db.executemany(
+            db.execute(
                 """UPDATE Inventario_Bodega 
                    SET Existencias = Existencias - ? 
                    WHERE ID_Bodega = ? AND ID_Producto = ?""",
